@@ -1,0 +1,366 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bagel+Fat+One&family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Climate Crisis";
+  src:
+    url("/shipk-brand/fonts/ClimateCrisis-Regular-VariableFont_YEAR.ttf") format("truetype-variations"),
+    url("/shipk-brand/fonts/ClimateCrisis-Regular-VariableFont_YEAR.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 4%;
+  --primary: 338 100% 62%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 80 84% 69%;
+  --secondary-foreground: 0 0% 4%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 42%;
+  --accent: 164 66% 82%;
+  --accent-foreground: 0 0% 4%;
+  --destructive: 0 74% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 4%;
+  --input: 0 0% 4%;
+  --ring: 338 100% 62%;
+  --shipk-pink: #ff3d7f;
+  --shipk-pink-soft: #ffd6e3;
+  --shipk-lime: #c8f26c;
+  --shipk-mint: #b4f0dc;
+  --shipk-yellow: #ffe25a;
+  --shipk-blue: #bde0fe;
+  --shipk-coral: #ff7a5c;
+  --shipk-black: #0a0a0a;
+  --shipk-cream: #fff8f0;
+  --shipk-gray: #6b6b6b;
+  --font-geist-sans: "Inter", Arial, Helvetica, sans-serif;
+  --font-brand-round: "Bagel Fat One", "Arial Black", sans-serif;
+  --font-brand-heavy: "Archivo Black", "Arial Black", sans-serif;
+  --font-brand-script: "Caveat", cursive;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-geist-sans);
+  letter-spacing: 0;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(10, 10, 10, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+a {
+  text-underline-offset: 4px;
+}
+
+.focus-ring {
+  @apply outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+.font-brand-round {
+  font-family: var(--font-brand-round);
+}
+
+.font-brand-heavy {
+  font-family: var(--font-brand-heavy);
+}
+
+.font-brand-script {
+  font-family: var(--font-brand-script);
+}
+
+.shipk-logo {
+  font-family: var(--font-brand-round);
+  letter-spacing: 0;
+}
+
+.shipk-logo-k {
+  color: var(--shipk-pink);
+  display: inline-block;
+  transform: rotate(-6deg);
+}
+
+.shipk-surface {
+  border: 2px solid var(--shipk-black);
+  background: white;
+  box-shadow: 6px 6px 0 var(--shipk-black);
+}
+
+.shipk-surface-soft {
+  border: 2px solid var(--shipk-black);
+  background: var(--shipk-cream);
+  box-shadow: 4px 4px 0 var(--shipk-black);
+}
+
+.shipk-lift {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.shipk-lift:hover,
+.shipk-lift:focus-visible {
+  transform: translateY(-4px);
+}
+
+.shipk-chip {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--shipk-black);
+  border-radius: 999px;
+  background: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--shipk-black);
+  text-decoration: none;
+}
+
+.shipk-chip-active {
+  background: var(--shipk-black);
+  color: white;
+}
+
+.shipk-btn-pop {
+  border: 2px solid var(--shipk-black);
+  border-radius: 999px;
+  background: var(--shipk-pink);
+  color: white;
+  box-shadow: 4px 4px 0 var(--shipk-black);
+  font-weight: 900;
+}
+
+.shipk-btn-pop:hover,
+.shipk-btn-pop:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--shipk-black);
+}
+
+.shipk-btn-outline-pop {
+  border: 2px solid var(--shipk-black);
+  border-radius: 999px;
+  background: white;
+  color: var(--shipk-black);
+  box-shadow: 4px 4px 0 var(--shipk-black);
+  font-weight: 900;
+}
+
+.shipk-heading {
+  font-family: var(--font-brand-heavy);
+  letter-spacing: 0;
+}
+
+.shipk-hero-word {
+  font-family: var(--font-brand-heavy);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.shipk-marker {
+  position: relative;
+  display: inline-block;
+}
+
+.shipk-marker::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.05em;
+  z-index: -1;
+  height: 0.22em;
+  border-radius: 0.25rem;
+  background: var(--shipk-yellow);
+}
+
+.shipk-marquee {
+  overflow: hidden;
+  border-bottom: 3px solid var(--shipk-black);
+  background: var(--shipk-pink);
+  color: white;
+  white-space: nowrap;
+}
+
+.shipk-marquee-track {
+  display: inline-flex;
+  min-height: 3.5rem;
+  min-width: max-content;
+  align-items: center;
+  animation: shipk-marquee-scroll 24s linear infinite;
+}
+
+.shipk-marquee-track span {
+  padding: 0 1.5rem;
+  font-family: var(--font-brand-round);
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  line-height: 1;
+}
+
+.shipk-cursor-sparkle {
+  position: fixed;
+  z-index: 9000;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-brand-round);
+  line-height: 1;
+  text-shadow: 1px 1px 0 var(--shipk-black);
+  animation: shipk-sparkle-fade 800ms ease forwards;
+}
+
+.shipk-floating-sticker {
+  user-select: none;
+  opacity: 1;
+}
+
+.about-hero-stage {
+  perspective: 900px;
+}
+
+.about-float-card {
+  animation: about-float 7s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.about-step-card {
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease;
+}
+
+.about-step-card:hover {
+  transform: translateY(-6px);
+  background: var(--shipk-cream);
+}
+
+.about-product-rail-track {
+  display: flex;
+  width: max-content;
+  gap: 1.25rem;
+  padding: 0 1.25rem;
+  animation: about-product-rail 38s linear infinite;
+}
+
+.about-promoter-row {
+  animation: about-promoter-pulse 7s ease-in-out infinite;
+}
+
+.about-promoter-row:nth-child(2) {
+  animation-delay: 700ms;
+}
+
+.about-promoter-row:nth-child(3) {
+  animation-delay: 1400ms;
+}
+
+@keyframes shipk-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes shipk-sparkle-fade {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(0, -20px) scale(0.4) rotate(180deg);
+  }
+}
+
+@keyframes about-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--tw-rotate));
+  }
+
+  50% {
+    transform: translateY(-14px) rotate(var(--tw-rotate));
+  }
+}
+
+@keyframes about-product-rail {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes about-promoter-pulse {
+  0%,
+  100% {
+    border-color: rgba(255, 255, 255, 1);
+  }
+
+  50% {
+    border-color: var(--shipk-lime);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
+  .shipk-marquee-track {
+    animation: none;
+  }
+
+  .about-float-card,
+  .about-product-rail-track,
+  .about-promoter-row {
+    animation: none;
+  }
+
+  .shipk-cursor-sparkle {
+    animation: none;
+    display: none;
+  }
+
+  .shipk-lift,
+  .shipk-btn-pop,
+  .shipk-btn-outline-pop {
+    transition: none;
+  }
+}
