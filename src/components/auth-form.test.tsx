@@ -5,6 +5,7 @@ import { AuthForm } from "./auth-form";
 
 const supabaseMocks = vi.hoisted(() => ({
   signInWithOAuth: vi.fn(),
+  signInWithIdToken: vi.fn(),
   signInWithPassword: vi.fn(),
   signUp: vi.fn(),
   eq: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: () => ({
     auth: {
       signInWithOAuth: supabaseMocks.signInWithOAuth,
+      signInWithIdToken: supabaseMocks.signInWithIdToken,
       signInWithPassword: supabaseMocks.signInWithPassword,
       signUp: supabaseMocks.signUp
     },
@@ -32,6 +34,30 @@ vi.mock("@/lib/supabase/client", () => ({
     })
   })
 }));
+
+vi.mock("@/components/google-identity-button", async () => {
+  const React = await import("react");
+
+  return {
+    GoogleIdentityButton: ({
+      mode,
+      disabled,
+      onCredential
+    }: {
+      mode: "sign-in" | "sign-up";
+      disabled?: boolean;
+      onCredential: (response: { credential: string }, nonce: string) => void;
+    }) =>
+      React.createElement(
+        "button",
+        {
+          disabled,
+          onClick: () => onCredential({ credential: "google-id-token" }, "nonce")
+        },
+        mode === "sign-up" ? "Sign up with Google" : "Continue with Google"
+      )
+  };
+});
 
 describe("AuthForm", () => {
   afterEach(() => {
@@ -66,21 +92,23 @@ describe("AuthForm", () => {
     expect(screen.getByRole("button", { name: "Create account" })).toBeVisible();
   });
 
-  it("starts Google OAuth with the safe callback redirect", async () => {
-    supabaseMocks.signInWithOAuth.mockResolvedValue({ error: null });
-
+  it("signs in with a Google ID token instead of hosted Supabase OAuth", async () => {
+    supabaseMocks.signInWithIdToken.mockResolvedValue({
+      data: { session: { access_token: "token" }, user: { id: "user-id" } },
+      error: null
+    });
     render(<AuthForm nextPath="/checkout?product=daily-k-glow-set" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
-    await waitFor(() => expect(supabaseMocks.signInWithOAuth).toHaveBeenCalledTimes(1));
-    expect(supabaseMocks.signInWithOAuth).toHaveBeenCalledWith({
+    await waitFor(() =>
+      expect(supabaseMocks.signInWithIdToken).toHaveBeenCalledTimes(1)
+    );
+    expect(supabaseMocks.signInWithIdToken).toHaveBeenCalledWith({
       provider: "google",
-      options: {
-        redirectTo: expect.stringContaining(
-          "/auth/callback?next=%2Fcheckout%3Fproduct%3Ddaily-k-glow-set"
-        )
-      }
+      token: "google-id-token",
+      nonce: "nonce"
     });
+    expect(supabaseMocks.signInWithOAuth).not.toHaveBeenCalled();
   });
 });

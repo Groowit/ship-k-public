@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { GoogleIdentityButton } from "@/components/google-identity-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import {
   getSafeNextPath,
   serializeAuthConsentCookie
 } from "@/lib/authz";
+import type { GoogleCredentialResponse } from "@/lib/google-identity";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -86,13 +88,28 @@ export function AuthForm({
     }
   }
 
-  async function signInWithGoogle() {
+  const showGoogleError = useCallback((error: Error) => {
+    setMessage(error.message);
+  }, []);
+
+  const signInWithGoogle = useCallback(async (
+    response: GoogleCredentialResponse,
+    nonce: string
+  ) => {
     setIsSubmitting(true);
     setMessage(null);
     try {
+      if (!response.credential) {
+        throw new Error("Google did not return an ID token.");
+      }
+
+      const supabase = createSupabaseBrowserClient();
+      const consent = isSignUp ? createAuthConsent(marketingOptIn) : null;
+
       if (isSignUp) {
-        ensureLegalAgreement();
-        const consent = createAuthConsent(marketingOptIn);
+        if (!legalAgreed || !consent) {
+          throw new Error("Please accept the Terms and Privacy Policy to create an account.");
+        }
         document.cookie = `${AUTH_CONSENT_COOKIE_NAME}=${serializeAuthConsentCookie(
           consent
         )}; path=/; max-age=600; SameSite=Lax${
@@ -103,27 +120,41 @@ export function AuthForm({
           window.location.protocol === "https:" ? "; Secure" : ""
         }`;
       }
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+
+      const result = await supabase.auth.signInWithIdToken({
         provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-            safeNextPath
-          )}`
-        }
+        token: response.credential,
+        nonce
       });
-      if (error) {
-        throw error;
+
+      if (result.error) {
+        throw result.error;
       }
+
+      if (isSignUp && result.data.user && consent) {
+        await supabase
+          .from("profiles")
+          .update({
+            terms_accepted_at: consent.termsAcceptedAt,
+            privacy_accepted_at: consent.privacyAcceptedAt,
+            marketing_opt_in: consent.marketingOptIn,
+            marketing_opt_in_at: consent.marketingOptInAt
+          })
+          .eq("id", result.data.user.id);
+      }
+
+      router.push(safeNextPath);
+      router.refresh();
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
           : "Google sign-in is unavailable in this environment."
       );
+    } finally {
       setIsSubmitting(false);
     }
-  }
+  }, [isSignUp, legalAgreed, marketingOptIn, router, safeNextPath]);
 
   async function signUpWithConsent(consent: ReturnType<typeof createAuthConsent> | null) {
     ensureLegalAgreement();
@@ -260,15 +291,28 @@ export function AuthForm({
             >
               {isSignUp ? "Create account" : "Sign in"}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="border-2 border-black font-black"
-              onClick={signInWithGoogle}
-              disabled={isSubmitting}
-            >
-              {isSignUp ? "Sign up with Google" : "Continue with Google"}
-            </Button>
+            {isSignUp && !legalAgreed ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="border-2 border-black font-black"
+                disabled={isSubmitting}
+                onClick={() =>
+                  setMessage(
+                    "Please accept the Terms and Privacy Policy to create an account."
+                  )
+                }
+              >
+                Sign up with Google
+              </Button>
+            ) : (
+              <GoogleIdentityButton
+                mode={mode}
+                disabled={isSubmitting}
+                onCredential={signInWithGoogle}
+                onError={showGoogleError}
+              />
+            )}
           </div>
           {message ? (
             <p role="status" className="rounded-md border-2 border-black bg-muted p-3 text-sm">
