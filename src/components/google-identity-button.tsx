@@ -50,7 +50,7 @@ export function GoogleIdentityButton({
         window.google.accounts.id.renderButton(renderedContainer, {
           type: "standard",
           theme: "filled_black",
-          size: "large",
+          size: "medium",
           text: mode === "sign-up" ? "signup_with" : "signin_with",
           shape: "pill",
           logo_alignment: "left",
