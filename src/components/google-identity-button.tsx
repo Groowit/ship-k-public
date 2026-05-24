@@ -49,10 +49,10 @@ export function GoogleIdentityButton({
         });
         window.google.accounts.id.renderButton(renderedContainer, {
           type: "standard",
-          theme: "outline",
-          size: "medium",
+          theme: "filled_black",
+          size: "large",
           text: mode === "sign-up" ? "signup_with" : "signin_with",
-          shape: "rectangular",
+          shape: "pill",
           logo_alignment: "left",
           width: Math.min(
             Math.max(renderedContainer.getBoundingClientRect().width, 240),
