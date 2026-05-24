@@ -50,8 +50,8 @@ export function GoogleIdentityButton({
         window.google.accounts.id.renderButton(renderedContainer, {
           type: "standard",
           theme: "outline",
-          size: "large",
-          text: mode === "sign-up" ? "signup_with" : "continue_with",
+          size: "medium",
+          text: mode === "sign-up" ? "signup_with" : "signin_with",
           shape: "rectangular",
           logo_alignment: "left",
           width: Math.min(
@@ -79,7 +79,7 @@ export function GoogleIdentityButton({
 
   return (
     <div
-      aria-label={mode === "sign-up" ? "Sign up with Google" : "Continue with Google"}
+      aria-label={mode === "sign-up" ? "Sign up with Google" : "Sign in with Google"}
       aria-busy={!isReady}
       className={cn(
         "flex h-[44px] w-full items-center justify-center overflow-hidden",

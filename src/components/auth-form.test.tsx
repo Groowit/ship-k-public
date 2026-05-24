@@ -54,7 +54,7 @@ vi.mock("@/components/google-identity-button", async () => {
           disabled,
           onClick: () => onCredential({ credential: "google-id-token" }, "nonce")
         },
-        mode === "sign-up" ? "Sign up with Google" : "Continue with Google"
+        mode === "sign-up" ? "Sign up with Google" : "Sign in with Google"
       )
   };
 });
@@ -99,7 +99,7 @@ describe("AuthForm", () => {
     });
     render(<AuthForm nextPath="/checkout?product=daily-k-glow-set" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
 
     await waitFor(() =>
       expect(supabaseMocks.signInWithIdToken).toHaveBeenCalledTimes(1)
