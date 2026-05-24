@@ -78,7 +78,7 @@ describe("AuthForm", () => {
   it("shows consent checkboxes only after switching to account creation", () => {
     render(<AuthForm />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Switch to create account" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create an account" }));
 
     expect(screen.getByLabelText(/I agree to the Terms/i)).toBeVisible();
     expect(screen.getByLabelText(/Send me product drops/i)).toBeVisible();
@@ -110,5 +110,36 @@ describe("AuthForm", () => {
       nonce: "nonce"
     });
     expect(supabaseMocks.signInWithOAuth).not.toHaveBeenCalled();
+  });
+
+  it("blocks Google sign-up until required consent is accepted", async () => {
+    render(<AuthForm initialMode="sign-up" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign up with Google" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Please accept the Terms and Privacy Policy to create an account."
+    );
+    expect(supabaseMocks.signInWithIdToken).not.toHaveBeenCalled();
+  });
+
+  it("allows Google sign-up after required consent is accepted", async () => {
+    supabaseMocks.signInWithIdToken.mockResolvedValue({
+      data: { session: { access_token: "token" }, user: { id: "user-id" } },
+      error: null
+    });
+    render(<AuthForm initialMode="sign-up" />);
+
+    fireEvent.click(screen.getByLabelText(/I agree to the Terms/i));
+    fireEvent.click(screen.getByRole("button", { name: "Sign up with Google" }));
+
+    await waitFor(() =>
+      expect(supabaseMocks.signInWithIdToken).toHaveBeenCalledTimes(1)
+    );
+    expect(supabaseMocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        marketing_opt_in: false
+      })
+    );
   });
 });

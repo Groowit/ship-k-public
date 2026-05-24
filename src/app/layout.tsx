@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
 import { CursorSparkle } from "@/components/cursor-sparkle";
@@ -6,6 +7,10 @@ import { FloatingStickerLayer } from "@/components/floating-sticker-layer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ReferralCapture } from "@/components/referral-capture";
+import {
+  GOOGLE_IDENTITY_SCRIPT_ID,
+  GOOGLE_IDENTITY_SCRIPT_SRC
+} from "@/lib/google-identity";
 
 export const metadata: Metadata = {
   title: "shipK | Korean beauty shipped to the US",
@@ -13,9 +18,20 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const shouldPreloadGoogleIdentity = Boolean(
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim()
+  );
+
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className="flex min-h-screen flex-col">
+        {shouldPreloadGoogleIdentity ? (
+          <Script
+            id={GOOGLE_IDENTITY_SCRIPT_ID}
+            src={GOOGLE_IDENTITY_SCRIPT_SRC}
+            strategy="beforeInteractive"
+          />
+        ) : null}
         <Suspense fallback={null}>
           <ReferralCapture />
         </Suspense>

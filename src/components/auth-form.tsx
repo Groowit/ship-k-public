@@ -1,8 +1,9 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { type FormEvent, useCallback, useState } from "react";
 import { GoogleIdentityButton } from "@/components/google-identity-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,6 @@ import {
 } from "@/lib/authz";
 import type { GoogleCredentialResponse } from "@/lib/google-identity";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
 
 type AuthMode = "sign-in" | "sign-up";
 
@@ -33,14 +33,39 @@ export function AuthForm({
   const [password, setPassword] = useState("");
   const [legalAgreed, setLegalAgreed] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const safeNextPath = getSafeNextPath(nextPath);
   const isSignUp = mode === "sign-up";
+  const copy = isSignUp
+    ? {
+        eyebrow: "New routine",
+        title: "Create your shipK account",
+        description: "Save your favorite routine kits and get clear order updates.",
+        primaryAction: "Create account",
+        alternateLead: "Already have an account?",
+        alternateAction: "Sign in",
+        alternateMode: "sign-in" as const
+      }
+    : {
+        eyebrow: "Welcome back",
+        title: "Sign in to shipK",
+        description: "Continue checkout, review recent orders, and keep your K-beauty picks close.",
+        primaryAction: "Sign in",
+        alternateLead: "New to shipK?",
+        alternateAction: "Create an account",
+        alternateMode: "sign-up" as const
+      };
 
   function switchMode(nextMode: AuthMode) {
     setMode(nextMode);
     setMessage(null);
+  }
+
+  function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void signInWithPassword();
   }
 
   async function signInWithPassword() {
@@ -76,7 +101,9 @@ export function AuthForm({
         return;
       }
 
-      setMessage("Check your inbox to confirm your account.");
+      setMessage(
+        "We sent a confirmation email. Please check your inbox to finish creating your account."
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -187,140 +214,176 @@ export function AuthForm({
   }
 
   return (
-    <Card className="shipk-surface mx-auto max-w-md rounded-md">
-      <CardHeader>
-        <CardTitle className="shipk-heading text-2xl">
-          {isSignUp ? "Create your shipK account" : "Sign in to shipK"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4">
-          <div
-            className="grid grid-cols-2 rounded-md border-2 border-black bg-muted p-1"
-            aria-label="Account access mode"
-          >
-            <button
-              type="button"
-              aria-label="Switch to sign in"
-              aria-pressed={!isSignUp}
-              className={cn(
-                "rounded px-3 py-2 text-sm font-black transition",
-                !isSignUp
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              onClick={() => switchMode("sign-in")}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              aria-label="Switch to create account"
-              aria-pressed={isSignUp}
-              className={cn(
-                "rounded px-3 py-2 text-sm font-black transition",
-                isSignUp
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              onClick={() => switchMode("sign-up")}
-            >
-              Create account
-            </button>
-          </div>
-          <div>
-            <Label className="font-black">Email</Label>
-            <Input
-              className="mt-2"
-              aria-label="Email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-            />
-          </div>
-          <div>
-            <Label className="font-black">Password</Label>
-            <Input
-              className="mt-2"
-              aria-label="Password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete={isSignUp ? "new-password" : "current-password"}
-            />
-          </div>
-          {isSignUp ? (
-            <div className="grid gap-3 rounded-md border-2 border-black bg-[#fff8f0] p-3 text-sm">
-              <label className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4"
-                  checked={legalAgreed}
-                  onChange={(event) => setLegalAgreed(event.target.checked)}
-                />
-                <span>
-                  I agree to the{" "}
-                  <Link className="font-semibold underline" href="/policies/terms">
-                    Terms
-                  </Link>{" "}
-                  and{" "}
-                  <Link className="font-semibold underline" href="/policies/privacy">
-                    Privacy Policy
-                  </Link>
-                  .
-                </span>
-              </label>
-              <label className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4"
-                  checked={marketingOptIn}
-                  onChange={(event) => setMarketingOptIn(event.target.checked)}
-                />
-                <span>Send me product drops and creator offers by email.</span>
-              </label>
-            </div>
-          ) : null}
-          <div className="grid gap-2">
-            <Button
-              type="button"
-              className="shipk-btn-pop"
-              onClick={signInWithPassword}
-              disabled={isSubmitting}
-            >
-              {isSignUp ? "Create account" : "Sign in"}
-            </Button>
-            {isSignUp && !legalAgreed ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className="border-2 border-black font-black"
-                disabled={isSubmitting}
-                onClick={() =>
-                  setMessage(
-                    "Please accept the Terms and Privacy Policy to create an account."
-                  )
-                }
-              >
-                Sign up with Google
-              </Button>
-            ) : (
-              <GoogleIdentityButton
-                mode={mode}
-                disabled={isSubmitting}
-                onCredential={signInWithGoogle}
-                onError={showGoogleError}
-              />
-            )}
-          </div>
-          {message ? (
-            <p role="status" className="rounded-md border-2 border-black bg-muted p-3 text-sm">
-              {message}
-            </p>
-          ) : null}
+    <div className="mx-auto w-full max-w-md">
+      <Card
+        className="overflow-hidden rounded-md border-2 border-black bg-white shadow-none"
+        data-auth-card
+      >
+        <div className="grid h-2 grid-cols-4 border-b-2 border-black" aria-hidden="true">
+          <span className="bg-[#ff3d7f]" />
+          <span className="bg-[#ffe25a]" />
+          <span className="bg-[#b4f0dc]" />
+          <span className="bg-[#c8f26c]" />
         </div>
-      </CardContent>
-    </Card>
+        <CardHeader className="space-y-3 p-5 pb-4 sm:p-6 sm:pb-4">
+          <p className="font-brand-heavy text-xs uppercase text-[#ff3d7f]">
+            {copy.eyebrow}
+          </p>
+          <CardTitle className="shipk-heading text-2xl sm:text-3xl">
+            {copy.title}
+          </CardTitle>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {copy.description}
+          </p>
+        </CardHeader>
+        <CardContent className="p-5 pt-0 sm:p-6 sm:pt-0">
+          <div className="grid gap-5">
+            <form className="grid gap-4" onSubmit={handlePasswordSubmit}>
+              <div>
+                <Label htmlFor="shipk-auth-email" className="font-black">
+                  Email
+                </Label>
+                <Input
+                  id="shipk-auth-email"
+                  className="mt-2 h-12 border-2 border-black px-4 text-base shadow-none"
+                  aria-label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shipk-auth-password" className="font-black">
+                  Password
+                </Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="shipk-auth-password"
+                    className="h-12 border-2 border-black px-4 pr-12 text-base shadow-none"
+                    aria-label="Password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
+                  />
+                  <button
+                    type="button"
+                    className="focus-ring absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition hover:bg-[#fff8f0] hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              {isSignUp ? (
+                <fieldset className="grid gap-3 rounded-md border-2 border-black bg-[#fff8f0] p-4 text-sm leading-6">
+                  <legend className="px-1 font-brand-heavy text-[0.7rem] uppercase text-[#ff3d7f]">
+                    Required for account creation
+                  </legend>
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-[#ff3d7f]"
+                      checked={legalAgreed}
+                      onChange={(event) => setLegalAgreed(event.target.checked)}
+                    />
+                    <span>
+                      I agree to the{" "}
+                      <Link className="font-semibold underline" href="/policies/terms">
+                        Terms
+                      </Link>{" "}
+                      and{" "}
+                      <Link className="font-semibold underline" href="/policies/privacy">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-[#ff3d7f]"
+                      checked={marketingOptIn}
+                      onChange={(event) => setMarketingOptIn(event.target.checked)}
+                    />
+                    <span>Send me product drops and creator offers by email.</span>
+                  </label>
+                </fieldset>
+              ) : null}
+              <Button
+                type="submit"
+                className="h-12 rounded-full border-2 border-black bg-[#ff3d7f] font-black text-white shadow-none hover:bg-[#f72d72] hover:brightness-100"
+                disabled={isSubmitting}
+              >
+                {copy.primaryAction}
+              </Button>
+            </form>
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-black/15" />
+              <span className="font-brand-heavy text-xs uppercase text-muted-foreground">
+                or
+              </span>
+              <span className="h-px flex-1 bg-black/15" />
+            </div>
+            <div className="grid gap-2">
+              {isSignUp && !legalAgreed ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-full border-2 border-black bg-white font-black hover:bg-[#fff8f0]"
+                  disabled={isSubmitting}
+                  aria-label="Sign up with Google"
+                  onClick={() =>
+                    setMessage(
+                      "Please accept the Terms and Privacy Policy to create an account."
+                    )
+                  }
+                >
+                  <span
+                    aria-hidden="true"
+                    className="grid h-6 w-6 place-items-center rounded-full border border-black/15 bg-white font-brand-heavy text-sm text-[#4285f4]"
+                  >
+                    G
+                  </span>
+                  Sign up with Google
+                </Button>
+              ) : (
+                <GoogleIdentityButton
+                  mode={mode}
+                  disabled={isSubmitting}
+                  onCredential={signInWithGoogle}
+                  onError={showGoogleError}
+                />
+              )}
+            </div>
+            {message ? (
+              <p
+                role="status"
+                className="rounded-md border-2 border-black bg-muted p-3 text-sm leading-6"
+              >
+                {message}
+              </p>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+      <p className="mt-5 text-center text-sm font-semibold text-muted-foreground">
+        {copy.alternateLead}{" "}
+        <button
+          type="button"
+          className="focus-ring rounded-sm font-black text-[#ff3d7f] underline decoration-2 underline-offset-4 transition hover:text-foreground"
+          onClick={() => switchMode(copy.alternateMode)}
+        >
+          {copy.alternateAction}
+        </button>
+      </p>
+    </div>
   );
 }

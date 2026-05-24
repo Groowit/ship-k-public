@@ -1,5 +1,3 @@
-"use client";
-
 export const GOOGLE_IDENTITY_SCRIPT_ID = "google-identity-services";
 export const GOOGLE_IDENTITY_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 
@@ -41,11 +39,15 @@ declare global {
 }
 
 export function getGoogleIdentityClientId() {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
+  const clientId = getGoogleIdentityClientIdFromEnvironment();
   if (!clientId) {
     throw new Error("Google sign-in is not configured.");
   }
   return clientId;
+}
+
+export function getGoogleIdentityClientIdFromEnvironment() {
+  return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
 }
 
 export async function createGoogleIdentityNonce() {

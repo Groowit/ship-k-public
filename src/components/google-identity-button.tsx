@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   createGoogleIdentityNonce,
+  getGoogleIdentityClientIdFromEnvironment,
   getGoogleIdentityClientId,
   loadGoogleIdentityScript,
   type GoogleCredentialResponse
@@ -24,20 +25,30 @@ export function GoogleIdentityButton({
 }: GoogleIdentityButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const [hasAttemptedSetup, setHasAttemptedSetup] = useState(false);
+  const [setupError, setSetupError] = useState<Error | null>(null);
+  const hasConfiguredClientId = Boolean(getGoogleIdentityClientIdFromEnvironment());
+  const label = mode === "sign-up" ? "Sign up with Google" : "Sign in with Google";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let isCancelled = false;
     let renderedContainer: HTMLDivElement | null = null;
 
     async function renderGoogleButton() {
       setIsReady(false);
+      setHasAttemptedSetup(false);
+      setSetupError(null);
       try {
         const clientId = getGoogleIdentityClientId();
         const { nonce, hashedNonce } = await createGoogleIdentityNonce();
         await loadGoogleIdentityScript();
 
-        if (isCancelled || !containerRef.current || !window.google?.accounts?.id) {
+        if (isCancelled || !containerRef.current) {
           return;
+        }
+
+        if (!window.google?.accounts?.id) {
+          throw new Error("Google sign-in is unavailable right now.");
         }
 
         renderedContainer = containerRef.current;
@@ -62,7 +73,10 @@ export function GoogleIdentityButton({
         setIsReady(true);
       } catch (error) {
         if (!isCancelled) {
-          onError(error instanceof Error ? error : new Error("Google sign-in failed."));
+          setHasAttemptedSetup(true);
+          setSetupError(
+            error instanceof Error ? error : new Error("Google sign-in failed.")
+          );
         }
       }
     }
@@ -75,18 +89,43 @@ export function GoogleIdentityButton({
         renderedContainer.innerHTML = "";
       }
     };
-  }, [mode, onCredential, onError]);
+  }, [mode, onCredential]);
 
   return (
-    <div
-      aria-label={mode === "sign-up" ? "Sign up with Google" : "Sign in with Google"}
-      aria-busy={!isReady}
-      className={cn(
-        "flex h-[44px] w-full items-center justify-center overflow-hidden",
-        (disabled || !isReady) && "pointer-events-none opacity-60"
-      )}
-    >
-      <div ref={containerRef} className="w-full" />
+    <div className="relative min-h-[44px] w-full">
+      <div
+        aria-label={label}
+        aria-busy={!isReady}
+        className={cn(
+          "flex h-[44px] w-full items-center justify-center overflow-hidden transition-opacity",
+          isReady ? "opacity-100" : "pointer-events-none opacity-0",
+          disabled && "pointer-events-none opacity-60"
+        )}
+      >
+        <div ref={containerRef} className="w-full" />
+      </div>
+      {!isReady && (!hasConfiguredClientId || hasAttemptedSetup) ? (
+        <button
+          type="button"
+          className="focus-ring absolute inset-0 flex h-11 w-full items-center justify-center gap-3 rounded-full border-2 border-black bg-white px-4 text-sm font-black text-foreground transition hover:bg-[#fff8f0] disabled:pointer-events-none disabled:opacity-60"
+          disabled={disabled}
+          aria-label={label}
+          onClick={() =>
+            onError(
+              setupError ??
+                new Error("Google sign-in is still loading. Please try again in a moment.")
+            )
+          }
+        >
+          <span
+            aria-hidden="true"
+            className="grid h-6 w-6 place-items-center rounded-full border border-black/15 bg-white font-brand-heavy text-sm text-[#4285f4]"
+          >
+            G
+          </span>
+          {label}
+        </button>
+      ) : null}
     </div>
   );
 }

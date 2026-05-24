@@ -20,6 +20,16 @@ describe("visual effect guardrails", () => {
     expect(layoutSource).toContain('data-scroll-behavior="smooth"');
   });
 
+  it("keeps account auth forms free of pop-shadow button styles", () => {
+    const authFormSource = readFileSync(
+      join(process.cwd(), "src/components/auth-form.tsx"),
+      "utf8"
+    );
+
+    expect(authFormSource).not.toContain("shipk-btn-pop");
+    expect(authFormSource).not.toMatch(/shadow-\[[^\]]*_[^\]]*_0_/u);
+  });
+
   it("keeps the client Button component out of server component imports", () => {
     const matches = collectSourceFiles(sourceRoot)
       .flatMap((filePath) => findServerButtonImports(filePath))
