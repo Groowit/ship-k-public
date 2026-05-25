@@ -7,6 +7,27 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("SiteHeaderNav", () => {
+  it("marks the visible Home tab as active on the home path", () => {
+    render(
+      <SiteHeaderNav
+        navItems={[
+          { href: "/", label: "Home", activePath: "/" },
+          { href: "/shop", label: "Skincare", activePath: "/shop" }
+        ]}
+        isSignedIn={false}
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Skincare" })).not.toHaveAttribute(
+      "aria-current"
+    );
+  });
+
   it("shows account and logout actions in the signed-in account menu", () => {
     render(<SiteHeaderNav navItems={[]} isSignedIn />);
 

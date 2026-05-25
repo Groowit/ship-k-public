@@ -10,7 +10,7 @@
   - `src/app/globals.css`: shipK tokens, brand fonts, dotted page texture, chip/button/surface helpers.
   - `src/app/auth/page.tsx`: current account-access route structure.
   - `src/components/auth-form.tsx`: auth mode state, email/password, Google ID token, consent, redirect, and status behavior.
-  - `src/components/site-header-nav.tsx`: account menu interaction, icon usage, menu surfaces.
+  - `src/components/site-header.tsx` and `src/components/site-header-nav.tsx`: primary nav IA, account menu interaction, icon usage, menu surfaces.
   - `src/components/home-feature-banner.tsx`: current playful storefront rhythm, strong color accents, large readable headings.
   - `src/components/floating-sticker-layer.tsx`: route-specific sticker assets, including auth route decoration.
   - `.omx/context/auth-form-redesign-20260524T134445Z.md` and `.omx/plans/auth-ui-redesign-ralplan.md`: prior auth redesign context; current user decision supersedes the prior two-choice selector plan.
@@ -31,7 +31,7 @@
 - Key contexts of use: Mobile storefront browsing, checkout interruption, account/order review, creator referral traffic, admin back-office work.
 
 ## Information architecture
-- Primary navigation: Make up, Skincare, For Sellers, About, account menu, search/shop entry.
+- Primary navigation: Home, Make up, Skincare, For Sellers, About, account menu, search/shop entry.
 - Core routes/screens: Home, Shop, Product Detail, Auth, Checkout, Checkout Success, Account, Orders, Promoter, Policies, Admin.
 - Content hierarchy: Storefront discovery uses expressive product imagery and collection color; commerce/account flows prioritize task headings, fields, status, policy links, and primary CTA.
 

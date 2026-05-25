@@ -3,6 +3,7 @@ import { getCurrentAuthState } from "@/lib/auth";
 import { isAdminProfile } from "@/lib/authz";
 
 const baseNavItems = [
+  { href: "/", label: "Home", activePath: "/" },
   { href: "/makeup", label: "Make up", activePath: "/makeup" },
   { href: "/shop", label: "Skincare", activePath: "/shop" },
   { href: "/promoter", label: "For Sellers", activePath: "/promoter" },
