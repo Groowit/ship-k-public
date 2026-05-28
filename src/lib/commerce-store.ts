@@ -320,7 +320,7 @@ type CommissionDashboardRow = {
 const PROMOTER_SCHEMA_SETUP_MESSAGE =
   "Promoter portal setup is pending. Apply the latest Supabase migration before using applications and product links.";
 
-const productSelect = `
+export const productSelect = `
   id,
   brand_name,
   name,
@@ -1545,7 +1545,7 @@ async function findPaymentOrderId(
   return (data?.order_id as string | undefined) ?? null;
 }
 
-async function getProductById(productId: string, supabase?: SupabaseClient) {
+export async function getProductById(productId: string, supabase?: SupabaseClient) {
   const client = supabase ?? (await createSupabaseServerClient());
   const { data, error } = await client
     .from("products")
