@@ -3,6 +3,7 @@ import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
 import { brandProductContentPayloadSchema } from "@/lib/brand-product-input";
 import {
   BrandAccessDeniedError,
+  BrandInputError,
   BrandProductNotFoundError,
   updateBrandProductContentForUser
 } from "@/lib/brand-store";
@@ -29,6 +30,7 @@ export async function PATCH(
       error instanceof AuthRequiredError ||
       error instanceof UnsafeRequestOriginError ||
       error instanceof BrandAccessDeniedError ||
+      error instanceof BrandInputError ||
       error instanceof BrandProductNotFoundError
     ) {
       return NextResponse.json({ error: error.message }, { status: error.status });

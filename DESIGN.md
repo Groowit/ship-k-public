@@ -38,13 +38,14 @@
 ## Information architecture
 - Primary navigation: Home, Make up, Skincare, For Sellers, About, account menu, search/shop entry.
 - Core routes/screens: Home, Shop, Product Detail, Auth, Checkout, Checkout Success, Account, Orders, Promoter, Policies, Admin, Brand Product List, Brand Product Detail Editor, Brand Reports.
-- Content hierarchy: Storefront discovery uses expressive product imagery and collection color; commerce/account/admin flows prioritize task headings, fields, status, policy links, and primary CTA. Brand detail editing should prioritize a document/story outline, section canvas, and reviewable customer preview over raw data fields.
+- Content hierarchy: Storefront discovery uses expressive product imagery and collection color; commerce/account/admin flows prioritize task headings, fields, status, policy links, and primary CTA. Brand detail editing should prioritize a document/story canvas over raw data fields; customer preview should be opened intentionally from the editor action area instead of occupying a persistent right pane.
 
 ## Design Principles
 - Commerce clarity first: Forms, checkout, policies, account, and admin screens must be calm, legible, and explicit before they are decorative.
 - Playful where it helps discovery: Use shipK fonts, bright accents, stickers, badges, and collection color to create recognition, but avoid making task surfaces feel like ads.
 - One obvious next action: Each flow should make the primary CTA and alternate path easy to find without tab-like controls competing for attention.
 - Section-first authoring for brand content: Brand staff should build customer detail pages by arranging meaningful sections, not by filling scattered database fields.
+- Hybrid editor model: Keep the page saved as structured sections for reliable rendering, but let individual text/media sections gain editor-like controls such as rich text marks, alignment, spacing, width, and media presentation options.
 - Tradeoffs: Auth and checkout may carry small brand accents, but should not use storefront-level visual noise or pop shadows. Brand editing can use richer controls than customer forms, but must stay predictable and keyboard-recoverable.
 
 ## Visual language
@@ -57,7 +58,7 @@
 
 ## Components
 - Existing components to reuse: `Button`, `Input`, `Textarea`, `Label`, `Card`, `Badge`, `SiteHeaderNav`, `ProductDetailView`, shipK CSS helpers.
-- New/changed components: Brand detail document editor shell, section palette, section outline, draggable/reorderable section list, section inspector, long-detail-image block, customer preview/review mode, save/status bar.
+- New/changed components: Brand detail document editor shell, compact section composer, draggable/reorderable story canvas, section inspector, long-detail-image block, save-adjacent customer preview/review mode, save/status actions.
 - Variants and states: Auth must show sign-up consent only in sign-up mode, block Google sign-up until required consent is accepted, expose status messages with accessible semantics, and keep focus/disabled states visible. Brand editor sections need selected, collapsed, dragging, invalid, uploading, saving, saved, and error states.
 - Token/component ownership: Use existing CSS variables and Tailwind utilities. Prefer repo-native controls for the first production editor; add an editor or drag dependency only with a clear architectural decision and tests.
 
@@ -96,5 +97,5 @@
 ## Open questions
 - [ ] Should referral or checkout traffic ever default to sign-up instead of sign-in? / Product owner / Affects auth landing defaults.
 - [ ] Should account pages carry more playful storefront energy or remain maximally calm? / Product owner / Affects future account/profile redesigns.
-- [ ] Should the brand editor eventually support true rich-text marks inside paragraphs? / Product owner / Affects dependency and persistence choices.
+- [ ] Which rich-text layer should power paragraph-level editing inside sections: lightweight markdown-like controls or a focused TipTap/ProseMirror integration? / Product owner / Affects dependency and persistence choices.
 - [ ] Should brand detail edits go through draft/review approval before public update? / Product owner / Affects data model and workflow.

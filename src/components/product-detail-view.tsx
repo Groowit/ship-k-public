@@ -2,9 +2,9 @@
 
 import type React from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { BadgeDollarSign, PlayCircle, ShieldCheck, Truck } from "lucide-react";
+import { BadgeDollarSign, ShieldCheck, Truck } from "lucide-react";
 import { BuyBox } from "@/components/buy-box";
+import { ProductDetailSectionsRenderer } from "@/components/product-detail-sections-renderer";
 import { Badge } from "@/components/ui/badge";
 import { getCollectionVisual } from "@/lib/brand-visuals";
 import { formatUsd } from "@/lib/commerce";
@@ -109,151 +109,7 @@ export function ProductDetailView({
         </div>
       </section>
 
-      <section className="container grid gap-12 py-12">
-        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <div>
-            <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
-              Included items
-            </p>
-            <h2 className="mt-2 shipk-heading text-4xl">
-              Everything in the set
-            </h2>
-            <p className="mt-4 text-muted-foreground">
-              Each item is presented as part of a guided look so shoppers know what
-              they are getting before checkout.
-            </p>
-          </div>
-          <div className="grid gap-3">
-            {product.includedItems.length ? (
-              product.includedItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="grid gap-3 rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0_#0a0a0a] sm:grid-cols-[3rem_1fr_auto]"
-                >
-                  <span className="font-brand-round text-3xl leading-none text-[#ff3d7f]">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span>
-                    <span className="block text-sm font-bold text-muted-foreground">{item.category}</span>
-                    <h3 className="mt-1 text-lg font-black">{item.name}</h3>
-                    <span className="mt-2 block text-sm leading-6 text-muted-foreground">
-                      {item.description}
-                    </span>
-                  </span>
-                  <span className="h-fit rounded-full border-2 border-black bg-[#fff8f0] px-3 py-1 text-xs font-black text-muted-foreground">
-                    {product.brandName}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
-                Included items will appear here.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <div>
-            <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
-              Routine steps
-            </p>
-            <h2 className="mt-2 shipk-heading text-4xl">
-              Follow the look in order
-            </h2>
-            {product.bestFor ? (
-              <p className="mt-4 text-muted-foreground">{product.bestFor}</p>
-            ) : null}
-          </div>
-          <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {product.routineSteps.length ? (
-              product.routineSteps.map((step, index) => (
-                <li key={step.id} className="rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0_#0a0a0a]">
-                  <span className="font-brand-round text-4xl leading-none text-[#ff3d7f]">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span>
-                    <span className="mt-3 block font-black">{step.title}</span>
-                    <span className="mt-1 block text-sm leading-6 text-muted-foreground">
-                      {step.body}
-                    </span>
-                  </span>
-                </li>
-              ))
-            ) : (
-              <li className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
-                Routine steps will appear here.
-              </li>
-            )}
-          </ol>
-        </div>
-
-        <div className="grid gap-5 rounded-md border-2 border-black bg-[#c8f26c] p-5 shadow-[6px_6px_0_#0a0a0a] md:grid-cols-[auto_1fr_auto] md:items-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md border-2 border-black bg-white">
-            <PlayCircle className="h-8 w-8" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="shipk-heading text-2xl">Tutorial-first routine</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Product detail keeps the routine sequence close to the purchase CTA,
-              so a customer can understand the set before moving to checkout.
-            </p>
-          </div>
-          <Link href="/promoter" className="shipk-chip bg-white hover:bg-[#ffd6e3]">
-            Share as promoter
-          </Link>
-        </div>
-
-        {product.contentBlocks.map((block) => {
-          if (block.type === "image") {
-            return (
-              <div
-                key={block.id}
-                className="relative aspect-[16/9] overflow-hidden rounded-md border-2 border-black bg-white"
-              >
-                <Image src={block.imagePath} alt={block.alt} fill className="object-contain p-6" />
-              </div>
-            );
-          }
-
-          if (block.type === "text") {
-            return (
-              <div key={block.id} className="max-w-3xl">
-                {block.eyebrow ? (
-                  <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
-                    {block.eyebrow}
-                  </p>
-                ) : null}
-                <h2 className="mt-2 shipk-heading text-4xl">{block.title}</h2>
-                <p className="mt-4 text-lg leading-8 text-muted-foreground">{block.body}</p>
-              </div>
-            );
-          }
-
-          return (
-            <div key={block.id} className="grid items-center gap-6 md:grid-cols-2">
-              <div
-                className={
-                  block.imagePosition === "right"
-                    ? "relative aspect-square overflow-hidden rounded-md border-2 border-black bg-white md:order-2"
-                    : "relative aspect-square overflow-hidden rounded-md border-2 border-black bg-white"
-                }
-              >
-                <Image src={block.imagePath} alt={block.alt} fill className="object-contain p-6" />
-              </div>
-              <div>
-                {block.eyebrow ? (
-                  <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
-                    {block.eyebrow}
-                  </p>
-                ) : null}
-                <h2 className="mt-2 shipk-heading text-4xl">{block.title}</h2>
-                <p className="mt-4 text-lg leading-8 text-muted-foreground">{block.body}</p>
-              </div>
-            </div>
-          );
-        })}
-      </section>
+      <ProductDetailSectionsRenderer product={product} />
     </article>
   );
 }

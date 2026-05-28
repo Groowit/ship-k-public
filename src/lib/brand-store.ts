@@ -2,9 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BrandProductContentPayload } from "./brand-product-input";
 import {
   getProductById,
+  hydrateProductsWithDetailSections,
   mapProductRow,
   productSelect
 } from "./commerce-store";
+import { toProductDetailSectionRpcPayload } from "./product-detail-sections";
 import type { OrderStatus } from "./commerce";
 import type { Product } from "./products";
 import { createSupabasePrivilegedClient } from "./supabase/admin";
@@ -159,12 +161,11 @@ export async function listBrandProductsForUser(userId: string): Promise<BrandPro
     throw new Error(`Could not load brand products: ${productError.message}`);
   }
 
-  const products = new Map(
-    ((productRows ?? []) as ProductRow[]).map((row) => {
-      const product = mapProductRow(row);
-      return [product.id, product];
-    })
+  const hydratedProducts = await hydrateProductsWithDetailSections(
+    supabase,
+    ((productRows ?? []) as ProductRow[]).map(mapProductRow)
   );
+  const products = new Map(hydratedProducts.map((product) => [product.id, product]));
   const brands = new Map(
     memberships
       .filter((membership): membership is BrandMembership & { brand: BrandPartner } => Boolean(membership.brand))
@@ -244,47 +245,24 @@ export async function updateBrandProductContentForUser({
   input: BrandProductContentPayload;
 }) {
   const supabase = createSupabasePrivilegedClient();
-  const { assignment } = await getBrandProductForUser({
+  await getBrandProductForUser({
     userId,
     productId,
     requireEditable: true
   });
-  const productValues: Record<string, unknown> = {
-    short_description: input.shortDescription,
-    description: input.description,
-    best_for: input.bestFor ?? null,
-    result: input.result ?? null
-  };
 
-  if ("heroImagePath" in input) {
-    productValues.hero_image_path = input.heroImagePath ?? null;
-  }
+  const { error: replaceError } = await supabase.rpc("replace_product_detail_sections", {
+    p_product_id: productId,
+    p_actor_id: userId,
+    p_sections: toProductDetailSectionRpcPayload(input.sections)
+  });
 
-  if ("introVideoUrl" in input) {
-    productValues.intro_video_url = input.introVideoUrl ?? null;
-  }
+  if (replaceError) {
+    if (isDetailSectionSetupMissingError(replaceError)) {
+      throw new BrandInputError("상세 문서 저장 구조가 아직 적용되지 않았습니다. 최신 Supabase 마이그레이션을 적용해주세요.");
+    }
 
-  const { error: productError } = await supabase
-    .from("products")
-    .update(productValues)
-    .eq("id", productId);
-
-  if (productError) {
-    throw new Error(`Could not update brand product content: ${productError.message}`);
-  }
-
-  await replaceProductDetailChildren(supabase, productId, input);
-
-  const { error: assignmentError } = await supabase
-    .from("product_brand_assignments")
-    .update({
-      last_content_updated_by: userId,
-      last_content_updated_at: new Date().toISOString()
-    })
-    .eq("id", assignment.id);
-
-  if (assignmentError) {
-    throw new Error(`Could not record brand content update: ${assignmentError.message}`);
+    throw new Error(`Could not update brand product detail sections: ${replaceError.message}`);
   }
 
   const product = await getProductById(productId, supabase);
@@ -631,93 +609,6 @@ async function listActiveBrandMembershipsForUser(
   );
 }
 
-async function replaceProductDetailChildren(
-  supabase: SupabaseClient,
-  productId: string,
-  input: BrandProductContentPayload
-) {
-  for (const table of [
-    "product_images",
-    "product_included_items",
-    "product_routine_steps",
-    "product_content_blocks"
-  ]) {
-    const { error } = await supabase.from(table).delete().eq("product_id", productId);
-    if (error) {
-      throw new Error(`Could not replace product detail rows: ${error.message}`);
-    }
-  }
-
-  if (input.galleryImages.length > 0) {
-    await insertRequired(
-      supabase,
-      "product_images",
-      input.galleryImages.map((image, index) => ({
-        product_id: productId,
-        sort_order: index + 1,
-        image_path: image.imagePath,
-        alt_text: image.altText
-      }))
-    );
-  }
-
-  if (input.includedItems.length > 0) {
-    await insertRequired(
-      supabase,
-      "product_included_items",
-      input.includedItems.map((item, index) => ({
-        product_id: productId,
-        sort_order: index + 1,
-        name: item.name,
-        category: item.category,
-        description: item.description
-      }))
-    );
-  }
-
-  if (input.routineSteps.length > 0) {
-    await insertRequired(
-      supabase,
-      "product_routine_steps",
-      input.routineSteps.map((step, index) => ({
-        product_id: productId,
-        sort_order: index + 1,
-        title: step.title,
-        body: step.body
-      }))
-    );
-  }
-
-  if (input.contentBlocks.length > 0) {
-    await insertRequired(
-      supabase,
-      "product_content_blocks",
-      input.contentBlocks.map((block, index) => ({
-        product_id: productId,
-        sort_order: index + 1,
-        type: block.type,
-        eyebrow: "eyebrow" in block ? block.eyebrow ?? null : null,
-        title: "title" in block ? block.title ?? null : null,
-        body: "body" in block ? block.body ?? null : null,
-        image_path: "imagePath" in block ? block.imagePath ?? null : null,
-        image_alt: "alt" in block ? block.alt ?? null : null,
-        image_position: "imagePosition" in block ? block.imagePosition ?? null : null
-      }))
-    );
-  }
-}
-
-async function insertRequired(
-  supabase: SupabaseClient,
-  table: string,
-  values: Record<string, unknown> | Array<Record<string, unknown>>
-) {
-  const { error } = await supabase.from(table).insert(values);
-  if (error) {
-    throw new Error(`Could not insert ${table}: ${error.message}`);
-  }
-}
-
 function emptyBrandReport(range: BrandReportRange): BrandReportSummary {
   return {
     range,
@@ -864,8 +755,27 @@ function mapAssignmentProduct(
     galleryImages: [],
     includedItems: [],
     routineSteps: [],
-    contentBlocks: []
+    contentBlocks: [],
+    detailSections: []
   };
+}
+
+function isDetailSectionSetupMissingError(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+  return (
+    error.code === "PGRST202" ||
+    error.code === "PGRST205" ||
+    error.code === "42P01" ||
+    error.code === "42883" ||
+    (message.includes("replace_product_detail_sections") &&
+      (message.includes("schema cache") ||
+        message.includes("Could not find") ||
+        message.includes("does not exist"))) ||
+    (message.includes("product_detail_sections") &&
+      (message.includes("schema cache") ||
+        message.includes("Could not find") ||
+        message.includes("does not exist")))
+  );
 }
 
 function getRelationObject<T>(value: T | T[] | null | undefined) {

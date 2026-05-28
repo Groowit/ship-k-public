@@ -19,6 +19,10 @@ import {
   getCollectionBySlug,
   productCollectionSlugs
 } from "./products";
+import {
+  mapProductDetailSectionRow,
+  type ProductDetailSectionRow
+} from "./product-detail-sections";
 import { buildProductReferralPath, normalizeReferralLandingPath } from "./referral";
 import { createSupabasePrivilegedClient } from "./supabase/admin";
 import { createSupabaseServerClient } from "./supabase/server";
@@ -231,6 +235,11 @@ type ProductRow = {
     image_alt: string | null;
     image_position: "left" | "right" | null;
   }> | null;
+  product_detail_sections?: ProductDetailSectionRow[] | null;
+};
+
+type ProductDetailSectionHydrationRow = ProductDetailSectionRow & {
+  product_id: string;
 };
 
 type OrderRow = {
@@ -391,7 +400,7 @@ export async function listProducts() {
     throw new Error(`Could not load products: ${error.message}`);
   }
 
-  return (data as ProductRow[]).map(mapProductRow);
+  return hydrateProductsWithDetailSections(supabase, (data as ProductRow[]).map(mapProductRow));
 }
 
 export async function listActiveProducts() {
@@ -406,7 +415,7 @@ export async function listActiveProducts() {
     throw new Error(`Could not load active products: ${error.message}`);
   }
 
-  return (data as ProductRow[]).map(mapProductRow);
+  return hydrateProductsWithDetailSections(supabase, (data as ProductRow[]).map(mapProductRow));
 }
 
 export async function findProductBySlug(slug: string) {
@@ -422,7 +431,12 @@ export async function findProductBySlug(slug: string) {
     throw new Error(`Could not load product: ${error.message}`);
   }
 
-  return data ? mapProductRow(data as ProductRow) : undefined;
+  if (!data) {
+    return undefined;
+  }
+
+  const [product] = await hydrateProductsWithDetailSections(supabase, [mapProductRow(data as ProductRow)]);
+  return product;
 }
 
 export async function getProductForAdmin(productId: string) {
@@ -437,7 +451,12 @@ export async function getProductForAdmin(productId: string) {
     throw new Error(`Could not load admin product: ${error.message}`);
   }
 
-  return data ? mapProductRow(data as ProductRow) : undefined;
+  if (!data) {
+    return undefined;
+  }
+
+  const [product] = await hydrateProductsWithDetailSections(supabase, [mapProductRow(data as ProductRow)]);
+  return product;
 }
 
 export async function createProduct(input: MutableProductInput) {
@@ -1423,8 +1442,58 @@ export function mapProductRow(row: ProductRow): Product {
         title: normalizeLaunchSurfaceCopy(block.title) ?? row.name,
         body: normalizeLaunchSurfaceCopy(block.body) ?? description
       };
-    })
+    }),
+    detailSections: sortBySortOrder(asArray(row.product_detail_sections)).map(mapProductDetailSectionRow)
   };
+}
+
+export async function hydrateProductsWithDetailSections(
+  supabase: SupabaseClient,
+  products: Product[]
+) {
+  const productIds = products.map((product) => product.id);
+  if (productIds.length === 0) {
+    return products;
+  }
+
+  const { data, error } = await supabase
+    .from("product_detail_sections")
+    .select("id,product_id,sort_order,section_type,schema_version,content")
+    .in("product_id", productIds)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    if (isProductDetailSectionsSchemaMissingError(error)) {
+      return products;
+    }
+
+    throw new Error(`Could not load product detail sections: ${error.message}`);
+  }
+
+  const sectionsByProductId = new Map<string, Product["detailSections"]>();
+  for (const row of (data ?? []) as ProductDetailSectionHydrationRow[]) {
+    const sections = sectionsByProductId.get(row.product_id) ?? [];
+    sections.push(mapProductDetailSectionRow(row));
+    sectionsByProductId.set(row.product_id, sections);
+  }
+
+  return products.map((product) => ({
+    ...product,
+    detailSections: sectionsByProductId.get(product.id) ?? product.detailSections
+  }));
+}
+
+function isProductDetailSectionsSchemaMissingError(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST200" ||
+    error.code === "PGRST205" ||
+    (message.includes("product_detail_sections") &&
+      (message.includes("does not exist") ||
+        message.includes("schema cache") ||
+        message.includes("Could not find")))
+  );
 }
 
 function normalizeLaunchCatalogAssetPath(value: string | null | undefined) {
@@ -1557,7 +1626,12 @@ export async function getProductById(productId: string, supabase?: SupabaseClien
     throw new Error(`Could not load product: ${error.message}`);
   }
 
-  return data ? mapProductRow(data as ProductRow) : undefined;
+  if (!data) {
+    return undefined;
+  }
+
+  const [product] = await hydrateProductsWithDetailSections(client, [mapProductRow(data as ProductRow)]);
+  return product;
 }
 
 async function upsertPrimaryOption(

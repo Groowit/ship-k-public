@@ -1,4 +1,5 @@
 import { calculateOrderTotals, formatUsd } from "./commerce";
+import type { ProductDetailSection } from "./product-detail-sections";
 
 export type ProductType = "single" | "curated_set";
 export type ProductDifficulty = "Beginner" | "Intermediate";
@@ -114,6 +115,7 @@ export type Product = {
   includedItems: ProductIncludedItem[];
   routineSteps: ProductRoutineStep[];
   contentBlocks: ProductContentBlock[];
+  detailSections: ProductDetailSection[];
 };
 
 type CuratedSetSeed = {
@@ -408,7 +410,8 @@ export const launchCatalogProducts: Product[] = curatedSetSeeds.map((seed) => {
           "The web detail highlights the sequence so customers can understand the set before checkout.",
         imagePosition: "left"
       }
-    ]
+    ],
+    detailSections: []
   };
 });
 

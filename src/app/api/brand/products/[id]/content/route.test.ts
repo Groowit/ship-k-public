@@ -19,6 +19,9 @@ vi.mock("@/lib/brand-store", () => ({
   BrandAccessDeniedError: class BrandAccessDeniedError extends Error {
     status = 403;
   },
+  BrandInputError: class BrandInputError extends Error {
+    status = 400;
+  },
   BrandProductNotFoundError: class BrandProductNotFoundError extends Error {
     status = 404;
   },
@@ -100,8 +103,12 @@ describe("brand product content API", () => {
       userId: "brand_member_1",
       productId: "product_1",
       input: expect.objectContaining({
-        shortDescription: "브랜드 상세 요약",
-        description: "브랜드 상세 본문"
+        sections: expect.arrayContaining([
+          expect.objectContaining({
+            sectionType: "text",
+            body: "브랜드 상세 본문"
+          })
+        ])
       })
     });
   });
@@ -109,12 +116,21 @@ describe("brand product content API", () => {
 
 function validPayload() {
   return {
-    shortDescription: "브랜드 상세 요약",
-    description: "브랜드 상세 본문",
-    galleryImages: [],
-    includedItems: [],
-    routineSteps: [],
-    contentBlocks: []
+    sections: [
+      {
+        sectionType: "heading",
+        schemaVersion: 1,
+        text: "브랜드 상세 요약",
+        level: "h2",
+        align: "left"
+      },
+      {
+        sectionType: "text",
+        schemaVersion: 1,
+        body: "브랜드 상세 본문",
+        align: "left"
+      }
+    ]
   };
 }
 

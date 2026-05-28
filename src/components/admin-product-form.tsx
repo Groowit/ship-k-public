@@ -1041,7 +1041,8 @@ function toPreviewProduct(state: EditorState, product?: Product): Product {
       title: step.title || "단계명 미입력",
       body: step.body || "수행 방법 미입력"
     })),
-    contentBlocks: buildPreviewContentBlocks(state, heroImagePath)
+    contentBlocks: buildPreviewContentBlocks(state, heroImagePath),
+    detailSections: []
   };
 }
 

@@ -2,58 +2,78 @@ import { describe, expect, it } from "vitest";
 import { brandProductContentPayloadSchema } from "./brand-product-input";
 
 describe("brandProductContentPayloadSchema", () => {
-  it("parses only customer-facing detail content fields", () => {
+  it("parses canonical customer-facing detail sections", () => {
     const parsed = brandProductContentPayloadSchema.parse({
-      shortDescription: "촉촉한 유리알 광채 루틴",
-      description: "브랜드가 직접 관리하는 상세 본문입니다.",
-      bestFor: "건조한 아침 루틴",
-      result: "맑고 편안한 윤기",
-      heroImagePath: "/catalog-assets/sets/glass-skin-starter.png",
-      introVideoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      galleryImages: [
+      sections: [
         {
-          imagePath: "https://cdn.ship-k.test/gallery.webp",
-          altText: "브랜드 갤러리 이미지"
-        }
-      ],
-      includedItems: [
+          sectionType: "heading",
+          schemaVersion: 1,
+          text: "바다 수분감이 터지는 루틴",
+          level: "h2",
+          align: "left"
+        },
         {
-          name: "수분 앰플",
-          category: "Ampoule",
-          description: "세안 후 얇게 펴 발라주세요."
-        }
-      ],
-      routineSteps: [
+          sectionType: "long_detail_image",
+          schemaVersion: 1,
+          src: "/catalog-assets/brand-samples/bubble-tide-hero.png",
+          alt: "Bubble Tide 긴 상세 이미지",
+          caption: "Figma에서 만든 긴 상세 이미지도 그대로 배치할 수 있습니다.",
+          maxWidth: "wide"
+        },
         {
-          title: "앰플 바르기",
-          body: "손바닥으로 가볍게 눌러 흡수시킵니다."
-        }
-      ],
-      contentBlocks: [
-        {
-          type: "image_text",
-          eyebrow: "브랜드 팁",
-          title: "얇게 여러 번",
-          body: "한 번에 많이 바르기보다 레이어링을 추천합니다.",
-          imagePath: "/catalog-assets/sets/glass-skin-starter.png",
-          alt: "앰플 사용 이미지",
-          imagePosition: "left"
+          sectionType: "steps",
+          schemaVersion: 1,
+          title: "사용 순서",
+          items: [
+            {
+              title: "세안 후",
+              body: "물기를 가볍게 정돈합니다."
+            }
+          ]
         }
       ]
     });
 
-    expect(parsed.introVideoUrl).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ");
-    expect(parsed.galleryImages).toHaveLength(1);
-    expect(parsed.includedItems).toHaveLength(1);
-    expect(parsed.routineSteps).toHaveLength(1);
-    expect(parsed.contentBlocks).toHaveLength(1);
+    expect(parsed.sections).toHaveLength(3);
+    expect(parsed.sections[1]).toMatchObject({
+      sectionType: "long_detail_image",
+      maxWidth: "wide"
+    });
+    expect(parsed.sections[2]).toMatchObject({
+      sectionType: "steps",
+      layout: "split_cards"
+    });
+  });
+
+  it("normalizes embeddable video URLs", () => {
+    const parsed = brandProductContentPayloadSchema.parse({
+      sections: [
+        {
+          sectionType: "video",
+          schemaVersion: 1,
+          title: "루틴 영상",
+          url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        }
+      ]
+    });
+
+    expect(parsed.sections[0]).toMatchObject({
+      sectionType: "video",
+      url: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+    });
   });
 
   it("rejects commerce and product identity fields from brand updates", () => {
     expect(() =>
       brandProductContentPayloadSchema.parse({
-        shortDescription: "상세 설명",
-        description: "브랜드 본문",
+        sections: [
+          {
+            sectionType: "text",
+            schemaVersion: 1,
+            body: "브랜드 본문",
+            align: "left"
+          }
+        ],
         priceUsd: 29,
         sku: "BRAND-SHOULD-NOT-EDIT",
         stockQuantity: 10,
@@ -62,5 +82,21 @@ describe("brandProductContentPayloadSchema", () => {
         brandName: "브랜드 변경 시도"
       })
     ).toThrow(/Unrecognized key/);
+  });
+
+  it("rejects unsafe image URLs", () => {
+    expect(() =>
+      brandProductContentPayloadSchema.parse({
+        sections: [
+          {
+            sectionType: "image",
+            schemaVersion: 1,
+            src: "javascript:alert(1)",
+            alt: "위험 이미지",
+            aspectRatio: "natural"
+          }
+        ]
+      })
+    ).toThrow(/공개 경로 또는 HTTPS URL/);
   });
 });

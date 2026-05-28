@@ -677,7 +677,8 @@ function productFixture() {
     galleryImages: [],
     includedItems: [],
     routineSteps: [],
-    contentBlocks: []
+    contentBlocks: [],
+    detailSections: []
   };
 }
 

@@ -66,7 +66,7 @@ describe("brand product store authorization", () => {
     expect(calls.some((call) => call.operation === "update")).toBe(false);
   });
 
-  it("updates only allowed detail content fields for an assigned brand product", async () => {
+  it("replaces only canonical detail sections for an assigned brand product", async () => {
     const calls: QueryCall[] = [];
     mocks.privilegedClient = createSupabaseMock((call) => {
       calls.push(call);
@@ -85,20 +85,14 @@ describe("brand product store authorization", () => {
           error: null
         };
       }
-      if (call.table === "products" && call.operation === "update") {
-        return { error: null };
-      }
-      if (call.table === "product_brand_assignments" && call.operation === "update") {
-        return { error: null };
-      }
-      if (call.operation === "delete") {
-        return { error: null };
-      }
-      if (call.operation === "insert") {
-        return { error: null };
+      if (call.table === "replace_product_detail_sections" && call.operation === "rpc") {
+        return { data: [], error: null };
       }
       if (call.table === "products" && call.terminal === "maybeSingle") {
         return { data: productRow("product_1"), error: null };
+      }
+      if (call.table === "product_detail_sections" && call.terminal === "then") {
+        return { data: [], error: null };
       }
       throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
     });
@@ -107,30 +101,53 @@ describe("brand product store authorization", () => {
       userId: "brand_member_1",
       productId: "product_1",
       input: {
-        ...minimalContentPayload(),
-        bestFor: "아침 루틴",
-        result: "촉촉한 마무리",
-        galleryImages: [{ imagePath: "/gallery.png", altText: "갤러리" }],
-        routineSteps: [{ title: "바르기", body: "얇게 바릅니다." }],
-        contentBlocks: [{ type: "text", title: "브랜드 팁", body: "천천히 흡수시켜 주세요.", imagePosition: "left" }]
+        sections: [
+          {
+            sectionType: "text",
+            schemaVersion: 1,
+            body: "천천히 흡수시켜 주세요.",
+            align: "left"
+          },
+          {
+            sectionType: "long_detail_image",
+            schemaVersion: 1,
+            src: "/gallery.png",
+            alt: "긴 상세 이미지",
+            maxWidth: "wide"
+          }
+        ]
       }
     });
 
-    const productUpdate = calls.find(
-      (call) => call.table === "products" && call.operation === "update"
+    const rpcCall = calls.find(
+      (call) => call.table === "replace_product_detail_sections" && call.operation === "rpc"
     );
-    expect(productUpdate?.values).toMatchObject({
-      short_description: "브랜드 상세 요약",
-      description: "브랜드 상세 본문",
-      best_for: "아침 루틴",
-      result: "촉촉한 마무리"
+    expect(rpcCall?.values).toMatchObject({
+      p_product_id: "product_1",
+      p_actor_id: "brand_member_1",
+      p_sections: [
+        {
+          section_type: "text",
+          schema_version: 1,
+          content: {
+            body: "천천히 흡수시켜 주세요.",
+            align: "left"
+          }
+        },
+        {
+          section_type: "long_detail_image",
+          schema_version: 1,
+          content: {
+            src: "/gallery.png",
+            alt: "긴 상세 이미지",
+            maxWidth: "wide"
+          }
+        }
+      ]
     });
-    expect(productUpdate?.values).not.toHaveProperty("price_cents");
-    expect(productUpdate?.values).not.toHaveProperty("sku");
-    expect(productUpdate?.values).not.toHaveProperty("stock_quantity");
-    expect(productUpdate?.values).not.toHaveProperty("status");
-    expect(productUpdate?.values).not.toHaveProperty("name");
-    expect(productUpdate?.values).not.toHaveProperty("brand_name");
+    expect(calls.some((call) => call.table === "products" && call.operation === "update")).toBe(false);
+    expect(calls.some((call) => call.operation === "delete")).toBe(false);
+    expect(calls.some((call) => call.operation === "insert")).toBe(false);
   });
 });
 
@@ -222,6 +239,15 @@ type QueryCall = {
 
 function createSupabaseMock(handler: (call: QueryCall) => unknown) {
   return {
+    rpc(name: string, values: unknown) {
+      return Promise.resolve(handler({
+        table: name,
+        operation: "rpc",
+        terminal: "rpc",
+        values,
+        filters: []
+      }));
+    },
     from(table: string) {
       return createQueryBuilder(table, handler);
     }
@@ -280,12 +306,21 @@ function createQueryBuilder(table: string, handler: (call: QueryCall) => unknown
 
 function minimalContentPayload() {
   return {
-    shortDescription: "브랜드 상세 요약",
-    description: "브랜드 상세 본문",
-    galleryImages: [],
-    includedItems: [],
-    routineSteps: [],
-    contentBlocks: []
+    sections: [
+      {
+        sectionType: "heading" as const,
+        schemaVersion: 1 as const,
+        text: "브랜드 상세 요약",
+        level: "h2" as const,
+        align: "left" as const
+      },
+      {
+        sectionType: "text" as const,
+        schemaVersion: 1 as const,
+        body: "브랜드 상세 본문",
+        align: "left" as const
+      }
+    ]
   };
 }
 
@@ -339,7 +374,8 @@ function productRow(id: string) {
     product_images: [],
     product_included_items: [],
     product_routine_steps: [],
-    product_content_blocks: []
+    product_content_blocks: [],
+    product_detail_sections: []
   };
 }
 
