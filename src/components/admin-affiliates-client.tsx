@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatUsd } from "@/lib/commerce";
-import type { AdminAffiliateSummary, AffiliateStatus } from "@/lib/mvp-store";
+import type { AdminAffiliateSummary, AffiliateStatus } from "@/lib/commerce-store";
 
 export function AdminAffiliatesClient({
   affiliates

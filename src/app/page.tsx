@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { HomeFeatureBanner } from "@/components/home-feature-banner";
 import { ProductCard } from "@/components/product-card";
 import { getCollectionVisual } from "@/lib/brand-visuals";
-import { listActiveProducts } from "@/lib/mvp-store";
+import { listActiveProducts } from "@/lib/commerce-store";
 import { getActiveCollections, getProductPriceLabel, Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 

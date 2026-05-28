@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
-import { archiveProduct, createProduct, updateProduct } from "@/lib/mvp-store";
+import { archiveProduct, createProduct, updateProduct } from "@/lib/commerce-store";
 import { POST } from "./route";
 import { DELETE, PATCH } from "./[id]/route";
 
@@ -12,7 +12,7 @@ vi.mock("@/lib/auth", async () => {
   };
 });
 
-vi.mock("@/lib/mvp-store", () => ({
+vi.mock("@/lib/commerce-store", () => ({
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
   archiveProduct: vi.fn()
@@ -41,11 +41,11 @@ const validPayload = {
   sku: "rice-glow",
   priceUsd: 49,
   stockQuantity: 8,
-  heroImagePath: "/demo-assets/admin-product-placeholder.svg",
+  heroImagePath: "/catalog-assets/admin-product-placeholder.svg",
   introVideoUrl: "https://www.youtube.com/watch?v=abc123",
   galleryImages: [
     {
-      imagePath: "/demo-assets/admin-product-placeholder.svg",
+      imagePath: "/catalog-assets/admin-product-placeholder.svg",
       altText: "Rice Glow Kit gallery image"
     }
   ],

@@ -99,12 +99,12 @@ export function ProductDetailView({
           <TrustPanel
             icon={<ShieldCheck className="h-5 w-5" />}
             title="Secure checkout"
-            body="PayPal is the MVP payment provider for this checkout flow."
+            body="PayPal is the secure payment provider for this checkout flow."
           />
           <TrustPanel
             icon={<BadgeDollarSign className="h-5 w-5" />}
             title="$75 free shipping"
-            body="Orders below the threshold use the standard MVP shipping fee."
+            body="Orders below the threshold use the standard shipping fee shown at checkout."
           />
         </div>
       </section>

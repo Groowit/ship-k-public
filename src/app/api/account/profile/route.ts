@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
-import { updateCustomerAccount } from "@/lib/mvp-store";
+import { updateCustomerAccount } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 
 const defaultShippingAddressSchema = z.object({

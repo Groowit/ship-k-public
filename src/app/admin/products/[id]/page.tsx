@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminProductEditor } from "@/components/admin-product-form";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { getProductForAdmin } from "@/lib/mvp-store";
+import { getProductForAdmin } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

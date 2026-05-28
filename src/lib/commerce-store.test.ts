@@ -10,7 +10,7 @@ import {
   updateCustomerAccount,
   updateAffiliateStatus,
   updateOrderFulfillment
-} from "./mvp-store";
+} from "./commerce-store";
 
 const mocks = vi.hoisted(() => ({
   privilegedClient: undefined as unknown,
@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 
 describe("Supabase order mapping", () => {
-  it("maps nested order rows to the MVP order shape", () => {
+  it("maps nested order rows to the commerce order shape", () => {
     const row = {
       id: "order_1",
       user_id: "user_1",

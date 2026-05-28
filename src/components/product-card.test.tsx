@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ProductCard } from "./product-card";
-import { demoProducts } from "@/lib/products";
+import { launchCatalogProducts } from "@/lib/products";
 
 describe("ProductCard", () => {
   it("renders a full-card curated set entry without a View button or wishlist control", () => {
-    render(<ProductCard product={demoProducts[0]} />);
+    render(<ProductCard product={launchCatalogProducts[0]} />);
 
     expect(screen.getByRole("link", { name: /Daily K-Glow Set/i })).toHaveAttribute(
       "href",

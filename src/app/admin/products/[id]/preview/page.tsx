@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ProductDetailView } from "@/components/product-detail-view";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { getProductForAdmin } from "@/lib/mvp-store";
+import { getProductForAdmin } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AdminRequiredError, AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
-import { updateAffiliateStatus } from "@/lib/mvp-store";
+import { updateAffiliateStatus } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 
 const affiliateStatusSchema = z.object({

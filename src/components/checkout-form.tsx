@@ -310,7 +310,7 @@ export function CheckoutForm({
                 totals.shippingCents === 0 ? "Free" : formatUsd(totals.shippingCents)
               }
             />
-            <Row label="Tax" value="Calculated as $0.00 in MVP" />
+            <Row label="Tax" value="Calculated as $0.00 at checkout" />
             <div className="mt-2 flex justify-between border-t-2 border-black pt-4 text-base font-black">
               <dt>Total</dt>
               <dd>{formatUsd(totals.totalCents)}</dd>

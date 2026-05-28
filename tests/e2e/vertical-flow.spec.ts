@@ -172,7 +172,7 @@ test.describe("authenticated admin flow", () => {
 
     await page.getByLabel("상품명").fill("Rice Calm Cream");
     await page.getByLabel("브랜드 / 큐레이터").fill("Namu Studio");
-    await page.getByLabel("대표 이미지").fill("/demo-assets/admin-product-placeholder.svg");
+    await page.getByLabel("대표 이미지").fill("/catalog-assets/admin-product-placeholder.svg");
     await page.getByLabel("가격 USD").fill("24.00");
     await page.getByTestId("add-included-items").click();
     await page.getByLabel("구성품명").fill("Rice Calm Cream");

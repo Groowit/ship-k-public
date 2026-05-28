@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { AdminRequiredError, AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
 import { adminProductPayloadSchema } from "@/lib/admin-product-input";
 import { toCents } from "@/lib/commerce";
-import { archiveProduct, updateProduct } from "@/lib/mvp-store";
+import { archiveProduct, updateProduct } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 
 export async function PATCH(

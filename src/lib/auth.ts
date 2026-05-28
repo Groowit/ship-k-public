@@ -1,7 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AuthConsent, AuthProfile, assertAdminProfile } from "./authz";
-import type { DefaultShippingAddressInput } from "./mvp-store";
+import type { DefaultShippingAddressInput } from "./commerce-store";
 
 export type ProfileWithConsent = AuthProfile & {
   fullName: string | null;

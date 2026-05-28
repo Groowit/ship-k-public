@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminRequiredError, requireCurrentAdmin } from "@/lib/auth";
-import { updateAffiliateStatus } from "@/lib/mvp-store";
+import { updateAffiliateStatus } from "@/lib/commerce-store";
 import { PATCH } from "./route";
 
 vi.mock("@/lib/auth", async () => {
@@ -11,7 +11,7 @@ vi.mock("@/lib/auth", async () => {
   };
 });
 
-vi.mock("@/lib/mvp-store", () => ({
+vi.mock("@/lib/commerce-store", () => ({
   updateAffiliateStatus: vi.fn()
 }));
 

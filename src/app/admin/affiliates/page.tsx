@@ -1,7 +1,7 @@
 import { AdminAffiliatesClient } from "@/components/admin-affiliates-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { listAdminAffiliates } from "@/lib/mvp-store";
+import { listAdminAffiliates } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

@@ -4,7 +4,7 @@ import { PromoterPortalClient } from "@/components/promoter-portal-client";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { getCurrentAuthState } from "@/lib/auth";
 import { buildAuthRedirectPath } from "@/lib/authz";
-import { getPromoterDashboard, PromoterDateRange } from "@/lib/mvp-store";
+import { getPromoterDashboard, PromoterDateRange } from "@/lib/commerce-store";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
-import { applyForPromoter } from "@/lib/mvp-store";
+import { applyForPromoter } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 
 const applySchema = z.object({

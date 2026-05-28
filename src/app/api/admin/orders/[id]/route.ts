@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AdminRequiredError, AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
 import { adminFulfillmentStatuses, fulfillmentCarriers } from "@/lib/fulfillment";
-import { updateOrderFulfillment } from "@/lib/mvp-store";
+import { updateOrderFulfillment } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 
 const orderUpdateSchema = z.object({

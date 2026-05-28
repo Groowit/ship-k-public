@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
-import { createPaidOrder, findProductBySlug } from "@/lib/mvp-store";
+import { createPaidOrder, findProductBySlug } from "@/lib/commerce-store";
 import { capturePayPalOrder } from "@/lib/paypal";
 import { applyReferralClick, serializeReferralAttribution } from "@/lib/referral";
 import { POST } from "./route";
@@ -17,7 +17,7 @@ vi.mock("@/lib/auth", async () => {
   };
 });
 
-vi.mock("@/lib/mvp-store", () => ({
+vi.mock("@/lib/commerce-store", () => ({
   createPaidOrder: vi.fn(),
   findProductBySlug: vi.fn()
 }));

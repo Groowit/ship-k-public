@@ -72,7 +72,7 @@ export type CustomerAccountUpdateInput = {
   defaultShippingAddress: DefaultShippingAddressInput;
 };
 
-export type MvpOrder = {
+export type CommerceOrder = {
   id: string;
   userId: string;
   orderNumber: string;
@@ -94,7 +94,7 @@ export type MvpOrder = {
   createdAt: string;
 };
 
-export type MvpCommission = {
+export type CommerceCommission = {
   id: string;
   orderId: string;
   referralCode: string;
@@ -142,7 +142,7 @@ export type PromoterCommissionRow = {
   linkToken?: string;
   baseCents: number;
   amountCents: number;
-  status: MvpCommission["status"];
+  status: CommerceCommission["status"];
   holdUntil: string;
 };
 
@@ -310,7 +310,7 @@ type CommissionDashboardRow = {
   order_id: string;
   base_cents: number;
   amount_cents: number;
-  status: MvpCommission["status"];
+  status: CommerceCommission["status"];
   hold_until: string;
   order_number?: string | null;
   product_name?: string | null;
@@ -449,8 +449,8 @@ export async function createProduct(input: MutableProductInput) {
   const itemCount = input.itemCount ?? input.includedItems.length;
   const heroImagePath =
     input.heroImagePath ||
-    (input.collectionSlug ? `/demo-assets/sets/${collectionFallbackImage(input.collectionSlug)}` : undefined) ||
-    "/demo-assets/admin-product-placeholder.svg";
+    (input.collectionSlug ? `/catalog-assets/sets/${collectionFallbackImage(input.collectionSlug)}` : undefined) ||
+    "/catalog-assets/admin-product-placeholder.svg";
   let productId: string | null = null;
 
   try {
@@ -530,8 +530,8 @@ export async function updateProduct(productId: string, input: MutableProductInpu
   const itemCount = input.itemCount ?? input.includedItems.length;
   const heroImagePath =
     input.heroImagePath ||
-    (input.collectionSlug ? `/demo-assets/sets/${collectionFallbackImage(input.collectionSlug)}` : undefined) ||
-    "/demo-assets/admin-product-placeholder.svg";
+    (input.collectionSlug ? `/catalog-assets/sets/${collectionFallbackImage(input.collectionSlug)}` : undefined) ||
+    "/catalog-assets/admin-product-placeholder.svg";
 
   try {
     const categoryId = await findOrCreateCategoryId(supabase, input.category);
@@ -899,12 +899,12 @@ export async function listCommissions() {
     amountCents: commission.amount_cents,
     status: commission.status,
     holdUntil: commission.hold_until
-  })) as MvpCommission[];
+  })) as CommerceCommission[];
 }
 
 async function listCommissionsWithoutPromoterLinks(
   supabase: SupabaseClient
-): Promise<MvpCommission[]> {
+): Promise<CommerceCommission[]> {
   const { data, error } = await supabase
     .from("commissions")
     .select("id,order_id,base_cents,rate_bps,amount_cents,status,hold_until,orders(referral_code)")
@@ -926,7 +926,7 @@ async function listCommissionsWithoutPromoterLinks(
     amountCents: commission.amount_cents,
     status: commission.status,
     holdUntil: commission.hold_until
-  })) as MvpCommission[];
+  })) as CommerceCommission[];
 }
 
 export async function getPromoterDashboard({
@@ -1138,7 +1138,7 @@ export async function updateCommissionStatus({
   status
 }: {
   commissionId: string;
-  status: MvpCommission["status"];
+  status: CommerceCommission["status"];
 }) {
   const supabase = createSupabasePrivilegedClient();
   const values = getCommissionStatusUpdateValues(status);
@@ -1154,7 +1154,7 @@ export async function updateCommissionStatus({
 }
 
 export function getCommissionStatusUpdateValues(
-  status: MvpCommission["status"],
+  status: CommerceCommission["status"],
   now = new Date().toISOString()
 ) {
   return {
@@ -1342,7 +1342,7 @@ export function mapProductRow(row: ProductRow): Product {
     stock_quantity: 0
   };
   const category = getRelationObject<{ name: string }>(row.categories)?.name ?? "Routine Kit";
-  const heroImagePath = row.hero_image_path || "/demo-assets/admin-product-placeholder.svg";
+  const heroImagePath = row.hero_image_path || "/catalog-assets/admin-product-placeholder.svg";
 
   return {
     id: row.id,
@@ -1422,7 +1422,7 @@ export function mapProductRow(row: ProductRow): Product {
   };
 }
 
-export function mapOrderRow(row: OrderRow): MvpOrder {
+export function mapOrderRow(row: OrderRow): CommerceOrder {
   const item = asArray(row.order_items)[0];
   const shippingAddress = asArray(row.shipping_addresses)[0];
   const shipment = asArray(row.shipments)[0];
@@ -1995,7 +1995,7 @@ function mapCommissionDashboardRow(row: Record<string, unknown>): CommissionDash
     order_id: row.order_id as string,
     base_cents: row.base_cents as number,
     amount_cents: row.amount_cents as number,
-    status: row.status as MvpCommission["status"],
+    status: row.status as CommerceCommission["status"],
     hold_until: row.hold_until as string,
     order_number: order?.order_number ?? null,
     product_name: item?.product_name ?? null,
@@ -2026,7 +2026,7 @@ function sum(values: number[]) {
 
 function sumStatus(
   commissions: CommissionDashboardRow[],
-  status: MvpCommission["status"]
+  status: CommerceCommission["status"]
 ) {
   return sum(
     commissions
@@ -2188,7 +2188,7 @@ function isString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-export function resetMvpStoreForTests() {
-  // The MVP store is now backed by Supabase; tests should mock at the data layer
+export function resetCommerceStoreForTests() {
+  // The commerce store is now backed by Supabase; tests should mock at the data layer
   // instead of mutating a process-local singleton.
 }

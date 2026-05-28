@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import AdminOrdersPage from "./page";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { listOrders } from "@/lib/mvp-store";
+import { listOrders } from "@/lib/commerce-store";
 
 vi.mock("@/lib/admin-page-auth", () => ({
   requireAdminPageAccess: vi.fn()
 }));
 
-vi.mock("@/lib/mvp-store", () => ({
+vi.mock("@/lib/commerce-store", () => ({
   listOrders: vi.fn()
 }));
 

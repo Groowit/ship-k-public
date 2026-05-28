@@ -1,5 +1,5 @@
 import { CatalogFilter, CatalogPage } from "@/components/catalog-page";
-import { listActiveProducts } from "@/lib/mvp-store";
+import { listActiveProducts } from "@/lib/commerce-store";
 import { Product } from "@/lib/products";
 
 export const dynamic = "force-dynamic";

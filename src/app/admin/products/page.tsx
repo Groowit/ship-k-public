@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
 import { formatUsd } from "@/lib/commerce";
-import { listProducts } from "@/lib/mvp-store";
+import { listProducts } from "@/lib/commerce-store";
 import { Product, productCollections } from "@/lib/products";
 import { cn } from "@/lib/utils";
 

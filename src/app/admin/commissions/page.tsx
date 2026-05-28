@@ -1,7 +1,7 @@
 import { AdminCommissionsClient } from "@/components/admin-commissions-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { listCommissions, listOrders } from "@/lib/mvp-store";
+import { listCommissions, listOrders } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

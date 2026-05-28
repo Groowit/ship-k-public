@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatUsd } from "@/lib/commerce";
-import type { PromoterDashboard } from "@/lib/mvp-store";
+import type { PromoterDashboard } from "@/lib/commerce-store";
 import { cn } from "@/lib/utils";
 
 export function PromoterPortalClient({ dashboard }: { dashboard: PromoterDashboard }) {

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
 import { createPayPalOrder } from "@/lib/paypal";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
-import { findProductBySlug } from "@/lib/mvp-store";
+import { findProductBySlug } from "@/lib/commerce-store";
 import { getProductCheckoutSummary } from "@/lib/products";
 
 const createOrderSchema = z.object({

@@ -9,7 +9,7 @@ import { getCurrentAuthState } from "@/lib/auth";
 import { buildAuthRedirectPath } from "@/lib/authz";
 import { formatUsd } from "@/lib/commerce";
 import { getCustomerOrderStatusLabel } from "@/lib/fulfillment";
-import { getOrderByUser, getTrackingUrl } from "@/lib/mvp-store";
+import { getOrderByUser, getTrackingUrl } from "@/lib/commerce-store";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";

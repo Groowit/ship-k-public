@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/checkout-form";
 import { getCurrentAuthState } from "@/lib/auth";
 import { buildAuthRedirectPath } from "@/lib/authz";
-import { findProductBySlug } from "@/lib/mvp-store";
+import { findProductBySlug } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { recordReferralClick } from "@/lib/mvp-store";
+import { recordReferralClick } from "@/lib/commerce-store";
 import { POST } from "./route";
 
-vi.mock("@/lib/mvp-store", () => ({
+vi.mock("@/lib/commerce-store", () => ({
   recordReferralClick: vi.fn()
 }));
 

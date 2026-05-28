@@ -13,17 +13,17 @@ export const metadata: Metadata = {
 
 const heroImages = [
   {
-    src: "/demo-assets/sets/daily-k-glow-set.png",
+    src: "/catalog-assets/sets/daily-k-glow-set.png",
     alt: "Daily K-Glow Set routine kit",
     className: "left-0 top-6 w-[58%] rotate-[-4deg]"
   },
   {
-    src: "/demo-assets/sets/y2k-cute-bomb.png",
+    src: "/catalog-assets/sets/y2k-cute-bomb.png",
     alt: "Y2K Cute Bomb routine kit",
     className: "right-0 top-24 w-[52%] rotate-[5deg]"
   },
   {
-    src: "/demo-assets/sets/glass-skin-starter.png",
+    src: "/catalog-assets/sets/glass-skin-starter.png",
     alt: "Glass Skin Starter routine kit",
     className: "bottom-0 left-[22%] w-[54%] rotate-[1deg]"
   }
@@ -66,12 +66,12 @@ const servicePoints = [
 ];
 
 const railImages = [
-  "/demo-assets/sets/cool-tone-drama.png",
-  "/demo-assets/sets/warm-honey-look.png",
-  "/demo-assets/sets/k-pop-idol-look.png",
-  "/demo-assets/sets/glass-skin-starter.png",
-  "/demo-assets/sets/y2k-cute-bomb.png",
-  "/demo-assets/sets/daily-k-glow-set.png"
+  "/catalog-assets/sets/cool-tone-drama.png",
+  "/catalog-assets/sets/warm-honey-look.png",
+  "/catalog-assets/sets/k-pop-idol-look.png",
+  "/catalog-assets/sets/glass-skin-starter.png",
+  "/catalog-assets/sets/y2k-cute-bomb.png",
+  "/catalog-assets/sets/daily-k-glow-set.png"
 ];
 
 export default function AboutPage() {

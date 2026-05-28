@@ -22,7 +22,7 @@
 
 ## Product goals
 - Goals: Help US customers discover and buy curated Korean beauty routines, understand shipping/returns, and manage orders or creator/promoter activity.
-- Non-goals: Complex design-system rewrite, heavy marketplace filtering in MVP, decorative effects that reduce form clarity.
+- Non-goals: Complex design-system rewrite, heavy marketplace filtering in Phase 1 launch scope, decorative effects that reduce form clarity.
 - Success signals: Users can scan products quickly, complete auth/checkout without confusion, see trust information before purchase, and navigate account/promoter flows confidently.
 
 ## Personas and jobs

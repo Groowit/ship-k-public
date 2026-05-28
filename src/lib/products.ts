@@ -147,7 +147,7 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     bestFor: "First-time K-beauty buyers, daily routines, and soft natural glow.",
     result: "Fresh, hydrated-looking skin with a comfortable daytime finish.",
     badge: "BEST",
-    imagePath: "/demo-assets/sets/daily-k-glow-set.png",
+    imagePath: "/catalog-assets/sets/daily-k-glow-set.png",
     items: [
       {
         name: "Cloud Rice Foam Cleanser",
@@ -193,10 +193,10 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     shortDescription: "A stage-inspired makeup kit for glossy color and bright definition.",
     description:
       "A fictional color routine for customers who want to recreate a polished idol-inspired look with clear step-by-step guidance.",
-    bestFor: "Creator demos, event makeup, and customers comfortable with color steps.",
+    bestFor: "Creator tutorials, event makeup, and customers comfortable with color steps.",
     result: "Bright eyes, soft shimmer, and a glossy point lip.",
     badge: "NEW",
-    imagePath: "/demo-assets/sets/k-pop-idol-look.png",
+    imagePath: "/catalog-assets/sets/k-pop-idol-look.png",
     items: [
       { name: "Tone-Up Primer Veil", category: "Base", description: "A fictional base-prep item." },
       { name: "Soft Cushion Tint", category: "Base", description: "A fictional cushion-style tint." },
@@ -228,7 +228,7 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     bestFor: "Hydration-first routines, beginners, and customers who want a guided glow.",
     result: "Smooth, reflective-looking skin with a calm hydrated finish.",
     badge: "HOT",
-    imagePath: "/demo-assets/sets/glass-skin-starter.png",
+    imagePath: "/catalog-assets/sets/glass-skin-starter.png",
     items: [
       { name: "Milk Gel Cleanser", category: "Cleanser", description: "A fictional soft cleanse step." },
       { name: "Hydro Essence Mist", category: "Essence", description: "A fictional hydrating mist." },
@@ -258,7 +258,7 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     bestFor: "Casual makeup, playful content, and customers who want low-risk color.",
     result: "Glossy lips, bright cheeks, and a cheerful pop finish.",
     badge: "PLAY",
-    imagePath: "/demo-assets/sets/y2k-cute-bomb.png",
+    imagePath: "/catalog-assets/sets/y2k-cute-bomb.png",
     items: [
       { name: "Puff Skin Tint", category: "Base", description: "A fictional soft base tint." },
       { name: "Bubblegum Cream Blush", category: "Cheek", description: "A fictional bright cheek color." },
@@ -288,7 +288,7 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     bestFor: "Cool undertones, sharper eye definition, and polished evening looks.",
     result: "Mauve cheeks, taupe eyes, and a clean dramatic finish.",
     badge: "COOL",
-    imagePath: "/demo-assets/sets/cool-tone-drama.png",
+    imagePath: "/catalog-assets/sets/cool-tone-drama.png",
     items: [
       { name: "Porcelain Skin Veil", category: "Base", description: "A fictional soft-matte base." },
       { name: "Mauve Cloud Blush", category: "Cheek", description: "A fictional cool cheek color." },
@@ -316,10 +316,10 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     shortDescription: "A warm-tone signature kit with honey cheeks and soft brown eyes.",
     description:
       "A fictional warm color kit for customers who want an approachable, golden everyday makeup routine.",
-    bestFor: "Warm undertones, soft daily makeup, and easy creator demonstrations.",
+    bestFor: "Warm undertones, soft daily makeup, and easy creator tutorials.",
     result: "Honey-toned cheeks, warm eyes, and a comfortable glossy lip.",
     badge: "WARM",
-    imagePath: "/demo-assets/sets/warm-honey-look.png",
+    imagePath: "/catalog-assets/sets/warm-honey-look.png",
     items: [
       { name: "Honey Base Cushion", category: "Base", description: "A fictional warm base step." },
       { name: "Apricot Cream Blush", category: "Cheek", description: "A fictional warm cheek color." },
@@ -338,7 +338,7 @@ const curatedSetSeeds: CuratedSetSeed[] = [
   }
 ];
 
-export const demoProducts: Product[] = curatedSetSeeds.map((seed) => {
+export const launchCatalogProducts: Product[] = curatedSetSeeds.map((seed) => {
   const collection = getCollectionBySlug(seed.collectionSlug);
   const id = `prod_${seed.slug.replace(/-/g, "_")}`;
 
@@ -416,15 +416,15 @@ export function getCollectionBySlug(slug: ProductCollectionSlug) {
   return productCollections.find((collection) => collection.slug === slug) ?? productCollections[0];
 }
 
-export function getActiveProducts(products = demoProducts) {
+export function getActiveProducts(products = launchCatalogProducts) {
   return products.filter((product) => product.status === "active");
 }
 
-export function getProductBySlug(slug: string, products = demoProducts) {
+export function getProductBySlug(slug: string, products = launchCatalogProducts) {
   return products.find((product) => product.slug === slug && product.status === "active");
 }
 
-export function getActiveCollections(products = demoProducts) {
+export function getActiveCollections(products = launchCatalogProducts) {
   const activeSlugs = new Set(
     getActiveProducts(products)
       .map((product) => product.collectionSlug)

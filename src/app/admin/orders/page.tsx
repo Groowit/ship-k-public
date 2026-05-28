@@ -1,6 +1,6 @@
 import { AdminOrdersClient } from "@/components/admin-orders-client";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { listOrders } from "@/lib/mvp-store";
+import { listOrders } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

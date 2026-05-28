@@ -1,6 +1,6 @@
 -- Referral/payment integrity guards:
 -- - PayPal capture/create retries must not duplicate orders or commissions.
--- - The MVP commission model allows at most one attributed commission per order.
+-- - The Phase 1 launch commission model allows at most one attributed commission per order.
 
 create unique index if not exists payment_transactions_provider_order_unique
 on public.payment_transactions (provider, provider_order_id);

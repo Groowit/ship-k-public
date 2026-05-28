@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminOrdersClient } from "./admin-orders-client";
-import type { MvpOrder } from "@/lib/mvp-store";
+import type { CommerceOrder } from "@/lib/commerce-store";
 
 const originalFetch = global.fetch;
 
@@ -85,7 +85,7 @@ describe("AdminOrdersClient", () => {
   });
 });
 
-const orderFixture: MvpOrder = {
+const orderFixture: CommerceOrder = {
   id: "order_1",
   userId: "buyer_1",
   orderNumber: "SK123456",
@@ -113,7 +113,7 @@ const orderFixture: MvpOrder = {
   createdAt: "2026-05-21T00:00:00.000Z"
 };
 
-const secondOrderFixture: MvpOrder = {
+const secondOrderFixture: CommerceOrder = {
   ...orderFixture,
   id: "order_2",
   userId: "buyer_2",

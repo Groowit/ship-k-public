@@ -81,7 +81,7 @@ describe("adminProductPayloadSchema", () => {
         description: "Video description",
         priceUsd: "39.00",
         stockQuantity: "1",
-        heroImagePath: "/demo-assets/admin-product-placeholder.svg",
+        heroImagePath: "/catalog-assets/admin-product-placeholder.svg",
         introVideoUrl: "https://example.com/video.mp4",
         includedItems: [
           { name: "Item", category: "Skincare", description: "Usage" }

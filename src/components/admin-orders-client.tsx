@@ -11,13 +11,13 @@ import {
   adminFulfillmentStatuses,
   fulfillmentCarriers
 } from "@/lib/fulfillment";
-import type { MvpOrder } from "@/lib/mvp-store";
+import type { CommerceOrder } from "@/lib/commerce-store";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | (typeof adminFulfillmentStatuses)[number];
 type CarrierFilter = "all" | "none" | (typeof fulfillmentCarriers)[number];
 
-export function AdminOrdersClient({ orders }: { orders: MvpOrder[] }) {
+export function AdminOrdersClient({ orders }: { orders: CommerceOrder[] }) {
   const [rows, setRows] = useState(orders);
   const [selectedOrderId, setSelectedOrderId] = useState(orders[0]?.id ?? "");
   const [query, setQuery] = useState("");
@@ -220,7 +220,7 @@ function OrderEditor({
   error,
   onSubmit
 }: {
-  order: MvpOrder;
+  order: CommerceOrder;
   error?: string;
   onSubmit: (orderId: string, event: FormEvent<HTMLFormElement>) => void;
 }) {
@@ -307,7 +307,7 @@ function OrderEditor({
 }
 
 function filterOrders(
-  orders: MvpOrder[],
+  orders: CommerceOrder[],
   {
     query,
     statusFilter,
@@ -347,7 +347,7 @@ function filterOrders(
   });
 }
 
-function StatusBadge({ status }: { status: MvpOrder["status"] }) {
+function StatusBadge({ status }: { status: CommerceOrder["status"] }) {
   return (
     <Badge className={cn("shrink-0 border-2 border-black font-black", getStatusClass(status))}>
       {getOrderStatusLabel(status)}
@@ -355,7 +355,7 @@ function StatusBadge({ status }: { status: MvpOrder["status"] }) {
   );
 }
 
-function getStatusClass(status: MvpOrder["status"]) {
+function getStatusClass(status: CommerceOrder["status"]) {
   if (status === "shipped" || status === "delivered") {
     return "bg-[#c8f26c]";
   }
@@ -371,7 +371,7 @@ function getStatusClass(status: MvpOrder["status"]) {
   return "bg-white";
 }
 
-function formatShipmentSummary(order: MvpOrder) {
+function formatShipmentSummary(order: CommerceOrder) {
   if (order.shipmentCarrier && order.trackingNumber) {
     return `${order.shipmentCarrier} · ${order.trackingNumber}`;
   }
@@ -383,8 +383,8 @@ function formatShipmentSummary(order: MvpOrder) {
   return "배송 정보 없음";
 }
 
-function getOrderStatusLabel(status: MvpOrder["status"]) {
-  const labels: Record<MvpOrder["status"], string> = {
+function getOrderStatusLabel(status: CommerceOrder["status"]) {
+  const labels: Record<CommerceOrder["status"], string> = {
     pending_payment: "결제 대기",
     paid: "결제 완료",
     preparing: "준비 중",
@@ -397,7 +397,7 @@ function getOrderStatusLabel(status: MvpOrder["status"]) {
   return labels[status];
 }
 
-function getAdminEditableStatus(status: MvpOrder["status"]) {
+function getAdminEditableStatus(status: CommerceOrder["status"]) {
   return adminFulfillmentStatuses.includes(
     status as (typeof adminFulfillmentStatuses)[number]
   )

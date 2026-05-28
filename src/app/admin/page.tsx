@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { listCommissions, listOrders, listProducts } from "@/lib/mvp-store";
+import { listCommissions, listOrders, listProducts } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

@@ -45,7 +45,7 @@ describe("commerce domain rules", () => {
     expect(formatUsd(7_699)).toBe("$76.99");
   });
 
-  it("allows the MVP order status path and rejects skipped transitions", () => {
+  it("allows the launch order status path and rejects skipped transitions", () => {
     expect(canTransitionOrderStatus("pending_payment", "paid")).toBe(true);
     expect(canTransitionOrderStatus("paid", "preparing")).toBe(true);
     expect(canTransitionOrderStatus("preparing", "shipped")).toBe(true);

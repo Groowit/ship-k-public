@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CheckoutForm } from "./checkout-form";
-import { demoProducts } from "@/lib/products";
+import { launchCatalogProducts } from "@/lib/products";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -31,7 +31,7 @@ describe("CheckoutForm", () => {
 
     render(
       <CheckoutForm
-        product={demoProducts[0]}
+        product={launchCatalogProducts[0]}
         quantity={1}
         initialCustomer={initialCustomer}
       />

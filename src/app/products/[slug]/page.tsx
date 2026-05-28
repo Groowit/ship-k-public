@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProductDetailView } from "@/components/product-detail-view";
 import { getCurrentAuthState } from "@/lib/auth";
-import { findProductBySlug } from "@/lib/mvp-store";
+import { findProductBySlug } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

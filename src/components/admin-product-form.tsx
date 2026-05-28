@@ -835,7 +835,7 @@ function ImagePathField({
           aria-label={label}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="/demo-assets/..."
+          placeholder="/catalog-assets/..."
         />
         <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border bg-white px-3 text-sm font-semibold">
           <ImagePlus className="h-4 w-4" aria-hidden="true" />
@@ -994,7 +994,7 @@ function toPreviewProduct(state: EditorState, product?: Product): Product {
   const collection = getCollectionBySlug(state.collectionSlug);
   const priceCents = Math.max(0, Math.round(Number(state.priceUsd || 0) * 100));
   const stockQuantity = Math.max(0, Number.parseInt(state.stockQuantity || "0", 10) || 0);
-  const heroImagePath = state.heroImagePath || "/demo-assets/admin-product-placeholder.svg";
+  const heroImagePath = state.heroImagePath || "/catalog-assets/admin-product-placeholder.svg";
 
   return {
     id: product?.id ?? "preview-product",

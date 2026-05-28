@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentAuthState } from "@/lib/auth";
 import { buildAuthRedirectPath } from "@/lib/authz";
 import { formatUsd } from "@/lib/commerce";
-import { listOrdersByUser } from "@/lib/mvp-store";
+import { listOrdersByUser } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 

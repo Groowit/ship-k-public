@@ -4,19 +4,19 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatUsd } from "@/lib/commerce";
-import type { MvpCommission, MvpOrder } from "@/lib/mvp-store";
+import type { CommerceCommission, CommerceOrder } from "@/lib/commerce-store";
 
 export function AdminCommissionsClient({
   commissions,
   orders
 }: {
-  commissions: MvpCommission[];
-  orders: MvpOrder[];
+  commissions: CommerceCommission[];
+  orders: CommerceOrder[];
 }) {
   const router = useRouter();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  async function updateStatus(commissionId: string, status: MvpCommission["status"]) {
+  async function updateStatus(commissionId: string, status: CommerceCommission["status"]) {
     setUpdatingId(commissionId);
     try {
       await fetch(`/api/admin/commissions/${commissionId}`, {
@@ -93,7 +93,7 @@ export function AdminCommissionsClient({
   );
 }
 
-function getCommissionStatusLabel(status: MvpCommission["status"]) {
+function getCommissionStatusLabel(status: CommerceCommission["status"]) {
   const labels = {
     pending: "대기 중",
     approved: "승인됨",

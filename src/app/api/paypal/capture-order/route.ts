@@ -9,7 +9,7 @@ import {
   parseReferralAttribution
 } from "@/lib/referral";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
-import { createPaidOrder, findProductBySlug } from "@/lib/mvp-store";
+import { createPaidOrder, findProductBySlug } from "@/lib/commerce-store";
 import { getProductCheckoutSummary } from "@/lib/products";
 
 const captureOrderSchema = z.object({

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
-import { applyForPromoter } from "@/lib/mvp-store";
+import { applyForPromoter } from "@/lib/commerce-store";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", async () => {
@@ -11,7 +11,7 @@ vi.mock("@/lib/auth", async () => {
   };
 });
 
-vi.mock("@/lib/mvp-store", () => ({
+vi.mock("@/lib/commerce-store", () => ({
   applyForPromoter: vi.fn()
 }));
 
