@@ -177,6 +177,77 @@ describe("Supabase product mapping", () => {
       title: "Story"
     });
   });
+
+  it("normalizes legacy launch catalog data from Supabase rows", () => {
+    const row = {
+      id: "product_1",
+      brand_name: "shipK Curated",
+      name: "K-Pop Idol Look",
+      slug: "k-pop-idol-look",
+      short_description: "A stage-inspired makeup kit.",
+      description: "A fictional color routine for Creator demos.",
+      hero_image_path: "/demo-assets/sets/k-pop-idol-look.png",
+      status: "active",
+      badges: ["NEW"],
+      product_type: "curated_set",
+      collection_slug: "k-pop-idol",
+      collection_name: "K-Pop Idol",
+      difficulty: "Intermediate",
+      item_count: 7,
+      theme_label: "IDOL",
+      intro_video_url: null,
+      best_for: "Creator demos and easy creator demonstrations.",
+      result: "Bright eyes",
+      updated_at: "2026-05-19T00:00:00.000Z",
+      categories: { name: "Routine Kit" },
+      product_options: [],
+      product_images: [
+        {
+          id: "gallery_1",
+          sort_order: 1,
+          image_path: "/demo-assets/sets/k-pop-idol-look.png",
+          alt_text: "Idol look"
+        }
+      ],
+      product_included_items: [
+        {
+          id: "item_1",
+          sort_order: 1,
+          name: "Primer",
+          category: "Base",
+          description: "A fictional base-prep item."
+        }
+      ],
+      product_routine_steps: [],
+      product_content_blocks: [
+        {
+          id: "block_1",
+          type: "image_text",
+          sort_order: 1,
+          title: "Creator demos",
+          eyebrow: "MVP",
+          body: "A fictional tutorial block for creator demonstrations.",
+          image_path: "/demo-assets/sets/k-pop-idol-look.png",
+          image_alt: null,
+          image_position: "left"
+        }
+      ]
+    } satisfies Parameters<typeof mapProductRow>[0];
+
+    const product = mapProductRow(row);
+
+    expect(product.heroImagePath).toBe("/catalog-assets/sets/k-pop-idol-look.png");
+    expect(product.galleryImages[0]?.imagePath).toBe("/catalog-assets/sets/k-pop-idol-look.png");
+    expect(product.description).toBe("A color routine for Creator tutorials.");
+    expect(product.bestFor).toBe("Creator tutorials and easy creator tutorials.");
+    expect(product.includedItems[0]?.description).toBe("A base-prep item.");
+    expect(product.contentBlocks[0]).toMatchObject({
+      eyebrow: "Phase 1 launch",
+      title: "Creator tutorials",
+      body: "A tutorial block for creator tutorials.",
+      imagePath: "/catalog-assets/sets/k-pop-idol-look.png"
+    });
+  });
 });
 
 describe("customer account updates", () => {

@@ -1342,7 +1342,12 @@ export function mapProductRow(row: ProductRow): Product {
     stock_quantity: 0
   };
   const category = getRelationObject<{ name: string }>(row.categories)?.name ?? "Routine Kit";
-  const heroImagePath = row.hero_image_path || "/catalog-assets/admin-product-placeholder.svg";
+  const heroImagePath =
+    normalizeLaunchCatalogAssetPath(row.hero_image_path) ||
+    "/catalog-assets/admin-product-placeholder.svg";
+  const shortDescription = normalizeLaunchSurfaceCopy(row.short_description) ?? row.short_description;
+  const description = normalizeLaunchSurfaceCopy(row.description) ?? row.description;
+  const bestFor = normalizeLaunchSurfaceCopy(row.best_for);
 
   return {
     id: row.id,
@@ -1356,10 +1361,10 @@ export function mapProductRow(row: ProductRow): Product {
     difficulty: row.difficulty ?? undefined,
     itemCount: row.item_count ?? undefined,
     themeLabel: row.theme_label ?? collection?.themeLabel,
-    shortDescription: row.short_description,
-    description: row.description,
-    bestFor: row.best_for ?? undefined,
-    result: row.result ?? undefined,
+    shortDescription,
+    description,
+    bestFor: bestFor ?? undefined,
+    result: normalizeLaunchSurfaceCopy(row.result) ?? undefined,
     heroImagePath,
     introVideoUrl: row.intro_video_url ?? undefined,
     badges: row.badges?.length ? row.badges : [row.theme_label, row.collection_name].filter(isString),
@@ -1374,14 +1379,14 @@ export function mapProductRow(row: ProductRow): Product {
     },
     galleryImages: sortBySortOrder(asArray(row.product_images)).map((image) => ({
       id: image.id,
-      imagePath: image.image_path,
+      imagePath: normalizeLaunchCatalogAssetPath(image.image_path) ?? image.image_path,
       altText: image.alt_text || row.name
     })),
     includedItems: sortBySortOrder(asArray(row.product_included_items)).map((item) => ({
       id: item.id,
       name: item.name,
       category: item.category,
-      description: item.description
+      description: normalizeLaunchSurfaceCopy(item.description) ?? item.description
     })),
     routineSteps: sortBySortOrder(asArray(row.product_routine_steps)).map((step) => ({
       id: step.id,
@@ -1393,7 +1398,7 @@ export function mapProductRow(row: ProductRow): Product {
         return {
           id: block.id,
           type: "image" as const,
-          imagePath: block.image_path ?? heroImagePath,
+          imagePath: normalizeLaunchCatalogAssetPath(block.image_path) ?? heroImagePath,
           alt: block.image_alt ?? row.name
         };
       }
@@ -1402,11 +1407,11 @@ export function mapProductRow(row: ProductRow): Product {
         return {
           id: block.id,
           type: "image_text" as const,
-          imagePath: block.image_path ?? heroImagePath,
+          imagePath: normalizeLaunchCatalogAssetPath(block.image_path) ?? heroImagePath,
           alt: block.image_alt ?? row.name,
-          eyebrow: block.eyebrow ?? undefined,
-          title: block.title ?? row.name,
-          body: block.body ?? row.description,
+          eyebrow: normalizeLaunchSurfaceCopy(block.eyebrow) ?? undefined,
+          title: normalizeLaunchSurfaceCopy(block.title) ?? row.name,
+          body: normalizeLaunchSurfaceCopy(block.body) ?? description,
           imagePosition: block.image_position ?? "left"
         };
       }
@@ -1414,12 +1419,31 @@ export function mapProductRow(row: ProductRow): Product {
       return {
         id: block.id,
         type: "text" as const,
-        eyebrow: block.eyebrow ?? undefined,
-        title: block.title ?? row.name,
-        body: block.body ?? row.description
+        eyebrow: normalizeLaunchSurfaceCopy(block.eyebrow) ?? undefined,
+        title: normalizeLaunchSurfaceCopy(block.title) ?? row.name,
+        body: normalizeLaunchSurfaceCopy(block.body) ?? description
       };
     })
   };
+}
+
+function normalizeLaunchCatalogAssetPath(value: string | null | undefined) {
+  return value?.replace(/^\/demo-assets\//, "/catalog-assets/") ?? null;
+}
+
+function normalizeLaunchSurfaceCopy(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  return value
+    .replace(/\bCreator demos\b/g, "Creator tutorials")
+    .replace(/\bcreator demonstrations\b/g, "creator tutorials")
+    .replace(/\bCreator Code Demo\b/g, "Creator Code")
+    .replace(/\bMVP\b/g, "Phase 1 launch")
+    .replace(/\bfictional\s+/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 export function mapOrderRow(row: OrderRow): CommerceOrder {
