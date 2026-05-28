@@ -333,35 +333,12 @@ export function AuthForm({
               <span className="h-px flex-1 bg-black/15" />
             </div>
             <div className="grid gap-2">
-              {isSignUp && !legalAgreed ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 rounded-full border-2 border-black bg-white font-black hover:bg-[#fff8f0]"
-                  disabled={isSubmitting}
-                  aria-label="Sign up with Google"
-                  onClick={() =>
-                    setMessage(
-                      "Please accept the Terms and Privacy Policy to create an account."
-                    )
-                  }
-                >
-                  <span
-                    aria-hidden="true"
-                    className="grid h-6 w-6 place-items-center rounded-full border border-black/15 bg-white font-brand-heavy text-sm text-[#4285f4]"
-                  >
-                    G
-                  </span>
-                  Sign up with Google
-                </Button>
-              ) : (
-                <GoogleIdentityButton
-                  mode={mode}
-                  disabled={isSubmitting}
-                  onCredential={signInWithGoogle}
-                  onError={showGoogleError}
-                />
-              )}
+              <GoogleIdentityButton
+                mode={mode}
+                disabled={isSubmitting}
+                onCredential={signInWithGoogle}
+                onError={showGoogleError}
+              />
             </div>
             {message ? (
               <p
