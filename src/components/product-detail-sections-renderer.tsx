@@ -11,9 +11,12 @@ export function ProductDetailSectionsRenderer({ product }: { product: Product })
   return (
     <section className="container grid gap-12 py-12">
       {product.detailSections.length > 0 ? (
-        product.detailSections.map((section) => (
-          <CanonicalSection key={section.id} section={section} product={product} />
-        ))
+        <>
+          <SupplementalProductSections product={product} />
+          {product.detailSections.map((section) => (
+            <CanonicalSection key={section.id} section={section} product={product} />
+          ))}
+        </>
       ) : (
         <LegacyDetailSections product={product} />
       )}
@@ -429,88 +432,147 @@ function StepCards({
 function LegacyDetailSections({ product }: { product: Product }) {
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-        <div>
-          <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">Included items</p>
-          <h2 className="mt-2 shipk-heading text-4xl">Everything in the set</h2>
-          <p className="mt-4 text-muted-foreground">
-            Each item is presented as part of a guided look so shoppers know what they are getting before checkout.
-          </p>
-        </div>
-        <div className="grid gap-3">
-          {product.includedItems.length ? (
-            product.includedItems.map((item, index) => (
-              <div
-                key={item.id}
-                className="grid gap-3 rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0_#0a0a0a] sm:grid-cols-[3rem_1fr_auto]"
-              >
-                <span className="font-brand-round text-3xl leading-none text-[#ff3d7f]">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span>
-                  <span className="block text-sm font-bold text-muted-foreground">{item.category}</span>
-                  <h3 className="mt-1 text-lg font-black">{item.name}</h3>
-                  <span className="mt-2 block text-sm leading-6 text-muted-foreground">
-                    {item.description}
-                  </span>
-                </span>
-                <span className="h-fit rounded-full border-2 border-black bg-[#fff8f0] px-3 py-1 text-xs font-black text-muted-foreground">
-                  {product.brandName}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
-              Included items will appear here.
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-        <div>
-          <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">Routine steps</p>
-          <h2 className="mt-2 shipk-heading text-4xl">Follow the look in order</h2>
-          {product.bestFor ? <p className="mt-4 text-muted-foreground">{product.bestFor}</p> : null}
-        </div>
-        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {product.routineSteps.length ? (
-            product.routineSteps.map((step, index) => (
-              <li key={step.id} className="rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0_#0a0a0a]">
-                <span className="font-brand-round text-4xl leading-none text-[#ff3d7f]">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="mt-3 block font-black">{step.title}</span>
-                <span className="mt-1 block text-sm leading-6 text-muted-foreground">{step.body}</span>
-              </li>
-            ))
-          ) : (
-            <li className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
-              Routine steps will appear here.
-            </li>
-          )}
-        </ol>
-      </div>
-
-      <div className="grid gap-5 rounded-md border-2 border-black bg-[#c8f26c] p-5 shadow-[6px_6px_0_#0a0a0a] md:grid-cols-[auto_1fr_auto] md:items-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-md border-2 border-black bg-white">
-          <PlayCircle className="h-8 w-8" aria-hidden="true" />
-        </div>
-        <div>
-          <h2 className="shipk-heading text-2xl">Tutorial-first routine</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Product detail keeps the routine sequence close to the purchase CTA, so a customer can understand the set before moving to checkout.
-          </p>
-        </div>
-        <Link href="/promoter" className="shipk-chip bg-white hover:bg-[#ffd6e3]">
-          Share as promoter
-        </Link>
-      </div>
-
+      <IncludedItemsSection product={product} showEmptyState />
+      <RoutineStepsSection product={product} showEmptyState />
+      <TutorialRoutinePanel />
       {product.contentBlocks.map((block) => (
         <LegacyContentBlock key={block.id} block={block} />
       ))}
     </>
+  );
+}
+
+function SupplementalProductSections({ product }: { product: Product }) {
+  const showIncludedItems =
+    product.includedItems.length > 0 && !hasIncludedItemsCoverage(product);
+  const showRoutineSteps =
+    product.routineSteps.length > 0 && !hasRoutineStepsCoverage(product);
+  const uncoveredContentBlocks = product.contentBlocks.filter(
+    (block) => !hasContentBlockCoverage(product, block)
+  );
+
+  if (!showIncludedItems && !showRoutineSteps && uncoveredContentBlocks.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {showIncludedItems ? <IncludedItemsSection product={product} /> : null}
+      {showRoutineSteps ? <RoutineStepsSection product={product} /> : null}
+      {uncoveredContentBlocks.map((block) => (
+        <LegacyContentBlock key={block.id} block={block} />
+      ))}
+    </>
+  );
+}
+
+function IncludedItemsSection({
+  product,
+  showEmptyState = false
+}: {
+  product: Product;
+  showEmptyState?: boolean;
+}) {
+  if (!showEmptyState && product.includedItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+      <div>
+        <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">Included items</p>
+        <h2 className="mt-2 shipk-heading text-4xl">Everything in the set</h2>
+        <p className="mt-4 text-muted-foreground">
+          Each item is presented as part of a guided look so shoppers know what they are getting before checkout.
+        </p>
+      </div>
+      <div className="grid gap-3">
+        {product.includedItems.length ? (
+          product.includedItems.map((item, index) => (
+            <div
+              key={item.id}
+              className="grid gap-3 rounded-md border-2 border-black bg-white p-4 sm:grid-cols-[3rem_1fr_auto]"
+            >
+              <span className="font-brand-round text-3xl leading-none text-[#ff3d7f]">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span>
+                <span className="block text-sm font-bold text-muted-foreground">{item.category}</span>
+                <h3 className="mt-1 text-lg font-black">{item.name}</h3>
+                <span className="mt-2 block text-sm leading-6 text-muted-foreground">
+                  {item.description}
+                </span>
+              </span>
+              <span className="h-fit rounded-full border-2 border-black bg-[#fff8f0] px-3 py-1 text-xs font-black text-muted-foreground">
+                {product.brandName}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
+            Included items will appear here.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoutineStepsSection({
+  product,
+  showEmptyState = false
+}: {
+  product: Product;
+  showEmptyState?: boolean;
+}) {
+  if (!showEmptyState && product.routineSteps.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+      <div>
+        <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">Use steps</p>
+        <h2 className="mt-2 shipk-heading text-4xl">Follow the look in order</h2>
+        {product.bestFor ? <p className="mt-4 text-muted-foreground">{product.bestFor}</p> : null}
+      </div>
+      <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {product.routineSteps.length ? (
+          product.routineSteps.map((step, index) => (
+            <li key={step.id} className="rounded-md border-2 border-black bg-white p-4">
+              <span className="font-brand-round text-4xl leading-none text-[#ff3d7f]">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="mt-3 block font-black">{step.title}</span>
+              <span className="mt-1 block text-sm leading-6 text-muted-foreground">{step.body}</span>
+            </li>
+          ))
+        ) : (
+          <li className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
+            Use steps will appear here.
+          </li>
+        )}
+      </ol>
+    </div>
+  );
+}
+
+function TutorialRoutinePanel() {
+  return (
+    <div className="grid gap-5 rounded-md border-2 border-black bg-[#c8f26c] p-5 md:grid-cols-[auto_1fr_auto] md:items-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-md border-2 border-black bg-white">
+        <PlayCircle className="h-8 w-8" aria-hidden="true" />
+      </div>
+      <div>
+        <h2 className="shipk-heading text-2xl">Tutorial-first product detail</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Product detail keeps the use order close to the purchase CTA, so a customer can understand the set before moving to checkout.
+        </p>
+      </div>
+      <Link href="/promoter" className="shipk-chip bg-white hover:bg-[#ffd6e3]">
+        Share as promoter
+      </Link>
+    </div>
   );
 }
 
@@ -554,6 +616,112 @@ function LegacyContentBlock({ block }: { block: ProductContentBlock }) {
       </div>
     </div>
   );
+}
+
+function hasIncludedItemsCoverage(product: Product) {
+  const includedItemNames = product.includedItems
+    .map((item) => normalizeSearchText(item.name))
+    .filter(Boolean);
+
+  if (includedItemNames.length === 0) {
+    return false;
+  }
+
+  return product.detailSections.some((section) => {
+    if (section.sectionType !== "comparison") {
+      return false;
+    }
+
+    return includedItemNames.some((name) =>
+      section.items.some((item) => normalizeSearchText(`${item.label} ${item.body}`).includes(name))
+    );
+  });
+}
+
+function hasRoutineStepsCoverage(product: Product) {
+  const routineStepTitles = product.routineSteps
+    .map((step) => normalizeSearchText(step.title))
+    .filter(Boolean);
+
+  if (routineStepTitles.length === 0) {
+    return false;
+  }
+
+  return product.detailSections.some((section) => {
+    if (section.sectionType !== "steps") {
+      return false;
+    }
+
+    return routineStepTitles.some((title) =>
+      section.items.some((item) => {
+        const sectionTitle = normalizeSearchText(item.title);
+        return sectionTitle.includes(title) || title.includes(sectionTitle);
+      })
+    );
+  });
+}
+
+function hasContentBlockCoverage(product: Product, block: ProductContentBlock) {
+  return product.detailSections.some((section) => {
+    if (block.type === "image") {
+      return sectionHasImageSource(section, block.imagePath);
+    }
+
+    if (block.type === "image_text") {
+      return (
+        section.sectionType === "image_text" &&
+        (section.src === block.imagePath || normalizeSearchText(section.title).includes(normalizeSearchText(block.title)))
+      );
+    }
+
+    if (block.type === "text") {
+      const title = normalizeSearchText(block.title);
+      return sectionHasText(section, title);
+    }
+
+    return false;
+  });
+}
+
+function sectionHasImageSource(section: ProductDetailSection, src: string) {
+  if (section.sectionType === "image" || section.sectionType === "long_detail_image" || section.sectionType === "image_text") {
+    return section.src === src;
+  }
+
+  if (section.sectionType === "image_group") {
+    return section.images.some((image) => image.src === src);
+  }
+
+  return false;
+}
+
+function sectionHasText(section: ProductDetailSection, text: string) {
+  if (!text) {
+    return false;
+  }
+
+  if (section.sectionType === "heading") {
+    return normalizeSearchText(section.text).includes(text);
+  }
+
+  if (section.sectionType === "text") {
+    return normalizeSearchText(section.body).includes(text);
+  }
+
+  if (
+    section.sectionType === "image_text" ||
+    section.sectionType === "comparison" ||
+    section.sectionType === "steps" ||
+    section.sectionType === "notice"
+  ) {
+    return normalizeSearchText(JSON.stringify(section)).includes(text);
+  }
+
+  return false;
+}
+
+function normalizeSearchText(value: string | undefined) {
+  return (value ?? "").trim().toLowerCase();
 }
 
 function getAlignClass(align: "left" | "center" | "right") {

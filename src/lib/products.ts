@@ -1,51 +1,27 @@
 import { calculateOrderTotals, formatUsd } from "./commerce";
 import type { ProductDetailSection } from "./product-detail-sections";
 
-export type ProductType = "single" | "curated_set";
+export type ProductType = "single" | "set";
 export type ProductDifficulty = "Beginner" | "Intermediate";
+export const productCategories = ["Skincare", "Makeup"] as const;
+export type ProductCategory = (typeof productCategories)[number];
 
-export const productCollectionSlugs = [
-  "daily-glow",
-  "k-pop-idol",
-  "glass-skin",
-  "y2k-cute",
-  "cool-tone",
-  "warm-tone",
-  "date-night"
-] as const;
-
-export type ProductCollectionSlug = (typeof productCollectionSlugs)[number];
-
-export type ProductCollection = {
-  slug: ProductCollectionSlug;
-  name: string;
-  themeLabel: string;
-  sortOrder: number;
-};
-
-export const productCollections: ProductCollection[] = [
-  { slug: "daily-glow", name: "Daily Glow", themeLabel: "DAILY", sortOrder: 10 },
-  { slug: "k-pop-idol", name: "K-Pop Idol", themeLabel: "IDOL", sortOrder: 20 },
-  { slug: "glass-skin", name: "Glass Skin", themeLabel: "GLASS", sortOrder: 30 },
-  { slug: "y2k-cute", name: "Y2K Cute", themeLabel: "Y2K", sortOrder: 40 },
-  { slug: "cool-tone", name: "Cool Tone", themeLabel: "COOL", sortOrder: 50 },
-  { slug: "warm-tone", name: "Warm Tone", themeLabel: "WARM", sortOrder: 60 },
-  { slug: "date-night", name: "Date Night", themeLabel: "DATE", sortOrder: 70 }
-];
-
-export const categories = ["Routine Kit", "Skincare", "Makeup", "Sun Care", "Cleansing", "Masks"];
+export const categories = productCategories;
 
 export type ProductIncludedItem = {
   id: string;
   name: string;
   category: string;
   description: string;
+  role?: string;
+  customerBenefit?: string;
 };
 
 export type ProductRoutineStep = {
   id: string;
   title: string;
   body: string;
+  tip?: string;
 };
 
 export type ProductGalleryImage = {
@@ -95,21 +71,24 @@ export type Product = {
   productType: ProductType;
   brandName: string;
   name: string;
-  category: string;
-  collectionSlug?: ProductCollectionSlug;
-  collectionName?: string;
+  category: ProductCategory;
   difficulty?: ProductDifficulty;
   itemCount?: number;
-  themeLabel?: string;
   shortDescription: string;
   description: string;
   bestFor?: string;
   result?: string;
   heroImagePath: string;
+  heroImageAltText?: string;
   introVideoUrl?: string;
   badges: string[];
+  tags: string[];
   status: ProductStatus;
+  createdAt?: string;
   updatedAt?: string;
+  lastOrderedAt?: string;
+  salesCount?: number;
+  popularityRank?: number;
   option: ProductOption;
   galleryImages: ProductGalleryImage[];
   includedItems: ProductIncludedItem[];
@@ -118,9 +97,9 @@ export type Product = {
   detailSections: ProductDetailSection[];
 };
 
-type CuratedSetSeed = {
+type SetSeed = {
   slug: string;
-  collectionSlug: ProductCollectionSlug;
+  category: ProductCategory;
   name: string;
   priceCents: number;
   difficulty: ProductDifficulty;
@@ -129,26 +108,26 @@ type CuratedSetSeed = {
   description: string;
   bestFor: string;
   result: string;
-  badge: string;
+  tags: string[];
   imagePath: string;
   items: Array<Omit<ProductIncludedItem, "id">>;
   steps: Array<Omit<ProductRoutineStep, "id">>;
 };
 
-const curatedSetSeeds: CuratedSetSeed[] = [
+const setSeeds: SetSeed[] = [
   {
-    slug: "daily-k-glow-set",
-    collectionSlug: "daily-glow",
-    name: "Daily K-Glow Set",
+    slug: "skincare-starter-set",
+    category: "Skincare",
+    name: "Skincare Starter Set",
     priceCents: 4900,
     difficulty: "Beginner",
     itemCount: 5,
-    shortDescription: "A low-friction morning routine for a natural everyday glow.",
+    shortDescription: "A low-friction morning set for a natural everyday glow.",
     description:
-      "A fictional shipK routine kit for customers who want a simple, dewy K-beauty starting point without choosing every product one by one.",
-    bestFor: "First-time K-beauty buyers, daily routines, and soft natural glow.",
+      "A fictional shipK set for customers who want a simple, dewy K-beauty starting point without choosing every product one by one.",
+    bestFor: "First-time K-beauty buyers, daily use, and soft natural glow.",
     result: "Fresh, hydrated-looking skin with a comfortable daytime finish.",
-    badge: "BEST",
+    tags: ["STARTER", "SKINCARE", "5 ITEMS"],
     imagePath: "/catalog-assets/sets/daily-k-glow-set.png",
     items: [
       {
@@ -182,22 +161,22 @@ const curatedSetSeeds: CuratedSetSeed[] = [
       { title: "Prep with pads", body: "Sweep one toner pad across the face before serum." },
       { title: "Layer glow serum", body: "Apply a thin layer and let it settle." },
       { title: "Seal with cream", body: "Use a small amount of cream for comfort." },
-      { title: "Finish daytime routines", body: "Apply sunscreen as the final morning step." }
+      { title: "Finish daytime use", body: "Apply sunscreen as the final morning step." }
     ]
   },
   {
-    slug: "k-pop-idol-look",
-    collectionSlug: "k-pop-idol",
-    name: "K-Pop Idol Look",
+    slug: "makeup-starter-set",
+    category: "Makeup",
+    name: "Makeup Starter Set",
     priceCents: 6900,
     difficulty: "Intermediate",
     itemCount: 7,
     shortDescription: "A stage-inspired makeup kit for glossy color and bright definition.",
     description:
-      "A fictional color routine for customers who want to recreate a polished idol-inspired look with clear step-by-step guidance.",
+      "A fictional color set for customers who want to recreate a polished idol-inspired look with clear step-by-step guidance.",
     bestFor: "Creator tutorials, event makeup, and customers comfortable with color steps.",
     result: "Bright eyes, soft shimmer, and a glossy point lip.",
-    badge: "NEW",
+    tags: ["MAKEUP", "STARTER", "7 ITEMS"],
     imagePath: "/catalog-assets/sets/k-pop-idol-look.png",
     items: [
       { name: "Tone-Up Primer Veil", category: "Base", description: "A fictional base-prep item." },
@@ -218,18 +197,18 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     ]
   },
   {
-    slug: "glass-skin-starter",
-    collectionSlug: "glass-skin",
-    name: "Glass Skin Starter",
+    slug: "hydration-skincare-set",
+    category: "Skincare",
+    name: "Hydration Skincare Set",
     priceCents: 5500,
     difficulty: "Beginner",
     itemCount: 6,
-    shortDescription: "A simple hydrating path toward a polished glass-skin look.",
+    shortDescription: "A simple hydrating path toward a polished skincare look.",
     description:
-      "A fictional starter set focused on layering light hydration and glow without advanced tools or complicated routines.",
-    bestFor: "Hydration-first routines, beginners, and customers who want a guided glow.",
+      "A fictional starter set focused on layering light hydration and glow without advanced tools or complicated choices.",
+    bestFor: "Hydration-first skincare, beginners, and customers who want a guided glow.",
     result: "Smooth, reflective-looking skin with a calm hydrated finish.",
-    badge: "HOT",
+    tags: ["HYDRATION", "SKINCARE", "6 ITEMS"],
     imagePath: "/catalog-assets/sets/glass-skin-starter.png",
     items: [
       { name: "Milk Gel Cleanser", category: "Cleanser", description: "A fictional soft cleanse step." },
@@ -248,9 +227,9 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     ]
   },
   {
-    slug: "y2k-cute-bomb",
-    collectionSlug: "y2k-cute",
-    name: "Y2K Cute Bomb",
+    slug: "gloss-makeup-set",
+    category: "Makeup",
+    name: "Gloss Makeup Set",
     priceCents: 5900,
     difficulty: "Beginner",
     itemCount: 6,
@@ -259,7 +238,7 @@ const curatedSetSeeds: CuratedSetSeed[] = [
       "A fictional playful look kit designed around easy color placement, glossy texture, and a nostalgic cute mood.",
     bestFor: "Casual makeup, playful content, and customers who want low-risk color.",
     result: "Glossy lips, bright cheeks, and a cheerful pop finish.",
-    badge: "PLAY",
+    tags: ["GLOSS", "MAKEUP", "6 ITEMS"],
     imagePath: "/catalog-assets/sets/y2k-cute-bomb.png",
     items: [
       { name: "Puff Skin Tint", category: "Base", description: "A fictional soft base tint." },
@@ -278,18 +257,18 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     ]
   },
   {
-    slug: "cool-tone-drama",
-    collectionSlug: "cool-tone",
-    name: "Cool Tone Drama",
+    slug: "definition-makeup-set",
+    category: "Makeup",
+    name: "Definition Makeup Set",
     priceCents: 6500,
     difficulty: "Intermediate",
     itemCount: 7,
-    shortDescription: "A chic cool-tone makeup set with mauve, taupe, and clear shine.",
+    shortDescription: "A chic makeup set with mauve, taupe, and clear shine.",
     description:
-      "A fictional set for customers who prefer cool undertones and want more definition than a daily routine.",
-    bestFor: "Cool undertones, sharper eye definition, and polished evening looks.",
+      "A fictional set for customers who want more definition than a daily look.",
+    bestFor: "Sharper eye definition, evening looks, and polished color.",
     result: "Mauve cheeks, taupe eyes, and a clean dramatic finish.",
-    badge: "COOL",
+    tags: ["DEFINITION", "MAKEUP", "7 ITEMS"],
     imagePath: "/catalog-assets/sets/cool-tone-drama.png",
     items: [
       { name: "Porcelain Skin Veil", category: "Base", description: "A fictional soft-matte base." },
@@ -309,18 +288,18 @@ const curatedSetSeeds: CuratedSetSeed[] = [
     ]
   },
   {
-    slug: "warm-honey-look",
-    collectionSlug: "warm-tone",
-    name: "Warm Honey Look",
+    slug: "warm-makeup-set",
+    category: "Makeup",
+    name: "Warm Makeup Set",
     priceCents: 5900,
     difficulty: "Beginner",
     itemCount: 6,
-    shortDescription: "A warm-tone signature kit with honey cheeks and soft brown eyes.",
+    shortDescription: "A warm makeup set with honey cheeks and soft brown eyes.",
     description:
-      "A fictional warm color kit for customers who want an approachable, golden everyday makeup routine.",
+      "A fictional warm color set for customers who want an approachable, golden everyday makeup look.",
     bestFor: "Warm undertones, soft daily makeup, and easy creator tutorials.",
     result: "Honey-toned cheeks, warm eyes, and a comfortable glossy lip.",
-    badge: "WARM",
+    tags: ["WARM", "MAKEUP", "6 ITEMS"],
     imagePath: "/catalog-assets/sets/warm-honey-look.png",
     items: [
       { name: "Honey Base Cushion", category: "Base", description: "A fictional warm base step." },
@@ -340,32 +319,29 @@ const curatedSetSeeds: CuratedSetSeed[] = [
   }
 ];
 
-export const launchCatalogProducts: Product[] = curatedSetSeeds.map((seed) => {
-  const collection = getCollectionBySlug(seed.collectionSlug);
+export const launchCatalogProducts: Product[] = setSeeds.map((seed) => {
   const id = `prod_${seed.slug.replace(/-/g, "_")}`;
 
   return {
     id,
     slug: seed.slug,
-    productType: "curated_set",
+    productType: "set",
     brandName: "shipK Curated",
     name: seed.name,
-    category: "Routine Kit",
-    collectionSlug: seed.collectionSlug,
-    collectionName: collection.name,
+    category: seed.category,
     difficulty: seed.difficulty,
     itemCount: seed.itemCount,
-    themeLabel: collection.themeLabel,
     shortDescription: seed.shortDescription,
     description: seed.description,
     bestFor: seed.bestFor,
     result: seed.result,
     heroImagePath: seed.imagePath,
-    badges: [seed.badge, collection.name],
+    badges: [],
+    tags: seed.tags,
     status: "active",
     option: {
       id: `opt_${seed.slug.replace(/-/g, "_")}`,
-      name: `${seed.itemCount}-item routine kit`,
+      name: `${seed.itemCount}-item set`,
       sku: `SK-${seed.slug.toUpperCase().replace(/-/g, "-").slice(0, 20)}`,
       priceCents: seed.priceCents,
       stockQuantity: 100
@@ -374,7 +350,7 @@ export const launchCatalogProducts: Product[] = curatedSetSeeds.map((seed) => {
       {
         id: `${seed.slug}_gallery_1`,
         imagePath: seed.imagePath,
-        altText: `${seed.name} curated set`
+        altText: `${seed.name} set`
       }
     ],
     includedItems: seed.items.map((item, index) => ({
@@ -390,12 +366,12 @@ export const launchCatalogProducts: Product[] = curatedSetSeeds.map((seed) => {
         id: `${id}_image`,
         type: "image",
         imagePath: seed.imagePath,
-        alt: `${seed.name} curated routine kit`
+        alt: `${seed.name} set`
       },
       {
         id: `${id}_story`,
         type: "text",
-        eyebrow: collection.name,
+        eyebrow: seed.category,
         title: seed.result,
         body: seed.bestFor
       },
@@ -403,9 +379,9 @@ export const launchCatalogProducts: Product[] = curatedSetSeeds.map((seed) => {
         id: `${id}_routine`,
         type: "image_text",
         imagePath: seed.imagePath,
-        alt: `${seed.name} routine steps`,
+        alt: `${seed.name} use steps`,
         eyebrow: "How to use",
-        title: "Follow the routine in order",
+        title: "Follow the use order",
         body:
           "The web detail highlights the sequence so customers can understand the set before checkout.",
         imagePosition: "left"
@@ -415,10 +391,6 @@ export const launchCatalogProducts: Product[] = curatedSetSeeds.map((seed) => {
   };
 });
 
-export function getCollectionBySlug(slug: ProductCollectionSlug) {
-  return productCollections.find((collection) => collection.slug === slug) ?? productCollections[0];
-}
-
 export function getActiveProducts(products = launchCatalogProducts) {
   return products.filter((product) => product.status === "active");
 }
@@ -427,24 +399,19 @@ export function getProductBySlug(slug: string, products = launchCatalogProducts)
   return products.find((product) => product.slug === slug && product.status === "active");
 }
 
-export function getActiveCollections(products = launchCatalogProducts) {
-  const activeSlugs = new Set(
-    getActiveProducts(products)
-      .map((product) => product.collectionSlug)
-      .filter(Boolean)
-  );
-
-  return productCollections.filter((collection) => activeSlugs.has(collection.slug));
+export function getActiveCategories(products = launchCatalogProducts) {
+  const activeCategories = new Set(getActiveProducts(products).map((product) => product.category));
+  return productCategories.filter((category) => activeCategories.has(category));
 }
 
-export function filterProductsByCollection(
+export function filterProductsByCategory(
   products: Product[],
-  collectionSlug: string | undefined
+  category: string | undefined
 ) {
-  if (!collectionSlug || collectionSlug === "all") {
+  if (!category || category === "all") {
     return products;
   }
-  return products.filter((product) => product.collectionSlug === collectionSlug);
+  return products.filter((product) => product.category.toLowerCase() === category.toLowerCase());
 }
 
 export function getProductPriceLabel(product: Product) {

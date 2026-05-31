@@ -23,15 +23,15 @@ describe("referral attribution", () => {
     const attribution = applyReferralClick(
       null,
       "creator_code",
-      "daily_glow_01",
-      "/products/daily-k-glow-set",
+      "skincare_01",
+      "/products/skincare-starter-set",
       now
     );
 
     expect(attribution).toEqual({
       code: "creator_code",
-      linkToken: "daily_glow_01",
-      landingPath: "/products/daily-k-glow-set",
+      linkToken: "skincare_01",
+      landingPath: "/products/skincare-starter-set",
       clickedAt: "2026-05-18T00:00:00.000Z",
       expiresAt: "2026-05-20T00:00:00.000Z"
     });
@@ -65,8 +65,8 @@ describe("referral attribution", () => {
     const attribution = applyReferralClick(
       null,
       "creator_code",
-      "daily_glow_01",
-      "/products/daily-k-glow-set",
+      "skincare_01",
+      "/products/skincare-starter-set",
       now
     );
 
@@ -87,16 +87,16 @@ describe("referral attribution", () => {
   it("builds product referral paths with both ref and link tokens", () => {
     expect(
       buildProductReferralPath({
-        productSlug: "daily-k-glow-set",
+        productSlug: "skincare-starter-set",
         referralCode: "creator_code",
-        linkToken: "daily_glow_01"
+        linkToken: "skincare_01"
       })
-    ).toBe("/products/daily-k-glow-set?ref=creator_code&link=daily_glow_01");
+    ).toBe("/products/skincare-starter-set?ref=creator_code&link=skincare_01");
   });
 
   it("rejects attribution without a canonical product landing path", () => {
     expect(() =>
-      applyReferralClick(null, "creator_code", "daily_glow_01", "/shop", now)
+      applyReferralClick(null, "creator_code", "skincare_01", "/shop", now)
     ).toThrow("Invalid referral landing path");
   });
 
@@ -104,8 +104,8 @@ describe("referral attribution", () => {
     const attribution = applyReferralClick(
       null,
       "creator_code",
-      "daily_glow_01",
-      "/products/daily-k-glow-set",
+      "skincare_01",
+      "/products/skincare-starter-set",
       now
     );
 
@@ -121,8 +121,8 @@ describe("referral attribution", () => {
     const attribution = applyReferralClick(
       null,
       "creator_code",
-      "daily_glow_01",
-      "/products/daily-k-glow-set",
+      "skincare_01",
+      "/products/skincare-starter-set",
       now
     );
     const serialized = await serializeReferralAttribution(attribution);
@@ -136,15 +136,15 @@ describe("referral attribution", () => {
   it("rejects invalid or overlong attribution dates", async () => {
     const invalidDate = await signRawAttribution({
       code: "creator_code",
-      linkToken: "daily_glow_01",
-      landingPath: "/products/daily-k-glow-set",
+      linkToken: "skincare_01",
+      landingPath: "/products/skincare-starter-set",
       clickedAt: "not-a-date",
       expiresAt: "not-a-date"
     });
     const farExpiry = await signRawAttribution({
       code: "creator_code",
-      linkToken: "daily_glow_01",
-      landingPath: "/products/daily-k-glow-set",
+      linkToken: "skincare_01",
+      landingPath: "/products/skincare-starter-set",
       clickedAt: "2026-05-18T00:00:00.000Z",
       expiresAt: "2099-05-18T00:00:00.000Z"
     });
@@ -154,8 +154,8 @@ describe("referral attribution", () => {
     expect(
       isReferralAttributionExpired({
         code: "creator_code",
-        linkToken: "daily_glow_01",
-        landingPath: "/products/daily-k-glow-set",
+        linkToken: "skincare_01",
+        landingPath: "/products/skincare-starter-set",
         clickedAt: "2026-05-18T00:00:00.000Z",
         expiresAt: "not-a-date"
       })
@@ -168,7 +168,7 @@ describe("referral attribution", () => {
 
     await expect(() =>
       serializeReferralAttribution(
-        applyReferralClick(null, "creator_code", "daily_glow_01", "/products/daily-k-glow-set", now)
+        applyReferralClick(null, "creator_code", "skincare_01", "/products/skincare-starter-set", now)
       )
     ).rejects.toThrow("Referral cookie secret is not configured");
   });

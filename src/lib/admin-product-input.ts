@@ -1,9 +1,29 @@
 import { z } from "zod";
-import { productCollectionSlugs } from "./products";
+import {
+  maxProductDetailSections,
+  productDetailSectionInputSchema
+} from "./product-detail-sections";
+import { productCategories } from "./products";
 
-const productTypeSchema = z.enum(["single", "curated_set"]);
+const productTypeSchema = z.preprocess(
+  (value) => (value === "curated_set" ? "set" : value),
+  z.enum(["single", "set"])
+);
 const difficultySchema = z.enum(["Beginner", "Intermediate"]);
-const collectionSlugSchema = z.enum(productCollectionSlugs);
+const productCategorySchema = z.enum(productCategories);
+const labelListSchema = z
+  .preprocess(
+    parseJsonishArray,
+    z.array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(32)
+        .transform((value) => value.replace(/\s+/g, " ").toUpperCase())
+    ).max(6)
+  )
+  .default([]);
 
 const requiredPathOrUrl = z
   .string()
@@ -95,14 +115,13 @@ const contentBlockSchema = z
 
 export const adminProductPayloadSchema = z
   .object({
-    productType: productTypeSchema.default("curated_set"),
+    productType: productTypeSchema.default("set"),
     brandName: z.string().trim().min(1),
     name: z.string().trim().min(1),
-    category: z.string().trim().min(1).default("Routine Kit"),
-    collectionSlug: collectionSlugSchema.optional(),
+    category: productCategorySchema.default("Skincare"),
+    tags: labelListSchema,
     difficulty: difficultySchema.optional(),
     itemCount: z.coerce.number().int().min(1).max(20).optional(),
-    themeLabel: z.string().trim().max(16).optional().transform(emptyToUndefined),
     shortDescription: z.string().trim().min(1),
     description: z.string().trim().min(1),
     bestFor: z.string().trim().optional().transform(emptyToUndefined),
@@ -122,6 +141,9 @@ export const adminProductPayloadSchema = z
     includedItems: z.preprocess(parseJsonishArray, z.array(includedItemSchema).max(20)).default([]),
     routineSteps: z.preprocess(parseJsonishArray, z.array(routineStepSchema).max(20)).default([]),
     contentBlocks: z.preprocess(parseJsonishArray, z.array(contentBlockSchema).max(20)).default([]),
+    detailSections: z
+      .preprocess(parseJsonishArray, z.array(productDetailSectionInputSchema).max(maxProductDetailSections))
+      .default([]),
     status: z.enum(["active", "draft", "archived"]).default("draft")
   })
   .superRefine((payload, ctx) => {
@@ -130,15 +152,15 @@ export const adminProductPayloadSchema = z
     }
 
     requireField(payload.heroImagePath, ["heroImagePath"], "판매중 발행에는 대표 이미지가 필요합니다.", ctx);
-    requireField(payload.collectionSlug, ["collectionSlug"], "판매중 발행에는 컬렉션이 필요합니다.", ctx);
+    requireField(payload.category, ["category"], "판매중 발행에는 카테고리가 필요합니다.", ctx);
     requireField(payload.difficulty, ["difficulty"], "판매중 발행에는 난이도가 필요합니다.", ctx);
 
-    if (payload.productType === "curated_set") {
+    if (payload.productType === "set") {
       if (payload.includedItems.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["includedItems"],
-          message: "큐레이션 세트를 발행하려면 구성품을 1개 이상 등록해야 합니다."
+          message: "세트 상품을 발행하려면 구성품을 1개 이상 등록해야 합니다."
         });
       }
 
@@ -146,7 +168,7 @@ export const adminProductPayloadSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["routineSteps"],
-          message: "큐레이션 세트를 발행하려면 루틴 단계를 1개 이상 등록해야 합니다."
+          message: "세트 상품을 발행하려면 사용 단계를 1개 이상 등록해야 합니다."
         });
       }
     }

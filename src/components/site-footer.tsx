@@ -12,31 +12,33 @@ export function SiteFooter() {
             </span>
           </p>
           <p className="mt-3 max-w-md text-white/70">
-            K-beauty made simple for the world. Curated routine kits, tutorial-first
+            K-beauty made simple for the world. Beauty sets, tutorial-first
             product detail, and PayPal checkout for US shoppers.
           </p>
         </div>
         <nav className="grid gap-2 text-white/70">
           <p className="font-brand-heavy text-xs uppercase text-white">Shop</p>
           <Link href="/shop" className="hover:text-white">
-            All kits
+            All sets
           </Link>
-          <Link href="/shop?collection=daily-glow" className="hover:text-white">
-            Glow kits
+          <Link href="/shop" className="hover:text-white">
+            Skincare
           </Link>
-          <Link href="/shop?collection=glass-skin" className="hover:text-white">
-            Skin-prep kits
+          <Link href="/makeup" className="hover:text-white">
+            Makeup
           </Link>
         </nav>
         <nav className="grid gap-2 text-white/70">
-          <p className="font-brand-heavy text-xs uppercase text-white">For creators</p>
-          <Link href="/promoter" className="hover:text-white">
-            Promoter portal
+          <p className="font-brand-heavy text-xs uppercase text-white">Help</p>
+          <Link href="/policies/shipping" className="hover:text-white">
+            Shipping
           </Link>
-          <Link href="/shop" className="hover:text-white">
-            Product links
+          <Link href="/policies/returns" className="hover:text-white">
+            Returns
           </Link>
-          <span>Made in Seoul</span>
+          <Link href="/account/orders" className="hover:text-white">
+            Order updates
+          </Link>
         </nav>
         <nav className="grid gap-2 text-white/70">
           <p className="font-brand-heavy text-xs uppercase text-white">Policies</p>
@@ -55,7 +57,7 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className="border-t border-white/10 py-5 text-center text-xs text-white/50">
-        (c) 2026 shipK. K-beauty routine kits shipped from Korea.
+        (c) 2026 shipK. K-beauty sets shipped from Korea.
       </div>
     </footer>
   );

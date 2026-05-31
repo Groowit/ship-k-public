@@ -18,7 +18,7 @@ export default async function AuthPage({
         </p>
         <h1 className="mt-2 shipk-heading text-5xl">Account access</h1>
         <p className="mt-3 text-muted-foreground">
-          Sign in to buy routine kits, save favorites, and check your orders.
+          Sign in to buy beauty sets, save favorites, and check your orders.
         </p>
       </div>
       <AuthForm nextPath={nextPath} initialMode={initialMode} />

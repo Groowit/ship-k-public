@@ -23,7 +23,7 @@ import {
   Video,
   X
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ProductDetailView } from "@/components/product-detail-view";
@@ -118,11 +118,54 @@ export function BrandProductDetailEditor({ product }: { product: Product }) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("edit");
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [draggedSectionId, setDraggedSectionId] = useState<string | null>(null);
+  const editorRootRef = useRef<HTMLDivElement>(null);
   const previewProduct = useMemo(() => toPreviewProduct(product, sections), [product, sections]);
   const activeSectionId = selectedSectionId ?? sections[0]?.id ?? null;
   const selectedIndex = sections.findIndex((section) => section.id === activeSectionId);
   const selectedSection = selectedIndex >= 0 ? sections[selectedIndex] : null;
+
+  useEffect(() => {
+    const root = editorRootRef.current;
+
+    if (!root) {
+      return;
+    }
+
+    const rootElement = root;
+
+    function selectSectionFromEvent(event: Event) {
+      const target = event.target;
+
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const sectionElement = target.closest<HTMLElement>("[data-detail-section-id]");
+
+      if (!sectionElement || !rootElement.contains(sectionElement)) {
+        return;
+      }
+
+      const sectionId = sectionElement.dataset.detailSectionId;
+
+      if (sectionId) {
+        setSelectedSectionId(sectionId);
+      }
+    }
+
+    rootElement.addEventListener("focusin", selectSectionFromEvent);
+    rootElement.addEventListener("pointerdown", selectSectionFromEvent);
+    rootElement.addEventListener("mousedown", selectSectionFromEvent);
+    rootElement.addEventListener("click", selectSectionFromEvent);
+
+    return () => {
+      rootElement.removeEventListener("focusin", selectSectionFromEvent);
+      rootElement.removeEventListener("pointerdown", selectSectionFromEvent);
+      rootElement.removeEventListener("mousedown", selectSectionFromEvent);
+      rootElement.removeEventListener("click", selectSectionFromEvent);
+    };
+  }, []);
 
   async function saveContent() {
     setSaveState("saving");
@@ -179,14 +222,33 @@ export function BrandProductDetailEditor({ product }: { product: Product }) {
     setSections((current) => normalizeSortOrders(moveItem(current, from, to)));
   }
 
-  function dropSection(targetIndex: number) {
-    if (draggedIndex === null || draggedIndex === targetIndex) {
-      setDraggedIndex(null);
+  function startSectionDrag(event: React.DragEvent<HTMLButtonElement>, sectionId: string) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", sectionId);
+    setDraggedSectionId(sectionId);
+    setSelectedSectionId(sectionId);
+  }
+
+  function dropSection(event: React.DragEvent<HTMLElement>, targetSectionId: string) {
+    event.preventDefault();
+    const sourceSectionId = draggedSectionId ?? event.dataTransfer.getData("text/plain");
+
+    if (!sourceSectionId || sourceSectionId === targetSectionId) {
+      setDraggedSectionId(null);
       return;
     }
 
-    moveSection(draggedIndex, targetIndex);
-    setDraggedIndex(null);
+    const from = sections.findIndex((section) => section.id === sourceSectionId);
+    const to = sections.findIndex((section) => section.id === targetSectionId);
+
+    if (from < 0 || to < 0) {
+      setDraggedSectionId(null);
+      return;
+    }
+
+    moveSection(from, to);
+    setSelectedSectionId(sourceSectionId);
+    setDraggedSectionId(null);
   }
 
   if (previewTab === "preview") {
@@ -257,30 +319,41 @@ export function BrandProductDetailEditor({ product }: { product: Product }) {
         ) : null}
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div ref={editorRootRef} className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <main className="grid gap-4">
           <SectionInsertBar onInsert={(type) => insertSection(type, -1)} />
-          <section className="grid gap-4">
+          <section className="grid gap-4" role="list" aria-label="상세 섹션 목록">
             {sections.map((section, index) => (
               <article
                 key={section.id}
-                draggable
+                data-detail-section-id={section.id}
+                role="listitem"
+                tabIndex={0}
+                aria-label={`상세 섹션 ${index + 1}: ${sectionLabels[section.sectionType]}`}
+                onPointerDownCapture={() => setSelectedSectionId(section.id)}
+                onMouseDownCapture={() => setSelectedSectionId(section.id)}
+                onClickCapture={() => setSelectedSectionId(section.id)}
                 onFocusCapture={() => setSelectedSectionId(section.id)}
-                onDragStart={() => setDraggedIndex(index)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => dropSection(index)}
-                onDragEnd={() => setDraggedIndex(null)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(event) => dropSection(event, section.id)}
                 className={cn(
-                  "group rounded-md border bg-white px-5 py-4 transition",
+                  "group rounded-md border bg-white px-5 py-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3d7f]/40",
                   activeSectionId === section.id && "border-[#ff3d7f] ring-2 ring-[#ff3d7f]/15",
-                  draggedIndex === index && "opacity-60"
+                  draggedSectionId === section.id && "opacity-60"
                 )}
               >
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <button
                     type="button"
+                    draggable
+                    aria-label={`섹션 ${index + 1} ${sectionLabels[section.sectionType]} 선택 및 드래그`}
                     className="flex min-w-0 items-center gap-2 text-left text-muted-foreground transition hover:text-foreground"
                     onClick={() => setSelectedSectionId(section.id)}
+                    onDragStart={(event) => startSectionDrag(event, section.id)}
+                    onDragEnd={() => setDraggedSectionId(null)}
                   >
                     <span
                       className="flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-md border bg-muted"
@@ -374,7 +447,7 @@ function EditorActionBar({
 
   const bar = (
     <div
-      className="border-t bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur"
+      className="border-t bg-white/95 px-4 py-3 backdrop-blur"
       style={{
         position: "fixed",
         left: 0,
@@ -1155,7 +1228,7 @@ function SelectField<TValue extends string>({
         aria-label={label}
         value={value}
         onChange={(event) => onChange(event.target.value as TValue)}
-        className="focus-ring h-11 w-full rounded-md border bg-white px-3 text-sm shadow-sm"
+        className="focus-ring h-11 w-full rounded-md border bg-white px-3 text-sm"
       >
         {options.map(([optionValue, labelText]) => (
           <option key={optionValue} value={optionValue}>
@@ -1187,7 +1260,7 @@ function TextStyleControls({
   onWeightChange?: (value: string) => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-md border bg-white p-3 shadow-sm">
+    <div className="grid gap-3 rounded-md border bg-white p-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-black text-muted-foreground">{label} 스타일</p>
         <span className="rounded-md border bg-muted px-2 py-1 text-xs font-black" aria-hidden="true">

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import {
-  filterProductsByCollection,
-  getActiveCollections,
+  filterProductsByCategory,
+  getActiveCategories,
   Product
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
@@ -17,8 +17,9 @@ export type CatalogFilter = {
 export function CatalogPage({
   activeProducts,
   basePath,
-  selectedCollection,
+  selectedFilterSlug,
   filters,
+  filterQueryParam = "filter",
   allFilterLabel = "All kits",
   eyebrow,
   title = "Get the K-Look",
@@ -27,28 +28,29 @@ export function CatalogPage({
 }: {
   activeProducts: Product[];
   basePath: string;
-  selectedCollection: string;
+  selectedFilterSlug: string;
   filters?: CatalogFilter[];
+  filterQueryParam?: string;
   allFilterLabel?: string;
   eyebrow?: string;
   title?: string;
   highlightedTitleText?: string;
   description?: string;
 }) {
-  const collections = getActiveCollections(activeProducts);
+  const categories = getActiveCategories(activeProducts);
   const filterItems =
     filters ??
-    collections.map((collection) => ({
-      slug: collection.slug,
-      label: collection.name,
-      matches: (product: Product) => product.collectionSlug === collection.slug
+    categories.map((category) => ({
+      slug: category.toLowerCase(),
+      label: category,
+      matches: (product: Product) => product.category === category
     }));
-  const selectedFilter = filterItems.find((filter) => filter.slug === selectedCollection);
+  const selectedFilter = filterItems.find((filter) => filter.slug === selectedFilterSlug);
   const products = filters
-    ? selectedCollection === "all" || !selectedFilter
+    ? selectedFilterSlug === "all" || !selectedFilter
       ? activeProducts
       : activeProducts.filter(selectedFilter.matches)
-    : filterProductsByCollection(activeProducts, selectedCollection);
+    : filterProductsByCategory(activeProducts, selectedFilter?.label ?? selectedFilterSlug);
 
   return (
     <section className="container py-10">
@@ -66,15 +68,15 @@ export function CatalogPage({
             <p className="mt-3 max-w-2xl text-muted-foreground">{description}</p>
           ) : null}
         </div>
-        <nav className="flex gap-3 overflow-x-auto pb-1" aria-label="Collection filters">
-          <FilterLink href={basePath} active={selectedCollection === "all"}>
+        <nav className="flex gap-3 overflow-x-auto pb-1" aria-label="Product filters">
+          <FilterLink href={basePath} active={selectedFilterSlug === "all"}>
             {allFilterLabel}
           </FilterLink>
           {filterItems.map((filter) => (
             <FilterLink
               key={filter.slug}
-              href={`${basePath}?collection=${filter.slug}`}
-              active={selectedCollection === filter.slug}
+              href={`${basePath}?${filterQueryParam}=${filter.slug}`}
+              active={selectedFilterSlug === filter.slug}
             >
               {filter.label}
             </FilterLink>
@@ -84,10 +86,10 @@ export function CatalogPage({
       <div className="mb-7 grid gap-4 md:grid-cols-[auto_1fr_auto] md:items-center">
         <div className="inline-flex h-12 w-fit items-center gap-3 rounded-md border border-[#d8d8d8] bg-white px-4 text-sm font-black text-muted-foreground">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-          Collection filter
+          Product filter
         </div>
         <p className="text-sm font-semibold text-muted-foreground md:text-center">
-          {products.length} kits ready for your routine
+          {products.length} products ready to ship
         </p>
         <div className="inline-flex w-fit overflow-hidden rounded-md border border-[#d8d8d8] bg-white text-sm font-black text-muted-foreground">
           <span className="px-4 py-3">1</span>

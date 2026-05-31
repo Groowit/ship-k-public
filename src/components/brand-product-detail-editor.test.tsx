@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BrandProductDetailEditor } from "./brand-product-detail-editor";
+import type { Product } from "@/lib/products";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -106,6 +107,27 @@ describe("BrandProductDetailEditor", () => {
     });
   });
 
+  it("selects and reorders detail sections from blocks beyond the first one", () => {
+    render(<BrandProductDetailEditor product={productFixture()} />);
+
+    expect(screen.getByLabelText("제목 단계")).toBeInTheDocument();
+
+    fireEvent.focusIn(screen.getByLabelText("본문"));
+
+    expect(screen.getByLabelText("본문 굵기")).toBeInTheDocument();
+
+    const dataTransfer = createDataTransfer();
+    fireEvent.dragStart(screen.getByRole("button", { name: "섹션 2 문단 선택 및 드래그" }), {
+      dataTransfer
+    });
+    fireEvent.dragOver(screen.getByRole("listitem", { name: "상세 섹션 1: 제목" }), { dataTransfer });
+    fireEvent.drop(screen.getByRole("listitem", { name: "상세 섹션 1: 제목" }), { dataTransfer });
+
+    const sectionItems = screen.getAllByRole("listitem", { name: /상세 섹션/ });
+    expect(sectionItems[0]).toHaveAccessibleName("상세 섹션 1: 문단");
+    expect(screen.getByLabelText("본문 굵기")).toBeInTheDocument();
+  });
+
   it("saves the selected step layout from the inspector", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -150,25 +172,34 @@ describe("BrandProductDetailEditor", () => {
   });
 });
 
-function productFixture() {
+function createDataTransfer() {
+  const values = new Map<string, string>();
+
+  return {
+    effectAllowed: "",
+    dropEffect: "",
+    setData: vi.fn((type: string, value: string) => values.set(type, value)),
+    getData: vi.fn((type: string) => values.get(type) ?? "")
+  };
+}
+
+function productFixture(): Product {
   return {
     id: "product_1",
     slug: "glow-set",
-    productType: "curated_set" as const,
+    productType: "set" as const,
     brandName: "Glow Brand",
     name: "Glow Set",
-    category: "Routine Kit",
-    collectionSlug: "daily-glow" as const,
-    collectionName: "Daily Glow",
+    category: "Skincare",
     difficulty: "Beginner" as const,
     itemCount: 1,
-    themeLabel: "DAILY",
     shortDescription: "기존 요약",
     description: "기존 상세 본문",
     bestFor: "아침 루틴",
     result: "촉촉한 마무리",
     heroImagePath: "/hero.png",
     badges: [],
+    tags: ["SKINCARE", "SET"],
     status: "active" as const,
     updatedAt: "2026-05-28T00:00:00.000Z",
     option: {

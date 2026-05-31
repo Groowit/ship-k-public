@@ -1,5 +1,7 @@
 import { getAppUrl } from "./env";
 
+const localLoopbackHosts = ["localhost", "127.0.0.1", "[::1]"];
+
 export class UnsafeRequestOriginError extends Error {
   status = 403;
 
@@ -15,10 +17,10 @@ export function assertSameOriginRequest(request: Request) {
   }
 
   const allowedOrigins = new Set<string>();
-  allowedOrigins.add(new URL(request.url).origin);
+  addAllowedOrigin(allowedOrigins, request.url);
 
   try {
-    allowedOrigins.add(new URL(getAppUrl()).origin);
+    addAllowedOrigin(allowedOrigins, getAppUrl());
   } catch {
     // A malformed app URL should not make an otherwise same-origin request fail.
   }
@@ -33,4 +35,22 @@ export function assertSameOriginRequest(request: Request) {
     }
     throw new UnsafeRequestOriginError();
   }
+}
+
+function addAllowedOrigin(allowedOrigins: Set<string>, rawUrl: string) {
+  const url = new URL(rawUrl);
+  allowedOrigins.add(url.origin);
+
+  if (process.env.NODE_ENV === "production" || !isLoopbackHost(url.hostname)) {
+    return;
+  }
+
+  const port = url.port ? `:${url.port}` : "";
+  for (const host of localLoopbackHosts) {
+    allowedOrigins.add(`${url.protocol}//${host}${port}`);
+  }
+}
+
+function isLoopbackHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }

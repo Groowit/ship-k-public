@@ -25,19 +25,18 @@ const productResponse = {
 };
 
 const validPayload = {
-  productType: "curated_set",
+  productType: "set",
   brandName: "shipK Curated",
   name: "Rice Glow Kit",
-  category: "Routine Kit",
-  collectionSlug: "daily-glow",
+  category: "Skincare",
+  tags: ["rice", "glow"],
   difficulty: "Beginner",
   itemCount: 2,
-  themeLabel: "DAILY",
   shortDescription: "A calm daily glow routine.",
   description: "A structured test routine for admin API coverage.",
   bestFor: "Morning prep",
   result: "Fresh finish",
-  optionName: "2-item routine kit",
+  optionName: "2-item set",
   sku: "rice-glow",
   priceUsd: 49,
   stockQuantity: 8,
@@ -69,6 +68,21 @@ const validPayload = {
       body: "Balanced routine copy."
     }
   ],
+  detailSections: [
+    {
+      sectionType: "heading",
+      schemaVersion: 1,
+      text: "Detail story",
+      level: "h2",
+      align: "left"
+    },
+    {
+      sectionType: "text",
+      schemaVersion: 1,
+      body: "Customer-facing detail document copy.",
+      align: "left"
+    }
+  ],
   status: "draft"
 };
 
@@ -76,7 +90,7 @@ describe("admin product API routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireCurrentAdmin).mockResolvedValue({
-      user: {} as never,
+      user: { id: "admin_1" } as never,
       profile: null
     });
     vi.mocked(createProduct).mockResolvedValue(productResponse as never);
@@ -102,11 +116,14 @@ describe("admin product API routes", () => {
     expect(createProduct).toHaveBeenCalledWith(
       expect.objectContaining({
         priceCents: 4900,
+        tags: ["RICE", "GLOW"],
         sku: "RICE-GLOW",
         introVideoUrl: "https://www.youtube.com/embed/abc123",
         galleryImages: validPayload.galleryImages,
         includedItems: validPayload.includedItems,
         routineSteps: validPayload.routineSteps,
+        detailSections: validPayload.detailSections,
+        detailActorId: "admin_1",
         status: "draft"
       })
     );
@@ -123,6 +140,7 @@ describe("admin product API routes", () => {
       "product_1",
       expect.objectContaining({
         priceCents: 4900,
+        detailActorId: "admin_1",
         status: "active"
       })
     );

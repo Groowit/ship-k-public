@@ -1,24 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
   launchCatalogProducts,
-  filterProductsByCollection,
-  getActiveCollections,
-  productCollections
+  filterProductsByCategory,
+  getActiveCategories,
+  productCategories
 } from "./products";
 
-describe("curated set catalog", () => {
-  it("ships six active launch catalog curated sets", () => {
+describe("set catalog", () => {
+  it("ships six active launch catalog sets", () => {
     expect(launchCatalogProducts).toHaveLength(6);
-    expect(launchCatalogProducts.every((product) => product.productType === "curated_set")).toBe(
-      true
-    );
+    expect(launchCatalogProducts.every((product) => product.productType === "set")).toBe(true);
     expect(launchCatalogProducts.map((product) => product.slug)).toEqual([
-      "daily-k-glow-set",
-      "k-pop-idol-look",
-      "glass-skin-starter",
-      "y2k-cute-bomb",
-      "cool-tone-drama",
-      "warm-honey-look"
+      "skincare-starter-set",
+      "makeup-starter-set",
+      "hydration-skincare-set",
+      "gloss-makeup-set",
+      "definition-makeup-set",
+      "warm-makeup-set"
     ]);
     expect(launchCatalogProducts.map((product) => product.option.priceCents)).toEqual([
       4900, 6900, 5500, 5900, 6500, 5900
@@ -26,21 +24,40 @@ describe("curated set catalog", () => {
     expect(launchCatalogProducts.every((product) => product.galleryImages.length > 0)).toBe(true);
   });
 
-  it("keeps Date Night available for admin but hidden until it has an active set", () => {
-    expect(productCollections.map((collection) => collection.slug)).toContain(
-      "date-night"
+  it("keeps product taxonomy limited to the real shop categories", () => {
+    expect(productCategories).toEqual(["Skincare", "Makeup"]);
+    expect(getActiveCategories(launchCatalogProducts)).toEqual(["Skincare", "Makeup"]);
+    expect(new Set(launchCatalogProducts.map((product) => product.category))).toEqual(
+      new Set(["Skincare", "Makeup"])
     );
-    expect(
-      getActiveCollections(launchCatalogProducts).map((collection) => collection.slug)
-    ).not.toContain("date-night");
   });
 
-  it("filters products by collection slug and leaves All unfiltered", () => {
-    expect(filterProductsByCollection(launchCatalogProducts, "all")).toHaveLength(6);
-    expect(filterProductsByCollection(launchCatalogProducts, undefined)).toHaveLength(6);
-    expect(filterProductsByCollection(launchCatalogProducts, "daily-glow")).toEqual([
-      launchCatalogProducts[0]
+  it("filters products by category and leaves All unfiltered", () => {
+    expect(filterProductsByCategory(launchCatalogProducts, "all")).toHaveLength(6);
+    expect(filterProductsByCategory(launchCatalogProducts, undefined)).toHaveLength(6);
+    expect(filterProductsByCategory(launchCatalogProducts, "Skincare")).toEqual([
+      launchCatalogProducts[0],
+      launchCatalogProducts[2]
     ]);
-    expect(filterProductsByCollection(launchCatalogProducts, "date-night")).toEqual([]);
+    expect(filterProductsByCategory(launchCatalogProducts, "makeup")).toEqual([
+      launchCatalogProducts[1],
+      launchCatalogProducts[3],
+      launchCatalogProducts[4],
+      launchCatalogProducts[5]
+    ]);
+    expect(filterProductsByCategory(launchCatalogProducts, "missing")).toEqual([]);
+  });
+
+  it("keeps legacy collection fields out of public product objects", () => {
+    expect(Object.keys(launchCatalogProducts[0])).not.toContain("collectionSlug");
+    expect(Object.keys(launchCatalogProducts[0])).not.toContain("collectionName");
+    expect(Object.keys(launchCatalogProducts[0])).not.toContain("themeLabel");
+  });
+
+  it("separates merchandising badges from product tags", () => {
+    expect(launchCatalogProducts[0].badges).toEqual([]);
+    expect(launchCatalogProducts[0].tags).toEqual(["STARTER", "SKINCARE", "5 ITEMS"]);
+    expect(launchCatalogProducts[2].badges).toEqual([]);
+    expect(launchCatalogProducts[2].tags).toContain("HYDRATION");
   });
 });

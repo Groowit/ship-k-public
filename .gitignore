@@ -11,6 +11,7 @@ node_modules/
 
 # Build and framework output
 .next/
+.next-stale-*/
 out/
 dist/
 build/

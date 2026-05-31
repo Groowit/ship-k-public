@@ -28,15 +28,15 @@ describe("mock PayPal orders", () => {
     const order = await createPayPalOrder({
       value: "58.99",
       currencyCode: "USD",
-      description: "Daily K-Glow Set x 1",
-      customId: "daily-k-glow-set:1"
+      description: "Skincare Starter Set x 1",
+      customId: "skincare-starter-set:1"
     });
 
     vi.resetModules();
     const { capturePayPalOrder } = await import("./paypal");
     const capture = await capturePayPalOrder(order.id);
 
-    expect(capture.purchase_units?.[0]?.custom_id).toBe("daily-k-glow-set:1");
+    expect(capture.purchase_units?.[0]?.custom_id).toBe("skincare-starter-set:1");
     expect(capture.purchase_units?.[0]?.amount).toEqual({
       currency_code: "USD",
       value: "58.99"

@@ -14,7 +14,7 @@ import {
 
 export const metadata: Metadata = {
   title: "shipK | Korean beauty shipped to the US",
-  description: "A US-first storefront for curated Korean beauty routine kits and creator referrals."
+  description: "A US-first storefront for Korean beauty sets, single products, and creator referrals."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

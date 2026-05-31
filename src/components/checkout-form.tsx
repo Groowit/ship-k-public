@@ -176,7 +176,7 @@ export function CheckoutForm({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_390px]">
-      <Card className="rounded-md border-2 border-black shadow-[5px_5px_0_#0a0a0a]">
+      <Card className="rounded-md border-2 border-black">
         <CardHeader>
           <CardTitle className="shipk-heading text-2xl">Shipping information</CardTitle>
         </CardHeader>
@@ -282,7 +282,7 @@ export function CheckoutForm({
           </div>
         </CardContent>
       </Card>
-      <Card className="h-fit rounded-md border-2 border-black shadow-[5px_5px_0_#0a0a0a]">
+      <Card className="h-fit rounded-md border-2 border-black">
         <CardHeader>
           <CardTitle className="shipk-heading text-2xl">Order summary</CardTitle>
         </CardHeader>

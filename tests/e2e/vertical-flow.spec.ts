@@ -6,8 +6,8 @@ const adminEmail = process.env.E2E_ADMIN_EMAIL;
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
 
 test("unauthenticated customer is redirected to auth before checkout", async ({ page }) => {
-  await page.goto("/products/daily-k-glow-set?ref=creator_code&link=daily_glow_demo");
-  await expect(page.getByRole("heading", { name: "Daily K-Glow Set" })).toBeVisible();
+  await page.goto("/products/skincare-starter-set?ref=creator_code&link=skincare_demo");
+  await expect(page.getByRole("heading", { name: "Skincare Starter Set" })).toBeVisible();
 
   await page.getByRole("link", { name: "Buy now" }).click();
 
@@ -27,13 +27,13 @@ test("auth page account mode controls stay interactive after hydration", async (
 }) => {
   await page.goto("/auth?next=%2Fshop");
 
-  await page.getByRole("button", { name: "Switch to create account" }).click();
+  await page.getByRole("button", { name: "Create an account" }).click();
   await expect(page.getByText("Create your shipK account")).toBeVisible();
   await expect(page.getByLabel(/I agree to the Terms/i)).toBeVisible();
 
-  await page.getByRole("button", { name: "Switch to sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText("Sign in to shipK")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /Google/ })).toBeEnabled();
 });
 
 test("signed-out account icon opens sign-in and register menu", async ({ page }) => {
@@ -53,9 +53,9 @@ test("signed-out account icon opens sign-in and register menu", async ({ page })
 
 test("mobile product detail keeps the checkout entry usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/products/glass-skin-starter");
+  await page.goto("/products/hydration-skincare-set");
 
-  await expect(page.getByRole("heading", { name: "Glass Skin Starter" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hydration Skincare Set" })).toBeVisible();
   await page.getByRole("link", { name: "Buy now" }).click();
   await expect(page).toHaveURL(/\/auth\?next=/);
 });
@@ -63,52 +63,52 @@ test("mobile product detail keeps the checkout entry usable", async ({ page }) =
 test("shop shows skincare filters and filters by included item category", async ({ page }) => {
   await page.goto("/shop");
 
-  const filters = page.getByLabel("Collection filters");
+  const filters = page.getByLabel("Product filters");
 
-  await expect(page.getByRole("heading", { name: /Get the Glass Skin/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Skincare Sets/i })).toBeVisible();
   await expect(filters.getByRole("link", { name: "All", exact: true })).toBeVisible();
   await expect(filters.getByRole("link", { name: "Face Cleansers" })).toBeVisible();
   await expect(filters.getByRole("link", { name: "Face Serums" })).toBeVisible();
   await expect(filters.getByRole("link", { name: "Moisturizers" })).toBeVisible();
   await expect(filters.getByRole("link", { name: "Toners" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Daily K-Glow Set/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Glass Skin Starter/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /K-Pop Idol Look/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Skincare Starter Set/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Hydration Skincare Set/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Makeup Starter Set/i })).toHaveCount(0);
 
   await filters.getByRole("link", { name: "Toners" }).click();
 
-  await expect(page).toHaveURL(/collection=toners/);
-  await expect(page.getByRole("link", { name: /Daily K-Glow Set/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Glass Skin Starter/i })).toHaveCount(0);
+  await expect(page).toHaveURL(/filter=toners/);
+  await expect(page.getByRole("link", { name: /Skincare Starter Set/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Hydration Skincare Set/i })).toHaveCount(0);
 });
 
 test("makeup catalog shows the random sticker layer", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/makeup");
 
-  await expect(page.getByRole("heading", { name: /Get the K-Look/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Makeup Sets/i })).toBeVisible();
   await expect(page.getByRole("link", { name: "All ★" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Lips" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Eyes" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Face" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Cheeks" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Makeup set" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Makeup set", exact: true })).toBeVisible();
   await expect(page.getByTestId("floating-sticker-layer")).toBeVisible();
   await expect(page.getByTestId("floating-sticker")).toHaveCount(4);
 
   await page.getByRole("link", { name: "Lips" }).click();
 
-  await expect(page).toHaveURL(/collection=lips/);
-  await expect(page.getByRole("link", { name: /K-Pop Idol Look/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Daily K-Glow Set/i })).toHaveCount(0);
+  await expect(page).toHaveURL(/filter=lips/);
+  await expect(page.getByRole("link", { name: /Makeup Starter Set/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Skincare Starter Set/i })).toHaveCount(0);
 });
 
-test("curated set detail shows media fallback, items, and routine steps", async ({ page }) => {
-  await page.goto("/products/daily-k-glow-set");
+test("set detail shows media fallback, items, and use steps", async ({ page }) => {
+  await page.goto("/products/skincare-starter-set");
 
-  await expect(page.getByAltText("Daily K-Glow Set intro image")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Everything in the set" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Follow the look in order" })).toBeVisible();
+  await expect(page.getByAltText("Skincare Starter Set intro image")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Everything inside the set" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Step-by-step order" })).toBeVisible();
   await expect(page.getByText("Cloud Rice Foam Cleanser")).toBeVisible();
   await expect(page.getByText("Cleanse lightly")).toBeVisible();
   await expect(page.getByText("$49.00").first()).toBeVisible();
@@ -137,7 +137,7 @@ test.describe("authenticated customer flow", () => {
     page
   }) => {
     await signIn(page, customerEmail!, customerPassword!);
-    await page.goto("/products/daily-k-glow-set?ref=creator_code&link=daily_glow_demo");
+    await page.goto("/products/skincare-starter-set?ref=creator_code&link=skincare_demo");
     await page.getByRole("link", { name: "Buy now" }).click();
 
     await expect(page.getByRole("heading", { name: "Pay with PayPal" })).toBeVisible();

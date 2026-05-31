@@ -1,6 +1,6 @@
-import type { ProductCollectionSlug } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
-export type CollectionVisual = {
+export type ProductVisual = {
   label: string;
   themeWord: string;
   productType: string;
@@ -10,9 +10,9 @@ export type CollectionVisual = {
   stickerPath: string;
 };
 
-const defaultVisual: CollectionVisual = {
+const defaultVisual: ProductVisual = {
   label: "shipK",
-  themeWord: "K-LOOK",
+  themeWord: "K-BEAUTY",
   productType: "SEOUL DROP",
   bgClass: "bg-[#fff8f0]",
   accentClass: "text-[#ff3d7f]",
@@ -20,69 +20,46 @@ const defaultVisual: CollectionVisual = {
   stickerPath: "/shipk-brand/stickers/user-random/cherry.jpg"
 };
 
-export const collectionVisuals: Record<ProductCollectionSlug, CollectionVisual> = {
-  "daily-glow": {
-    label: "Daily Glow",
-    themeWord: "DAILY",
-    productType: "STARTER PICK",
-    bgClass: "bg-[#ffd6e3]",
-    accentClass: "text-[#ff3d7f]",
-    saleClass: "bg-[#ff6447]",
-    stickerPath: "/shipk-brand/stickers/user-random/cherry.jpg"
+const productVisuals: Record<Product["productType"], Record<Product["category"], ProductVisual>> = {
+  set: {
+    Skincare: {
+      label: "Skincare",
+      themeWord: "SKINCARE",
+      productType: "SKINCARE SET",
+      bgClass: "bg-[#b4f0dc]",
+      accentClass: "text-[#138a64]",
+      saleClass: "bg-[#ff6447]",
+      stickerPath: "/shipk-brand/stickers/user-random/rainbow.jpg"
+    },
+    Makeup: {
+      label: "Makeup",
+      themeWord: "MAKEUP",
+      productType: "MAKEUP SET",
+      bgClass: "bg-[#ffe25a]",
+      accentClass: "text-[#793de1]",
+      saleClass: "bg-[#ef76a9]",
+      stickerPath: "/shipk-brand/stickers/user-random/pink-star.jpg"
+    }
   },
-  "k-pop-idol": {
-    label: "K-Pop Idol",
-    themeWord: "IDOL",
-    productType: "TREND EDIT",
-    bgClass: "bg-[#ffe25a]",
-    accentClass: "text-[#793de1]",
-    saleClass: "bg-[#ef76a9]",
-    stickerPath: "/shipk-brand/stickers/user-random/pink-star.jpg"
-  },
-  "glass-skin": {
-    label: "Glass Skin",
-    themeWord: "GLASS",
-    productType: "GLOW KIT",
-    bgClass: "bg-[#b4f0dc]",
-    accentClass: "text-[#138a64]",
-    saleClass: "bg-[#ff6447]",
-    stickerPath: "/shipk-brand/stickers/user-random/rainbow.jpg"
-  },
-  "y2k-cute": {
-    label: "Y2K Cute",
-    themeWord: "Y2K",
-    productType: "PLAY KIT",
-    bgClass: "bg-[#c8f26c]",
-    accentClass: "text-[#ff3d7f]",
-    saleClass: "bg-[#ef76a9]",
-    stickerPath: "/shipk-brand/stickers/user-random/unicorn.jpg"
-  },
-  "cool-tone": {
-    label: "Cool Tone",
-    themeWord: "COOL",
-    productType: "COOL EDIT",
-    bgClass: "bg-[#bde0fe]",
-    accentClass: "text-[#2563b7]",
-    saleClass: "bg-[#793de1]",
-    stickerPath: "/shipk-brand/stickers/user-random/purple-star.jpg"
-  },
-  "warm-tone": {
-    label: "Warm Tone",
-    themeWord: "WARM",
-    productType: "WARM EDIT",
-    bgClass: "bg-[#ff7a5c]",
-    accentClass: "text-[#c24a2c]",
-    saleClass: "bg-[#ff6447]",
-    stickerPath: "/shipk-brand/stickers/user-random/yellow-star.jpg"
-  },
-  "date-night": {
-    label: "Date Night",
-    themeWord: "DATE",
-    productType: "NIGHT KIT",
-    bgClass: "bg-[#d8c2ff]",
-    accentClass: "text-[#793de1]",
-    saleClass: "bg-[#ef76a9]",
-    stickerPath: "/shipk-brand/stickers/user-random/perfume.jpg"
+  single: {
+    Skincare: {
+      label: "Skincare",
+      themeWord: "SKINCARE",
+      productType: "SKINCARE PRODUCT",
+      bgClass: "bg-[#ffd6e3]",
+      accentClass: "text-[#ff3d7f]",
+      saleClass: "bg-[#ff6447]",
+      stickerPath: "/shipk-brand/stickers/user-random/cherry.jpg"
+    },
+    Makeup: {
+      label: "Makeup",
+      themeWord: "MAKEUP",
+      productType: "MAKEUP PRODUCT",
+      bgClass: "bg-[#c8f26c]",
+      accentClass: "text-[#ff3d7f]",
+      saleClass: "bg-[#ef76a9]",
+      stickerPath: "/shipk-brand/stickers/user-random/palette.jpg"
+    }
   }
 };
 
@@ -101,12 +78,12 @@ export const stickerCloud = [
   }
 ] as const;
 
-export function getCollectionVisual(slug?: ProductCollectionSlug | string | null) {
-  if (!slug || !(slug in collectionVisuals)) {
+export function getProductVisual(product?: Pick<Product, "productType" | "category"> | null) {
+  if (!product) {
     return defaultVisual;
   }
 
-  return collectionVisuals[slug as ProductCollectionSlug];
+  return productVisuals[product.productType]?.[product.category] ?? defaultVisual;
 }
 
 export function getProductRank(index: number) {

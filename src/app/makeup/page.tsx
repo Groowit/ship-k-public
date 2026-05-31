@@ -6,8 +6,6 @@ export const dynamic = "force-dynamic";
 
 const eyeCategories = new Set(["Eye", "Brow", "Lash"]);
 const faceCategories = new Set(["Base", "Finish", "Tool"]);
-const makeupCategories = new Set(["Base", "Brow", "Cheek", "Eye", "Finish", "Lash", "Lip", "Tool"]);
-
 const makeupFilters: CatalogFilter[] = [
   {
     slug: "lips",
@@ -32,7 +30,7 @@ const makeupFilters: CatalogFilter[] = [
   {
     slug: "makeup-set",
     label: "Makeup set",
-    matches: isMakeupRoutine
+    matches: (product) => product.productType === "set"
   }
 ];
 
@@ -42,23 +40,24 @@ export default async function MakeupPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const selectedCollection =
-    typeof params.collection === "string" ? params.collection : "all";
-  const activeProducts = (await listActiveProducts()).filter(isMakeupRoutine);
+  const selectedFilterSlug =
+    typeof params.filter === "string" ? params.filter : "all";
+  const activeProducts = (await listActiveProducts()).filter(
+    (product) => product.category === "Makeup"
+  );
 
   return (
     <CatalogPage
       activeProducts={activeProducts}
       basePath="/makeup"
-      selectedCollection={selectedCollection}
+      selectedFilterSlug={selectedFilterSlug}
       filters={makeupFilters}
+      filterQueryParam="filter"
       allFilterLabel="All ★"
+      title="Makeup Sets"
+      highlightedTitleText="Makeup"
     />
   );
-}
-
-function isMakeupRoutine(product: Product) {
-  return hasIncludedCategory(product, (category) => makeupCategories.has(category));
 }
 
 function hasIncludedCategory(

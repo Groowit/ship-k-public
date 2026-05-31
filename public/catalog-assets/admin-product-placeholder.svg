@@ -1,9 +1,11 @@
-<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1200" height="1200" rx="64" fill="#F7FBF8"/>
-  <circle cx="300" cy="330" r="165" fill="#8FE5CF" opacity="0.45"/>
-  <circle cx="880" cy="820" r="210" fill="#FF8A6B" opacity="0.25"/>
-  <rect x="390" y="250" width="420" height="700" rx="72" fill="#FFFFFF" stroke="#17201D" stroke-width="12"/>
-  <text x="600" y="560" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#17201D">shipK</text>
-  <text x="600" y="635" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" fill="#5B6560">New Product</text>
-  <path d="M500 740H700" stroke="#FF8A6B" stroke-width="18" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">shipK product placeholder</title>
+  <desc id="desc">A clean placeholder image for admin product drafts.</desc>
+  <rect width="1200" height="1200" fill="#fff8fb"/>
+  <rect x="84" y="84" width="1032" height="1032" rx="64" fill="#ffffff" stroke="#111111" stroke-width="18"/>
+  <circle cx="376" cy="410" r="92" fill="#ff3d7f"/>
+  <path d="M270 810 475 605c28-28 74-28 102 0l88 88 62-62c28-28 74-28 102 0l172 179v122H270Z" fill="#111111"/>
+  <path d="M270 810 475 605c28-28 74-28 102 0l88 88 62-62c28-28 74-28 102 0l172 179" fill="none" stroke="#ffffff" stroke-width="20" stroke-linejoin="round"/>
+  <text x="600" y="235" text-anchor="middle" fill="#111111" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="800">shipK</text>
+  <text x="600" y="1035" text-anchor="middle" fill="#6b7280" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700">Product image</text>
 </svg>

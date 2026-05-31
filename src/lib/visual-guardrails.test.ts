@@ -14,6 +14,14 @@ describe("visual effect guardrails", () => {
     expect(matches).toEqual([]);
   });
 
+  it("keeps authored product UI surfaces shadow-free", () => {
+    const matches = collectSourceFiles(sourceRoot)
+      .flatMap((filePath) => findForbiddenSurfaceShadows(filePath))
+      .map((match) => `${match.filePath}:${match.lineNumber}: ${match.line.trim()}`);
+
+    expect(matches).toEqual([]);
+  });
+
   it("declares global smooth scrolling to the Next.js router", () => {
     const layoutSource = readFileSync(join(process.cwd(), "src/app/layout.tsx"), "utf8");
 
@@ -37,12 +45,60 @@ describe("visual effect guardrails", () => {
 
     expect(matches).toEqual([]);
   });
+
+  it("keeps About page body, metadata, header, and footer buyer-facing", () => {
+    const aboutSource = readFileSync(join(process.cwd(), "src/app/about/page.tsx"), "utf8");
+    const headerSource = readFileSync(
+      join(process.cwd(), "src/components/site-header.tsx"),
+      "utf8"
+    );
+    const footerSource = readFileSync(
+      join(process.cwd(), "src/components/site-footer.tsx"),
+      "utf8"
+    );
+    const forbiddenBuyerStoryPatterns = [
+      /\/promoter\b/iu,
+      /\bpromoter\b/iu,
+      /\bcreator\b/iu,
+      /\bcommission\b/iu,
+      /\baffiliate\b/iu,
+      /\bseller\b/iu,
+      /\bsell with\b/iu,
+      /\bbrand[- ]owner\b/iu
+    ];
+
+    const matches = forbiddenBuyerStoryPatterns
+      .filter((pattern) => pattern.test(`${aboutSource}\n${headerSource}\n${footerSource}`))
+      .map((pattern) => pattern.toString());
+
+    expect(matches).toEqual([]);
+  });
 });
 
 function findForbiddenPinkPopShadows(filePath: string) {
   const lines = readFileSync(filePath, "utf8").split(/\r?\n/);
   return lines.flatMap((line, index) =>
     /shadow-\[[^\]]*#(?:ffd6e3|ff3d7f)[^\]]*\]/i.test(line)
+      ? [{ filePath, lineNumber: index + 1, line }]
+      : []
+  );
+}
+
+function findForbiddenSurfaceShadows(filePath: string) {
+  if (filePath.endsWith("visual-guardrails.test.ts")) {
+    return [];
+  }
+
+  const lines = readFileSync(filePath, "utf8").split(/\r?\n/);
+  const forbiddenPatterns = [
+    /shadow-\[/u,
+    /\bshadow-(?:sm|md|lg|xl|2xl)\b/u,
+    /\bdrop-shadow\b/u,
+    /box-shadow\s*:/u
+  ];
+
+  return lines.flatMap((line, index) =>
+    forbiddenPatterns.some((pattern) => pattern.test(line))
       ? [{ filePath, lineNumber: index + 1, line }]
       : []
   );

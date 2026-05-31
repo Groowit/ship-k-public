@@ -4,9 +4,9 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { HomeFeatureBanner } from "@/components/home-feature-banner";
 import { ProductCard } from "@/components/product-card";
-import { getCollectionVisual } from "@/lib/brand-visuals";
-import { listActiveProducts } from "@/lib/commerce-store";
-import { getActiveCollections, getProductPriceLabel, Product } from "@/lib/products";
+import { getProductVisual } from "@/lib/brand-visuals";
+import { listActiveProducts, sortProductsByPopularity } from "@/lib/commerce-store";
+import { getActiveCategories, getProductPriceLabel, Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -14,22 +14,22 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const products = await listActiveProducts();
   const featuredProducts = products.slice(0, 6);
-  const collections = getActiveCollections(products);
-  const bestSellerProducts = featuredProducts.slice(0, 4);
+  const categories = getActiveCategories(products);
+  const trendingProducts = sortProductsByPopularity(products).slice(0, 4);
 
   return (
     <div className="overflow-hidden">
       <HomeFeatureBanner products={featuredProducts} />
-      <BestSellerSection products={bestSellerProducts} />
+      <BestSellerSection products={trendingProducts} />
 
       <div className="shipk-marquee">
         <div className="shipk-marquee-track" aria-hidden="true">
           <span>★ TRENDING NOW IN SEOUL</span>
           <span>♥ DIRECT FROM SEOUL</span>
-          <span>♥ GET YOUR GLASS SKIN</span>
+          <span>♥ BUILD YOUR SET</span>
           <span>★ TRENDING NOW IN SEOUL</span>
           <span>♥ DIRECT FROM SEOUL</span>
-          <span>♥ GET YOUR GLASS SKIN</span>
+          <span>♥ BUILD YOUR SET</span>
         </div>
       </div>
 
@@ -40,20 +40,20 @@ export default async function HomePage() {
               Starter bundles
             </p>
             <h2 className="mt-2 shipk-heading text-4xl">
-              Shop by look
+              Shop by category
             </h2>
           </div>
-          <nav className="flex gap-3 overflow-x-auto pb-1" aria-label="Collection filters">
+          <nav className="flex gap-3 overflow-x-auto pb-1" aria-label="Product categories">
             <Link href="/shop" className="shipk-chip shipk-chip-active shrink-0">
-              All kits
+              All sets
             </Link>
-            {collections.map((collection) => (
+            {categories.map((category) => (
               <Link
-                key={collection.slug}
-                href={`/shop?collection=${collection.slug}`}
+                key={category}
+                href={category === "Makeup" ? "/makeup" : "/shop"}
                 className="shipk-chip shrink-0 hover:bg-[#ffd6e3]"
               >
-                {collection.name}
+                {category}
               </Link>
             ))}
           </nav>
@@ -107,25 +107,19 @@ function ProductShelf({
           <CompactProductCard key={product.id} product={product} rank={index} />
         ))}
       </div>
-      <Link
-        href="/shop"
-        className="mx-auto inline-flex min-h-12 w-full max-w-md items-center justify-center rounded-md border border-[#d8d8d8] bg-white px-4 text-sm font-bold text-muted-foreground transition hover:border-black hover:text-foreground"
-      >
-        Recommend another set
-        <span className="ml-4 text-foreground">1</span>
-        <span className="mx-2 text-[#c8c8c8]">|</span>
-        <span className="text-[#a8a8a8]">{Math.max(products.length, 1)}</span>
-      </Link>
     </section>
   );
 }
 
 function CompactProductCard({ product, rank }: { product: Product; rank: number }) {
-  const visual = getCollectionVisual(product.collectionSlug);
+  const visual = getProductVisual(product);
+  const primaryBadge = product.badges[0];
+  const primaryTag = product.tags[0] ?? visual.themeWord;
+  const itemCountLabel = product.itemCount ? `${product.itemCount} items` : product.category;
   const chips = [
-    product.badges[0],
+    ...product.tags.filter((tag) => tag.toLowerCase() !== itemCountLabel.toLowerCase()).slice(0, 2),
     product.difficulty,
-    product.itemCount ? `${product.itemCount} items` : product.category
+    itemCountLabel
   ].filter(Boolean);
 
   return (
@@ -138,11 +132,16 @@ function CompactProductCard({ product, rank }: { product: Product; rank: number 
             visual.bgClass
           )}
         >
-          <span className="absolute left-3 top-3 z-10 rounded-full border-2 border-[#ff4a57] bg-white px-3 py-2 text-sm font-black text-[#ff4a57]">
-            BEST
+          <span className="absolute left-3 top-3 z-10 rounded-md bg-white/90 px-3 py-1.5 text-sm font-black text-black">
+            #{rank + 1}
           </span>
-          <span className="absolute right-3 top-3 z-10 rounded-full bg-[#ff7a1a] px-3 py-2 text-xs font-black text-white">
-            {visual.themeWord}
+          {primaryBadge ? (
+            <span className="absolute right-3 top-3 z-10 rounded-md bg-[#793de1] px-3 py-2 text-xs font-black text-[#fff75f]">
+              {primaryBadge}
+            </span>
+          ) : null}
+          <span className="absolute bottom-3 left-3 z-10 max-w-[8rem] rounded-md bg-black px-3 py-2 text-xs font-black uppercase leading-tight text-white">
+            {primaryTag}
           </span>
           <Image
             src={product.heroImagePath}
@@ -154,7 +153,7 @@ function CompactProductCard({ product, rank }: { product: Product; rank: number 
         </div>
         <div className="grid gap-2">
           <h3 className="line-clamp-2 min-h-12 text-lg font-semibold leading-6 text-[#191919]">
-            [{product.collectionName ?? product.brandName}] {product.name}
+            [{product.category}] {product.name}
           </h3>
           <p className="font-brand-heavy text-2xl text-[#f02525]">
             {getProductPriceLabel(product)}

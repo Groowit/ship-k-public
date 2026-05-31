@@ -2,7 +2,7 @@
 
 ## Source of truth
 - Status: Active
-- Last refreshed: 2026-05-28
+- Last refreshed: 2026-05-31
 - Primary product surfaces: Home, Shop, Product Detail, Auth, Checkout, Account, Promoter, Admin, Brand Portal.
 - Evidence reviewed:
   - `docs/03-ui-ux-spec.md`: customer IA, auth requirements, consent rules, mobile-first commerce principles.
@@ -12,9 +12,12 @@
   - `src/components/auth-form.tsx`: auth mode state, email/password, Google ID token, consent, redirect, and status behavior.
   - `src/components/site-header.tsx` and `src/components/site-header-nav.tsx`: primary nav IA, account menu interaction, icon usage, menu surfaces.
   - `src/components/home-feature-banner.tsx`: current playful storefront rhythm, strong color accents, large readable headings.
+  - `src/app/about/page.tsx`: public About page messaging, buyer-facing routine story, product imagery, and trust-link flow.
   - `src/components/floating-sticker-layer.tsx`: route-specific sticker assets, including auth route decoration.
   - `src/app/brand/layout.tsx`, `src/app/brand/products/page.tsx`, and `src/app/brand/products/[id]/page.tsx`: current brand portal IA for assigned-product editing.
   - `src/components/brand-product-detail-editor.tsx`: current field-heavy brand product detail editor with a narrow live preview.
+  - `src/components/admin-product-form.tsx`: admin product creation/editing surface for catalog metadata, commerce settings, media, structured items, document sections, preview, draft save, publish, and archive.
+  - `src/app/admin/products/page.tsx`: admin product list, search/filter toolbar, status/product cards, and edit/preview/public-page actions.
   - `src/components/product-detail-view.tsx`: customer-facing rendering target for product detail content blocks.
   - `src/lib/brand-product-input.ts` and `src/lib/brand-store.ts`: current brand-editable content schema and persistence boundary.
   - `.omx/context/auth-form-redesign-20260524T134445Z.md` and `.omx/plans/auth-ui-redesign-ralplan.md`: prior auth redesign context; current user decision supersedes the prior two-choice selector plan.
@@ -26,9 +29,10 @@
 - Avoid: Luxury editorial styling, translated-marketplace clutter, hidden shipping/return obligations, influencer-only credibility, generic AI-looking gradient/card compositions, repeated right-bottom pop shadows on account/form surfaces.
 
 ## Product goals
-- Goals: Help US customers discover and buy curated Korean beauty routines, understand shipping/returns, and manage orders or creator/promoter activity. Help brand owners and staff create production-grade, customer-facing product detail stories without needing admin catalog access.
-- Non-goals: Full design-system rewrite, heavy marketplace filtering in Phase 1 launch scope, decorative effects that reduce form clarity, brand-side product creation, brand-side price/stock/sales-state control, checkout changes from brand-editor work.
+- Goals: Help US customers discover and buy curated Korean beauty routines, understand shipping/returns, and manage orders or creator/promoter activity. Help brand owners and staff create production-grade, customer-facing product detail stories without needing admin catalog access. Help admins create, preview, save, publish, and archive complete products from one production-oriented authoring flow.
+- Non-goals: Full design-system rewrite, heavy marketplace filtering in Phase 1 launch scope, decorative effects that reduce form clarity, brand-side product creation, brand-side price/stock/sales-state control, checkout changes from brand-editor/admin-editor work.
 - Success signals: Users can scan products quickly, complete auth/checkout without confusion, see trust information before purchase, navigate account/promoter flows confidently, and brand staff can assemble a polished detail page with text, images, routine sections, and long vertical assets without editing database-like fields.
+- About-page success signals: The public About page should read as a shopper-facing trust and discovery page, not as a creator, seller, affiliate, or brand-owner pitch. It should make clear that shipK sells curated Korean beauty routines, explains how to use them, and keeps shipping, returns, payment, and order follow-up visible.
 
 ## Personas and jobs
 - Primary personas: US K-beauty shoppers, first-time shipK customers, returning customers checking orders, creators/promoters sharing links, internal operators/admins, brand owners/staff assigned to products.
@@ -36,29 +40,32 @@
 - Key contexts of use: Mobile storefront browsing, checkout interruption, account/order review, creator referral traffic, admin back-office work, brand staff preparing product storytelling assets from copy, product photos, and external design tools such as Figma.
 
 ## Information architecture
-- Primary navigation: Home, Make up, Skincare, For Sellers, About, account menu, search/shop entry.
-- Core routes/screens: Home, Shop, Product Detail, Auth, Checkout, Checkout Success, Account, Orders, Promoter, Policies, Admin, Brand Product List, Brand Product Detail Editor, Brand Reports.
-- Content hierarchy: Storefront discovery uses expressive product imagery and collection color; commerce/account/admin flows prioritize task headings, fields, status, policy links, and primary CTA. Brand detail editing should prioritize a document/story canvas over raw data fields; customer preview should be opened intentionally from the editor action area instead of occupying a persistent right pane.
+- Primary navigation: Home, Make up, Skincare, About, account menu, search/shop entry. Promoter and brand-owner routes remain reachable from contextual/account surfaces, but they should not compete with buyer discovery in the public primary nav.
+- Core routes/screens: Home, Shop, Product Detail, Auth, Checkout, Checkout Success, Account, Orders, Promoter, Policies, Admin, Admin Product List, Admin Product Editor, Brand Product List, Brand Product Detail Editor, Brand Reports.
+- Content hierarchy: Storefront discovery uses expressive product imagery and collection color; commerce/account/admin flows prioritize task headings, fields, status, policy links, and primary CTA. The About page is buyer-facing: lead with Korean beauty routine value, then curation, use guidance, purchase confidence, shipping/returns, and a shop CTA. Product detail pages must keep core commerce facts visible: hero/intro media, gallery, included items, routine steps, and legacy media/content blocks should not disappear just because a newer story document exists. Brand detail editing should prioritize a document/story canvas over raw data fields; customer preview should be opened intentionally from the editor action area instead of occupying a persistent right pane.
 
 ## Design Principles
 - Commerce clarity first: Forms, checkout, policies, account, and admin screens must be calm, legible, and explicit before they are decorative.
 - Playful where it helps discovery: Use shipK fonts, bright accents, stickers, badges, and collection color to create recognition, but avoid making task surfaces feel like ads.
 - One obvious next action: Each flow should make the primary CTA and alternate path easy to find without tab-like controls competing for attention.
+- Buyer-first public story: Public story pages such as About should speak first to general shoppers. Seller, promoter, and brand-owner routes can remain accessible, but About-page body copy and visible public chrome should not compete with shopper trust and routine discovery.
 - Section-first authoring for brand content: Brand staff should build customer detail pages by arranging meaningful sections, not by filling scattered database fields.
 - Hybrid editor model: Keep the page saved as structured sections for reliable rendering, but let individual text/media sections gain editor-like controls such as rich text marks, alignment, spacing, width, and media presentation options.
+- Admin publishing model: Admins need one integrated product workspace for catalog metadata, commerce controls, media, structured routine data, customer detail sections, preview, draft save, publish, and archive. Preview should open intentionally from the fixed action area instead of occupying a persistent right pane.
+- Admin list efficiency: Admin list filters should behave like a compact operations toolbar: one prominent search input, grouped secondary selectors, and an inline apply action. Avoid tall empty filter panels, broken Korean labels, and horizontal overflow for common desktop widths.
 - Tradeoffs: Auth and checkout may carry small brand accents, but should not use storefront-level visual noise or pop shadows. Brand editing can use richer controls than customer forms, but must stay predictable and keyboard-recoverable.
 
 ## Visual language
 - Color: White and cream bases with black outlines; shipK pink as the main accent; lime, mint, yellow, blue, and coral as supporting accents. Avoid letting a whole surface become one hue family.
 - Typography: Inter for readable commerce text; Archivo Black/brand-heavy for short headings and labels; brand-round/logo styling reserved for logo or playful moments.
 - Spacing/layout rhythm: Mobile-first, generous field spacing, constrained form widths, full-width bands for page structure, compact task surfaces.
-- Shape/radius/elevation: 8px or smaller radius by default; strong borders are preferred over shadows for account/form screens; right-bottom pop shadows are not used on auth, checkout, account, admin, menus, or form cards.
+- Shape/radius/elevation: 8px or smaller radius by default. Use borders, background contrast, spacing, and focus rings for hierarchy. Do not use right-bottom offset shadows anywhere in active product UI, including playful discovery, cards, buttons, badges, menus, modals, checkout, account, admin, brand, and form surfaces. Avoid authored `box-shadow`, Tailwind `shadow-*`, and arbitrary `shadow-[...]` utilities in source unless a future design decision explicitly documents a narrow exception.
 - Motion: Short hover/focus transitions that communicate affordance; no motion required to understand a task; respect reduced-motion expectations.
 - Imagery/iconography: Use existing route stickers and product imagery. Use lucide icons for familiar UI actions, especially small control buttons.
 
 ## Components
 - Existing components to reuse: `Button`, `Input`, `Textarea`, `Label`, `Card`, `Badge`, `SiteHeaderNav`, `ProductDetailView`, shipK CSS helpers.
-- New/changed components: Brand detail document editor shell, compact section composer, draggable/reorderable story canvas, section inspector, long-detail-image block, save-adjacent customer preview/review mode, save/status actions.
+- New/changed components: Brand detail document editor shell, admin product workspace, compact section composer, draggable/reorderable story canvas, section inspector, long-detail-image block, save-adjacent customer preview/review mode, fixed save/preview/publish/cancel/status actions.
 - Variants and states: Auth must show sign-up consent only in sign-up mode, block Google sign-up until required consent is accepted, expose status messages with accessible semantics, and keep focus/disabled states visible. Brand editor sections need selected, collapsed, dragging, invalid, uploading, saving, saved, and error states.
 - Token/component ownership: Use existing CSS variables and Tailwind utilities. Prefer repo-native controls for the first production editor; add an editor or drag dependency only with a clear architectural decision and tests.
 
@@ -85,14 +92,14 @@
 ## Content voice
 - Tone: Clear, friendly, commerce-literate, lightly playful.
 - Terminology: Prefer "Sign in", "Create account", "Terms", "Privacy Policy", "product drops", "order updates", "Section", "Story", "Preview", "Publish view", "Long detail image".
-- Microcopy rules: Keep form copy short; do not over-explain features inside task surfaces; policy and consent copy must be direct. Brand-editor labels should describe the content purpose a brand staff member recognizes, not table names.
+- Microcopy rules: Keep form copy short; do not over-explain features inside task surfaces; policy and consent copy must be direct. About-page copy should use production-ready shopper language around Korean cosmetics, routine clarity, shipping, returns, and order confidence. Brand-editor labels should describe the content purpose a brand staff member recognizes, not table names.
 
 ## Implementation constraints
 - Framework/styling system: Next.js App Router, React client components, Tailwind CSS, CSS variables in `src/app/globals.css`.
 - Design-token constraints: Use existing shipK color variables or established hex accents; no new global token set for this task.
 - Performance constraints: Keep auth UI lightweight; avoid unnecessary client libraries. Brand editor previews must remain responsive with long vertical images and many sections; large image blocks should avoid layout shift.
 - Compatibility constraints: Preserve Supabase email/password, Google ID token, consent cookie/profile update, and safe redirect behavior.
-- Test/screenshot expectations: Auth changes require component tests plus desktop/mobile visual smoke checks for `/auth` and `/auth?mode=sign-up&next=%2Fcheckout`. Brand editor changes require schema/store tests, component tests for section editing/reordering/save payloads, and browser smoke checks for `/brand/products/[id]` plus the public `/products/[slug]` page.
+- Test/screenshot expectations: Auth changes require component tests plus desktop/mobile visual smoke checks for `/auth` and `/auth?mode=sign-up&next=%2Fcheckout`. About-page changes require a source-level buyer-copy guard plus desktop/mobile browser screenshots scored for shopper narrative, overflow, CTA visibility, image rendering, trust-link visibility, and responsive polish. Brand editor changes require schema/store tests, component tests for section editing/reordering/save payloads, and browser smoke checks for `/brand/products/[id]` plus the public `/products/[slug]` page. Admin product editor changes require component tests for separate preview and save payloads, API/schema tests for detail section persistence, and browser smoke checks for `/admin/products/new`.
 
 ## Open questions
 - [ ] Should referral or checkout traffic ever default to sign-up instead of sign-in? / Product owner / Affects auth landing defaults.

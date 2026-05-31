@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import type React from "react";
+import { ExternalLink, Eye, PencilLine, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
 import { formatUsd } from "@/lib/commerce";
 import { listProducts } from "@/lib/commerce-store";
-import { Product, productCollections } from "@/lib/products";
+import { Product, productCategories } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default async function AdminProductsPage({
         <div>
           <h2 className="text-2xl font-bold tracking-normal">상품 관리자</h2>
           <p className="text-sm text-muted-foreground">
-            큐레이션 세트, 임시저장 미리보기, 미디어, 발행 준비 상태를 관리합니다.
+            세트와 단품의 판매 정보, 미디어, 발행 준비 상태를 관리합니다.
           </p>
         </div>
         <Link href="/admin/products/new" className={cn(buttonVariants())}>
@@ -38,80 +39,124 @@ export default async function AdminProductsPage({
         </Link>
       </div>
       <ProductFilters params={params} />
-      <div className="overflow-x-auto rounded-md border bg-white">
-        <table className="w-full min-w-[980px] text-left text-sm">
-          <thead className="border-b bg-muted text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">상품</th>
-              <th className="px-4 py-3">유형</th>
-              <th className="px-4 py-3">컬렉션</th>
-              <th className="px-4 py-3">가격</th>
-              <th className="px-4 py-3">재고</th>
-              <th className="px-4 py-3">상태</th>
-              <th className="px-4 py-3">수정일</th>
-              <th className="px-4 py-3">작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.length ? (
-              products.map((product) => (
-                <tr key={product.id} className="border-b last:border-b-0">
-                  <td className="px-4 py-3">
-                    <div className="grid grid-cols-[56px_1fr] items-center gap-3">
-                      <Image
-                        src={product.heroImagePath}
-                        alt=""
-                        width={56}
-                        height={56}
-                        className="aspect-square rounded-md border object-cover"
-                      />
-                      <span>
-                        <span className="block font-semibold">{product.name}</span>
-                        <span className="block text-xs text-muted-foreground">{product.brandName}</span>
+      <div data-testid="admin-products-list" className="grid gap-3" role="list" aria-label="관리자 상품 목록">
+        {products.length ? (
+          products.map((product) => (
+            <article
+              key={product.id}
+              className="grid min-w-0 gap-4 rounded-md border bg-white p-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_12rem] lg:items-center"
+              role="listitem"
+            >
+              <div className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-3">
+                <Image
+                  src={product.heroImagePath}
+                  alt=""
+                  width={72}
+                  height={72}
+                  className="aspect-square rounded-md border object-cover"
+                />
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 text-base font-bold leading-6">{product.name}</h3>
+                  <p className="mt-1 truncate text-sm text-muted-foreground">{product.brandName}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">SKU {product.option.sku ?? "-"}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {product.badges.map((badge) => (
+                      <span key={badge} className="rounded-md bg-[#793de1] px-2 py-1 text-[11px] font-black text-[#fff75f]">
+                        {badge}
                       </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">{getProductTypeLabel(product.productType)}</td>
-                  <td className="px-4 py-3">{product.collectionName ?? "-"}</td>
-                  <td className="px-4 py-3">{formatUsd(product.option.priceCents)}</td>
-                  <td className="px-4 py-3">
-                    {product.option.stockQuantity === 0 ? (
-                      <Badge>품절</Badge>
-                    ) : (
-                      product.option.stockQuantity
-                    )}
-                  </td>
-                  <td className="px-4 py-3"><Badge>{getStatusLabel(product.status)}</Badge></td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                    ))}
+                    {product.tags.slice(0, 3).map((tag) => (
+                      <span key={tag} className="rounded-md bg-muted px-2 py-1 text-[11px] font-black text-muted-foreground">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+                <ProductMeta label="유형">
+                  <span className="whitespace-nowrap break-keep" data-testid={`admin-product-type-${product.id}`}>
+                    {getProductTypeLabel(product.productType)}
+                  </span>
+                </ProductMeta>
+                <ProductMeta label="카테고리">
+                  <span className="whitespace-nowrap break-keep">{product.category}</span>
+                </ProductMeta>
+                <ProductMeta label="가격">
+                  <span className="font-semibold">{formatUsd(product.option.priceCents)}</span>
+                </ProductMeta>
+                <ProductMeta label="재고">
+                  {product.option.stockQuantity === 0 ? (
+                    <Badge className="whitespace-nowrap">품절</Badge>
+                  ) : (
+                    <span className="font-semibold">{product.option.stockQuantity}</span>
+                  )}
+                </ProductMeta>
+                <ProductMeta label="상태">
+                  <Badge className="whitespace-nowrap break-keep">{getStatusLabel(product.status)}</Badge>
+                </ProductMeta>
+                <ProductMeta label="수정일">
+                  <span className="whitespace-nowrap text-muted-foreground">
                     {product.updatedAt ? new Date(product.updatedAt).toLocaleDateString("ko-KR") : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <Link className="font-semibold underline" href={`/admin/products/${product.id}`}>
-                        수정
-                      </Link>
-                      <Link className="font-semibold underline" href={`/admin/products/${product.id}/preview`}>
-                        미리보기
-                      </Link>
-                      {product.status === "active" ? (
-                        <Link className="font-semibold underline" href={`/products/${product.slug}`}>
-                          공개 페이지
-                        </Link>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                  조건에 맞는 상품이 없습니다.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  </span>
+                </ProductMeta>
+              </dl>
+
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+                <Link
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "whitespace-nowrap px-2 text-xs font-semibold")}
+                  href={`/admin/products/${product.id}`}
+                  aria-label={`${product.name} 수정`}
+                >
+                  <PencilLine className="h-3.5 w-3.5" aria-hidden="true" />
+                  수정
+                </Link>
+                <Link
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "whitespace-nowrap px-2 text-xs font-semibold")}
+                  href={`/admin/products/${product.id}/preview`}
+                  aria-label={`${product.name} 미리보기`}
+                >
+                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                  미리보기
+                </Link>
+                {product.status === "active" ? (
+                  <Link
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "col-span-2 whitespace-nowrap px-2 text-xs font-semibold lg:col-span-1"
+                    )}
+                    href={`/products/${product.slug}`}
+                    aria-label={`${product.name} 공개 페이지`}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    공개 페이지
+                  </Link>
+                ) : null}
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className="rounded-md border bg-white px-4 py-10 text-center text-sm text-muted-foreground">
+            조건에 맞는 상품이 없습니다.
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function ProductMeta({
+  label,
+  children
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
+      <dd className="mt-1 min-w-0 truncate">{children}</dd>
     </div>
   );
 }
@@ -123,38 +168,45 @@ function ProductFilters({
 }) {
   const status = getParam(params.status, "all");
   const type = getParam(params.type, "all");
-  const collection = getParam(params.collection, "all");
+  const category = getParam(params.category, "all");
   const difficulty = getParam(params.difficulty, "all");
   const stock = getParam(params.stock, "all");
 
   return (
-    <div className="grid gap-3 rounded-md border bg-white p-4 text-sm md:grid-cols-[1fr_repeat(5,auto)] md:items-end">
-      <label className="grid gap-2">
-        <span className="font-semibold">검색</span>
-        <input
-          name="q"
-          defaultValue={getParam(params.q, "")}
-          form="admin-product-filters"
-          className="h-10 rounded-md border px-3"
-          placeholder="상품명, 브랜드, SKU"
+    <form
+      id="admin-product-filters"
+      data-testid="admin-product-filters"
+      className="rounded-md border bg-white p-4 text-sm"
+    >
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="grid min-w-[16rem] flex-[2_1_18rem] gap-2">
+          <span className="text-xs font-black text-muted-foreground">검색</span>
+          <span className="grid h-11 grid-cols-[auto_1fr] items-center gap-2 rounded-md border bg-white px-3">
+            <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <input
+              name="q"
+              defaultValue={getParam(params.q, "")}
+              className="h-full min-w-0 border-0 bg-transparent text-sm font-semibold outline-none placeholder:text-muted-foreground"
+              placeholder="상품명, 브랜드, SKU"
+            />
+          </span>
+        </label>
+        <FilterSelect name="status" label="상태" value={status} options={["all", "draft", "active", "archived"]} />
+        <FilterSelect name="type" label="유형" value={type} options={["all", "set", "single"]} />
+        <FilterSelect
+          name="category"
+          label="카테고리"
+          value={category}
+          options={["all", ...productCategories]}
         />
-      </label>
-      <FilterSelect name="status" label="상태" value={status} options={["all", "draft", "active", "archived"]} />
-      <FilterSelect name="type" label="유형" value={type} options={["all", "curated_set", "single"]} />
-      <FilterSelect
-        name="collection"
-        label="컬렉션"
-        value={collection}
-        options={["all", ...productCollections.map((item) => item.slug)]}
-      />
-      <FilterSelect name="difficulty" label="난이도" value={difficulty} options={["all", "Beginner", "Intermediate"]} />
-      <FilterSelect name="stock" label="재고" value={stock} options={["all", "in_stock", "out_of_stock"]} />
-      <form id="admin-product-filters" className="contents">
-        <button className={cn(buttonVariants({ variant: "outline" }), "md:col-start-6")} type="submit">
+        <FilterSelect name="difficulty" label="난이도" value={difficulty} options={["all", "Beginner", "Intermediate"]} />
+        <FilterSelect name="stock" label="재고" value={stock} options={["all", "in_stock", "out_of_stock"]} />
+        <button className={cn(buttonVariants({ variant: "outline" }), "h-11 shrink-0 whitespace-nowrap px-4")} type="submit">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           필터 적용
         </button>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }
 
@@ -170,9 +222,9 @@ function FilterSelect({
   options: string[];
 }) {
   return (
-    <label className="grid gap-2">
-      <span className="font-semibold">{label}</span>
-      <select name={name} defaultValue={value} form="admin-product-filters" className="h-10 rounded-md border bg-white px-3">
+    <label className="grid min-w-[7rem] flex-[1_1_7.5rem] gap-2">
+      <span className="text-xs font-black text-muted-foreground">{label}</span>
+      <select name={name} defaultValue={value} className="h-11 min-w-0 rounded-md border bg-white px-3 text-sm font-semibold">
         {options.map((option) => (
           <option key={option} value={option}>
             {getFilterOptionLabel(option)}
@@ -190,27 +242,27 @@ function filterProducts(
   const query = getParam(params.q, "").toLowerCase();
   const status = getParam(params.status, "all");
   const type = getParam(params.type, "all");
-  const collection = getParam(params.collection, "all");
+  const category = getParam(params.category, "all");
   const difficulty = getParam(params.difficulty, "all");
   const stock = getParam(params.stock, "all");
 
   return products.filter((product) => {
     const matchesQuery =
       !query ||
-      [product.name, product.brandName, product.option.sku]
+      [product.name, product.brandName, product.option.sku, ...product.tags, ...product.badges]
         .join(" ")
         .toLowerCase()
         .includes(query);
     const matchesStatus = status === "all" || product.status === status;
     const matchesType = type === "all" || product.productType === type;
-    const matchesCollection = collection === "all" || product.collectionSlug === collection;
+    const matchesCategory = category === "all" || product.category === category;
     const matchesDifficulty = difficulty === "all" || product.difficulty === difficulty;
     const matchesStock =
       stock === "all" ||
       (stock === "in_stock" && product.option.stockQuantity > 0) ||
       (stock === "out_of_stock" && product.option.stockQuantity === 0);
 
-    return matchesQuery && matchesStatus && matchesType && matchesCollection && matchesDifficulty && matchesStock;
+    return matchesQuery && matchesStatus && matchesType && matchesCategory && matchesDifficulty && matchesStock;
   });
 }
 
@@ -219,7 +271,7 @@ function getParam(value: string | string[] | undefined, fallback: string) {
 }
 
 function getProductTypeLabel(type: Product["productType"]) {
-  return type === "curated_set" ? "큐레이션 세트" : "단품";
+  return type === "set" ? "세트" : "단품";
 }
 
 function getStatusLabel(status: Product["status"]) {
@@ -240,7 +292,7 @@ function getFilterOptionLabel(option: string) {
     draft: "임시저장",
     active: "판매중",
     archived: "보관됨",
-    curated_set: "큐레이션 세트",
+    set: "세트",
     single: "단품",
     Beginner: "초급",
     Intermediate: "중급",
@@ -248,5 +300,5 @@ function getFilterOptionLabel(option: string) {
     out_of_stock: "품절"
   };
 
-  return labels[option] ?? productCollections.find((collection) => collection.slug === option)?.name ?? option;
+  return labels[option] ?? option;
 }

@@ -28,11 +28,11 @@ vi.mock("@/lib/paypal", () => ({
 
 const product = {
   id: "product_1",
-  slug: "daily-k-glow-set",
-  name: "Daily K-Glow Set",
+  slug: "skincare-starter-set",
+  name: "Skincare Starter Set",
   option: {
     id: "option_1",
-    name: "5-item routine kit",
+    name: "5-item set",
     sku: "SK-DAILY",
     priceCents: 4_900,
     stockQuantity: 10
@@ -64,8 +64,8 @@ describe("PayPal capture API route", () => {
           applyReferralClick(
             null,
             "creator_code",
-            "daily_glow_01",
-            "/products/daily-k-glow-set",
+            "skincare_01",
+            "/products/skincare-starter-set",
             new Date()
           )
         )
@@ -114,8 +114,8 @@ describe("PayPal capture API route", () => {
         product,
         quantity: 1,
         referralCode: "creator_code",
-        referralLinkToken: "daily_glow_01",
-        referralLandingPath: "/products/daily-k-glow-set"
+        referralLinkToken: "skincare_01",
+        referralLandingPath: "/products/skincare-starter-set"
       })
     );
   });
@@ -159,8 +159,8 @@ describe("PayPal capture API route", () => {
       applyReferralClick(
         null,
         "creator_code",
-        "daily_glow_01",
-        "/products/daily-k-glow-set",
+        "skincare_01",
+        "/products/skincare-starter-set",
         new Date()
       )
     );
@@ -188,8 +188,8 @@ describe("PayPal capture API route", () => {
           applyReferralClick(
             null,
             "creator_code",
-            "daily_glow_01",
-            "/products/daily-k-glow-set",
+            "skincare_01",
+            "/products/skincare-starter-set",
             new Date("2026-05-01T00:00:00.000Z")
           )
         )
@@ -210,7 +210,7 @@ describe("PayPal capture API route", () => {
 function validPayload() {
   return {
     orderID: "PAYPAL-ORDER-1",
-    productSlug: "daily-k-glow-set",
+    productSlug: "skincare-starter-set",
     quantity: 1,
     shippingAddress: {
       name: "Jamie Park",
@@ -236,7 +236,7 @@ function jsonRequest(body: unknown, headers: Record<string, string> = {}) {
 function captureResponse({
   orderStatus = "COMPLETED",
   captureStatus = "COMPLETED",
-  customId = "daily-k-glow-set:1",
+  customId = "skincare-starter-set:1",
   value = "58.99"
 }: {
   orderStatus?: string;

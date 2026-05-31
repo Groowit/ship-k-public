@@ -27,7 +27,7 @@ export function BuyBox({
     : buildAuthRedirectPath(checkoutPath);
 
   return (
-    <div className="rounded-md border-2 border-black bg-white p-5 shadow-[5px_5px_0_#0a0a0a]">
+    <div className="rounded-md border-2 border-black bg-white p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-brand-heavy text-xs uppercase text-[#ff3d7f]">Option</p>

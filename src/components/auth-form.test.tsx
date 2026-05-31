@@ -97,7 +97,7 @@ describe("AuthForm", () => {
       data: { session: { access_token: "token" }, user: { id: "user-id" } },
       error: null
     });
-    render(<AuthForm nextPath="/checkout?product=daily-k-glow-set" />);
+    render(<AuthForm nextPath="/checkout?product=skincare-starter-set" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
 

@@ -112,7 +112,7 @@ function PromoterDashboardView({ dashboard }: { dashboard: PromoterDashboard }) 
 
   return (
     <div className="grid gap-6">
-      <Card className="rounded-md border-2 border-black shadow-[5px_5px_0_#0a0a0a]">
+      <Card className="rounded-md border-2 border-black">
         <CardHeader>
           <CardTitle className="shipk-heading text-2xl">Promoter account</CardTitle>
         </CardHeader>
@@ -149,7 +149,7 @@ function PromoterDashboardView({ dashboard }: { dashboard: PromoterDashboard }) 
         />
       </div>
 
-      <Card className="rounded-md border-2 border-black shadow-[5px_5px_0_#0a0a0a]">
+      <Card className="rounded-md border-2 border-black">
         <CardHeader>
           <CardTitle className="shipk-heading text-2xl">Product links</CardTitle>
         </CardHeader>
@@ -162,7 +162,7 @@ function PromoterDashboardView({ dashboard }: { dashboard: PromoterDashboard }) 
         </CardContent>
       </Card>
 
-      <Card className="rounded-md border-2 border-black shadow-[5px_5px_0_#0a0a0a]">
+      <Card className="rounded-md border-2 border-black">
         <CardHeader>
           <CardTitle className="shipk-heading text-2xl">Commissions</CardTitle>
         </CardHeader>
@@ -277,7 +277,7 @@ function PromoterLinkRow({ link }: { link: PromoterDashboard["links"][number] })
 
 function Metric({ title, value }: { title: string; value: string }) {
   return (
-    <Card className="rounded-md border-2 border-black bg-[#fff8f0] shadow-[4px_4px_0_#0a0a0a]">
+    <Card className="rounded-md border-2 border-black bg-[#fff8f0]">
       <CardHeader>
         <CardTitle className="font-brand-heavy text-sm uppercase text-muted-foreground">
           {title}

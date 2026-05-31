@@ -15,11 +15,11 @@ export async function PATCH(
 ) {
   try {
     assertSameOriginRequest(request);
-    const auth = await requireCurrentUser();
+    const { user } = await requireCurrentUser();
     const { id } = await params;
     const input = brandProductContentPayloadSchema.parse(await request.json());
     const product = await updateBrandProductContentForUser({
-      userId: auth.user.id,
+      userId: user.id,
       productId: id,
       input
     });
@@ -30,14 +30,14 @@ export async function PATCH(
       error instanceof AuthRequiredError ||
       error instanceof UnsafeRequestOriginError ||
       error instanceof BrandAccessDeniedError ||
-      error instanceof BrandInputError ||
-      error instanceof BrandProductNotFoundError
+      error instanceof BrandProductNotFoundError ||
+      error instanceof BrandInputError
     ) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Invalid brand product request" },
+      { error: error instanceof Error ? error.message : "Invalid brand product content request" },
       { status: 400 }
     );
   }

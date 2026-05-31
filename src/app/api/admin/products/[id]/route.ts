@@ -11,7 +11,7 @@ export async function PATCH(
 ) {
   try {
     assertSameOriginRequest(request);
-    await requireCurrentAdmin();
+    const admin = await requireCurrentAdmin();
     const { id } = await params;
     const body = adminProductPayloadSchema.parse(await request.json());
     const product = await updateProduct(id, {
@@ -19,10 +19,9 @@ export async function PATCH(
       brandName: body.brandName,
       name: body.name,
       category: body.category,
-      collectionSlug: body.collectionSlug,
+      tags: body.tags,
       difficulty: body.difficulty,
       itemCount: body.itemCount,
-      themeLabel: body.themeLabel,
       shortDescription: body.shortDescription,
       description: body.description,
       bestFor: body.bestFor,
@@ -37,6 +36,8 @@ export async function PATCH(
       includedItems: body.includedItems,
       routineSteps: body.routineSteps,
       contentBlocks: body.contentBlocks,
+      detailSections: body.detailSections,
+      detailActorId: admin.user.id,
       status: body.status
     });
 

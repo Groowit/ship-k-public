@@ -9,18 +9,18 @@ import {
 import { shouldAutoMarkShipped } from "./fulfillment";
 import {
   Product,
-  ProductCollectionSlug,
+  ProductCategory,
   ProductDifficulty,
   ProductGalleryImage,
   ProductIncludedItem,
   ProductRoutineStep,
   ProductStatus,
-  ProductType,
-  getCollectionBySlug,
-  productCollectionSlugs
+  ProductType
 } from "./products";
 import {
   mapProductDetailSectionRow,
+  toProductDetailSectionRpcPayload,
+  type ProductDetailSectionInput,
   type ProductDetailSectionRow
 } from "./product-detail-sections";
 import { buildProductReferralPath, normalizeReferralLandingPath } from "./referral";
@@ -31,11 +31,10 @@ type MutableProductInput = {
   productType: ProductType;
   brandName: string;
   name: string;
-  category: string;
-  collectionSlug?: ProductCollectionSlug;
+  category: ProductCategory;
+  tags: string[];
   difficulty?: ProductDifficulty;
   itemCount?: number;
-  themeLabel?: string;
   shortDescription: string;
   description: string;
   bestFor?: string;
@@ -50,6 +49,8 @@ type MutableProductInput = {
   includedItems: Array<Omit<ProductIncludedItem, "id">>;
   routineSteps: Array<Omit<ProductRoutineStep, "id">>;
   contentBlocks: Array<Omit<Product["contentBlocks"][number], "id">>;
+  detailSections: ProductDetailSectionInput[];
+  detailActorId?: string;
   status: ProductStatus;
 };
 
@@ -193,15 +194,14 @@ type ProductRow = {
   hero_image_path: string | null;
   status: "active" | "draft" | "archived";
   badges: string[] | null;
-  product_type: ProductType | null;
-  collection_slug: string | null;
-  collection_name: string | null;
+  tags?: string[] | null;
+  product_type: ProductType | "curated_set" | null;
   difficulty: ProductDifficulty | null;
   item_count: number | null;
-  theme_label: string | null;
   intro_video_url: string | null;
   best_for: string | null;
   result: string | null;
+  created_at: string;
   updated_at: string;
   categories?: { name: string } | Array<{ name: string }> | null;
   product_options?: ProductOptionRow[] | null;
@@ -339,15 +339,14 @@ export const productSelect = `
   hero_image_path,
   status,
   badges,
+  tags,
   product_type,
-  collection_slug,
-  collection_name,
   difficulty,
   item_count,
-  theme_label,
   intro_video_url,
   best_for,
   result,
+  created_at,
   updated_at,
   categories(name),
   product_options(id,name,sku,price_cents,stock_quantity),
@@ -400,7 +399,8 @@ export async function listProducts() {
     throw new Error(`Could not load products: ${error.message}`);
   }
 
-  return hydrateProductsWithDetailSections(supabase, (data as ProductRow[]).map(mapProductRow));
+  const products = await hydrateProductsWithDetailSections(supabase, (data as ProductRow[]).map(mapProductRow));
+  return decorateProductsWithAutomaticMerchandising(products);
 }
 
 export async function listActiveProducts() {
@@ -415,28 +415,37 @@ export async function listActiveProducts() {
     throw new Error(`Could not load active products: ${error.message}`);
   }
 
-  return hydrateProductsWithDetailSections(supabase, (data as ProductRow[]).map(mapProductRow));
+  const products = await hydrateProductsWithDetailSections(supabase, (data as ProductRow[]).map(mapProductRow));
+  return decorateProductsWithAutomaticMerchandising(products);
+}
+
+export function sortProductsByPopularity(products: Product[]) {
+  return [...products].sort(compareProductPopularity);
 }
 
 export async function findProductBySlug(slug: string) {
   const supabase = await createSupabaseServerClient();
+  const legacySlug = canonicalToLegacySlug[slug];
   const { data, error } = await supabase
     .from("products")
     .select(productSelect)
-    .eq("slug", slug)
-    .eq("status", "active")
-    .maybeSingle();
+    .in("slug", legacySlug ? [slug, legacySlug] : [slug])
+    .eq("status", "active");
 
   if (error) {
     throw new Error(`Could not load product: ${error.message}`);
   }
 
-  if (!data) {
+  const rows = asArray(data as ProductRow[] | ProductRow | null);
+  const row = rows.find((product) => product.slug === slug) ?? rows[0];
+
+  if (!row) {
     return undefined;
   }
 
-  const [product] = await hydrateProductsWithDetailSections(supabase, [mapProductRow(data as ProductRow)]);
-  return product;
+  const [product] = await hydrateProductsWithDetailSections(supabase, [mapProductRow(row)]);
+  const [decoratedProduct] = await decorateProductsWithAutomaticMerchandising([product]);
+  return decoratedProduct;
 }
 
 export async function getProductForAdmin(productId: string) {
@@ -456,51 +465,219 @@ export async function getProductForAdmin(productId: string) {
   }
 
   const [product] = await hydrateProductsWithDetailSections(supabase, [mapProductRow(data as ProductRow)]);
-  return product;
+  const [decoratedProduct] = await decorateProductsWithAutomaticMerchandising([product]);
+  return decoratedProduct;
+}
+
+type ProductMerchandisingRow = {
+  id: string;
+  created_at: string | null;
+};
+
+type ProductSalesMetricRow = {
+  product_id: string | null;
+  quantity: number | null;
+  orders?: { status?: OrderStatus | null; created_at?: string | null } | Array<{
+    status?: OrderStatus | null;
+    created_at?: string | null;
+  }> | null;
+};
+
+type ProductMerchandisingMetric = {
+  id: string;
+  createdAt?: string;
+  lastOrderedAt?: string;
+  salesCount: number;
+};
+
+const positiveOrderStatuses = new Set<OrderStatus>(["paid", "preparing", "shipped", "delivered"]);
+const newArrivalWindowMs = 30 * 24 * 60 * 60 * 1000;
+
+async function decorateProductsWithAutomaticMerchandising(products: Product[]) {
+  if (products.length === 0) {
+    return products;
+  }
+
+  try {
+    const metrics = await loadProductMerchandisingMetrics();
+    const decoratedProducts = applyAutomaticMarketingBadges(products, metrics);
+    return decoratedProducts;
+  } catch {
+    return products.map((product) => ({
+      ...product,
+      badges: []
+    }));
+  }
+}
+
+async function loadProductMerchandisingMetrics() {
+  const supabase = createSupabasePrivilegedClient();
+  const { data: activeRows, error: activeError } = await supabase
+    .from("products")
+    .select("id,created_at")
+    .eq("status", "active");
+
+  if (activeError) {
+    throw activeError;
+  }
+
+  const rows = (activeRows ?? []) as ProductMerchandisingRow[];
+  const metrics = new Map<string, ProductMerchandisingMetric>();
+
+  rows.forEach((row) => {
+    metrics.set(row.id, {
+      id: row.id,
+      createdAt: row.created_at ?? undefined,
+      salesCount: 0
+    });
+  });
+
+  const productIds = rows.map((row) => row.id);
+  if (productIds.length === 0) {
+    return metrics;
+  }
+
+  const { data: salesRows, error: salesError } = await supabase
+    .from("order_items")
+    .select("product_id,quantity,orders(status,created_at)")
+    .in("product_id", productIds);
+
+  if (salesError) {
+    throw salesError;
+  }
+
+  ((salesRows ?? []) as ProductSalesMetricRow[]).forEach((row) => {
+    if (!row.product_id) {
+      return;
+    }
+
+    const order = getRelationObject<{ status?: OrderStatus | null; created_at?: string | null }>(
+      row.orders as never
+    );
+
+    if (!order?.status || !positiveOrderStatuses.has(order.status)) {
+      return;
+    }
+
+    const metric = metrics.get(row.product_id);
+    if (!metric) {
+      return;
+    }
+
+    metric.salesCount += row.quantity ?? 0;
+    if (isAfter(order.created_at, metric.lastOrderedAt)) {
+      metric.lastOrderedAt = order.created_at ?? undefined;
+    }
+  });
+
+  return metrics;
+}
+
+function applyAutomaticMarketingBadges(
+  products: Product[],
+  metrics: Map<string, ProductMerchandisingMetric>
+) {
+  const rankedMetrics = [...metrics.values()].sort(compareMerchandisingMetrics);
+  const bestSeller = rankedMetrics.find((metric) => metric.salesCount > 0);
+  const newArrival = [...metrics.values()]
+    .filter((metric) => isRecent(metric.createdAt, newArrivalWindowMs))
+    .sort((a, b) => compareDateDesc(a.createdAt, b.createdAt))[0];
+  const rankById = new Map(rankedMetrics.map((metric, index) => [metric.id, index + 1]));
+
+  return products.map((product) => {
+    const metric = metrics.get(product.id);
+    const badges: string[] = [];
+
+    if (bestSeller?.id === product.id) {
+      badges.push("BESTSELLER");
+    }
+
+    if (newArrival?.id === product.id) {
+      badges.push("NEW ARRIVAL");
+    }
+
+    return {
+      ...product,
+      badges: product.status === "active" ? badges : [],
+      createdAt: metric?.createdAt ?? product.createdAt,
+      lastOrderedAt: metric?.lastOrderedAt ?? product.lastOrderedAt,
+      salesCount: metric?.salesCount ?? product.salesCount ?? 0,
+      popularityRank: rankById.get(product.id) ?? product.popularityRank
+    };
+  });
+}
+
+function compareProductPopularity(a: Product, b: Product) {
+  return (
+    (b.salesCount ?? 0) - (a.salesCount ?? 0) ||
+    compareDateDesc(a.lastOrderedAt, b.lastOrderedAt) ||
+    compareDateDesc(a.createdAt, b.createdAt) ||
+    a.name.localeCompare(b.name)
+  );
+}
+
+function compareMerchandisingMetrics(a: ProductMerchandisingMetric, b: ProductMerchandisingMetric) {
+  return (
+    b.salesCount - a.salesCount ||
+    compareDateDesc(a.lastOrderedAt, b.lastOrderedAt) ||
+    compareDateDesc(a.createdAt, b.createdAt) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+function compareDateDesc(a?: string | null, b?: string | null) {
+  return getTime(b) - getTime(a);
+}
+
+function isAfter(next?: string | null, current?: string | null) {
+  return getTime(next) > getTime(current);
+}
+
+function isRecent(value: string | undefined, windowMs: number) {
+  const time = getTime(value);
+  return time > 0 && Date.now() - time <= windowMs;
+}
+
+function getTime(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : 0;
 }
 
 export async function createProduct(input: MutableProductInput) {
   const supabase = createSupabasePrivilegedClient();
   const slug = slugify(`${input.brandName}-${input.name}`);
-  const collection = input.collectionSlug
-    ? getCollectionBySlug(input.collectionSlug)
-    : undefined;
   const itemCount = input.itemCount ?? input.includedItems.length;
-  const heroImagePath =
-    input.heroImagePath ||
-    (input.collectionSlug ? `/catalog-assets/sets/${collectionFallbackImage(input.collectionSlug)}` : undefined) ||
-    "/catalog-assets/admin-product-placeholder.svg";
+  const heroImagePath = input.heroImagePath || "/catalog-assets/admin-product-placeholder.svg";
   let productId: string | null = null;
 
   try {
     const categoryId = await findOrCreateCategoryId(supabase, input.category);
-    const { data: product, error: productError } = await supabase
+    let { data: product, error: productError } = await supabase
       .from("products")
-      .insert({
-        category_id: categoryId,
-        brand_name: input.brandName,
-        name: input.name,
-        slug,
-        short_description: input.shortDescription,
-        description: input.description,
-        hero_image_path: heroImagePath,
-        status: input.status,
-        badges: ["New arrival", collection?.name ?? input.category],
-        product_type: input.productType,
-        collection_slug: input.collectionSlug ?? null,
-        collection_name: collection?.name ?? null,
-        difficulty: input.difficulty ?? null,
-        item_count: itemCount,
-        theme_label: input.themeLabel || collection?.themeLabel || null,
-        intro_video_url: input.introVideoUrl || null,
-        best_for: input.bestFor || null,
-        result: input.result || null
-      })
+      .insert(buildProductMutation(input, categoryId, itemCount, heroImagePath, { slug }))
       .select("id")
       .single();
 
+    if (productError && shouldRetryLegacyProductType(productError, input.productType)) {
+      const retry = await supabase
+        .from("products")
+        .insert(buildProductMutation(input, categoryId, itemCount, heroImagePath, { slug, useLegacySetType: true }))
+        .select("id")
+        .single();
+      product = retry.data;
+      productError = retry.error;
+    }
+
     if (productError) {
       throw productError;
+    }
+
+    if (!product) {
+      throw new Error("Product was saved without an id");
     }
 
     productId = product.id as string;
@@ -509,13 +686,14 @@ export async function createProduct(input: MutableProductInput) {
       product_id: productId,
       name:
         input.optionName ||
-        (input.productType === "curated_set" ? `${itemCount}-item routine kit` : "Default option"),
+        (input.productType === "set" ? `${itemCount}-item set` : "Default option"),
       sku: input.sku || slug.toUpperCase().replace(/-/g, "-").slice(0, 24),
       price_cents: input.priceCents,
       stock_quantity: input.stockQuantity
     });
 
     await replaceProductChildren(supabase, productId, input, heroImagePath);
+    await replaceProductDetailSectionsIfNeeded(supabase, productId, input);
 
     const savedProductId = productId;
     if (!savedProductId) {
@@ -531,7 +709,7 @@ export async function createProduct(input: MutableProductInput) {
     if (productId) {
       await supabase.from("products").delete().eq("id", productId);
     }
-    throw new Error(error instanceof Error ? error.message : "Could not save product");
+    throw new Error(getErrorMessage(error, "Could not save product"));
   }
 }
 
@@ -543,39 +721,23 @@ export async function updateProduct(productId: string, input: MutableProductInpu
     throw new Error("Product not found");
   }
 
-  const collection = input.collectionSlug
-    ? getCollectionBySlug(input.collectionSlug)
-    : undefined;
   const itemCount = input.itemCount ?? input.includedItems.length;
-  const heroImagePath =
-    input.heroImagePath ||
-    (input.collectionSlug ? `/catalog-assets/sets/${collectionFallbackImage(input.collectionSlug)}` : undefined) ||
-    "/catalog-assets/admin-product-placeholder.svg";
+  const heroImagePath = input.heroImagePath || "/catalog-assets/admin-product-placeholder.svg";
 
   try {
     const categoryId = await findOrCreateCategoryId(supabase, input.category);
-    const { error: productError } = await supabase
+    let { error: productError } = await supabase
       .from("products")
-      .update({
-        category_id: categoryId,
-        brand_name: input.brandName,
-        name: input.name,
-        short_description: input.shortDescription,
-        description: input.description,
-        hero_image_path: heroImagePath,
-        status: input.status,
-        badges: ["New arrival", collection?.name ?? input.category],
-        product_type: input.productType,
-        collection_slug: input.collectionSlug ?? null,
-        collection_name: collection?.name ?? null,
-        difficulty: input.difficulty ?? null,
-        item_count: itemCount || null,
-        theme_label: input.themeLabel || collection?.themeLabel || null,
-        intro_video_url: input.introVideoUrl || null,
-        best_for: input.bestFor || null,
-        result: input.result || null
-      })
+      .update(buildProductMutation(input, categoryId, itemCount, heroImagePath))
       .eq("id", productId);
+
+    if (productError && shouldRetryLegacyProductType(productError, input.productType)) {
+      const retry = await supabase
+        .from("products")
+        .update(buildProductMutation(input, categoryId, itemCount, heroImagePath, { useLegacySetType: true }))
+        .eq("id", productId);
+      productError = retry.error;
+    }
 
     if (productError) {
       throw productError;
@@ -583,6 +745,7 @@ export async function updateProduct(productId: string, input: MutableProductInpu
 
     await upsertPrimaryOption(supabase, productId, input, itemCount, existing.slug);
     await replaceProductChildren(supabase, productId, input, heroImagePath);
+    await replaceProductDetailSectionsIfNeeded(supabase, productId, input);
 
     const updated = await getProductById(productId, supabase);
     if (!updated) {
@@ -590,7 +753,7 @@ export async function updateProduct(productId: string, input: MutableProductInpu
     }
     return updated;
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "Could not update product");
+    throw new Error(getErrorMessage(error, "Could not update product"));
   }
 }
 
@@ -604,6 +767,59 @@ export async function archiveProduct(productId: string) {
   if (error) {
     throw new Error(`Could not archive product: ${error.message}`);
   }
+}
+
+function buildProductMutation(
+  input: MutableProductInput,
+  categoryId: string,
+  itemCount: number,
+  heroImagePath: string,
+  options: { slug?: string; useLegacySetType?: boolean } = {}
+) {
+  return {
+    ...(options.slug ? { slug: options.slug } : {}),
+    category_id: categoryId,
+    brand_name: input.brandName,
+    name: input.name,
+    short_description: input.shortDescription,
+    description: input.description,
+    hero_image_path: heroImagePath,
+    status: input.status,
+    badges: [],
+    tags: normalizeProductTagList(input.tags).length
+      ? normalizeProductTagList(input.tags)
+      : inferInputProductTags(input, itemCount),
+    product_type: options.useLegacySetType && input.productType === "set" ? "curated_set" : input.productType,
+    difficulty: input.difficulty ?? null,
+    item_count: itemCount || null,
+    intro_video_url: input.introVideoUrl || null,
+    best_for: input.bestFor || null,
+    result: input.result || null
+  };
+}
+
+function shouldRetryLegacyProductType(error: unknown, productType: ProductType) {
+  if (productType !== "set") {
+    return false;
+  }
+
+  const message = getErrorMessage(error, "");
+  return message.includes("product_type") && message.includes("set");
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return fallback;
 }
 
 export async function createPaidOrder({
@@ -1350,8 +1566,6 @@ function buildPromoterDashboard({
 }
 
 export function mapProductRow(row: ProductRow): Product {
-  const collectionSlug = getProductCollectionSlug(row.collection_slug);
-  const collection = collectionSlug ? getCollectionBySlug(collectionSlug) : undefined;
   const options = sortByName(asArray(row.product_options));
   const option = options[0] ?? {
     id: `${row.id}_option`,
@@ -1360,34 +1574,35 @@ export function mapProductRow(row: ProductRow): Product {
     price_cents: 0,
     stock_quantity: 0
   };
-  const category = getRelationObject<{ name: string }>(row.categories)?.name ?? "Routine Kit";
+  const normalizedSlug = normalizeLegacyProductSlug(row.slug);
+  const category = inferProductCategory(row, normalizedSlug);
   const heroImagePath =
     normalizeLaunchCatalogAssetPath(row.hero_image_path) ||
     "/catalog-assets/admin-product-placeholder.svg";
+  const productName = normalizeLaunchProductName(row.name, row.slug);
   const shortDescription = normalizeLaunchSurfaceCopy(row.short_description) ?? row.short_description;
   const description = normalizeLaunchSurfaceCopy(row.description) ?? row.description;
   const bestFor = normalizeLaunchSurfaceCopy(row.best_for);
 
   return {
     id: row.id,
-    slug: row.slug,
-    productType: row.product_type ?? "single",
+    slug: normalizedSlug,
+    productType: normalizeProductType(row.product_type),
     brandName: row.brand_name,
-    name: row.name,
+    name: productName,
     category,
-    collectionSlug,
-    collectionName: row.collection_name ?? collection?.name,
     difficulty: row.difficulty ?? undefined,
     itemCount: row.item_count ?? undefined,
-    themeLabel: row.theme_label ?? collection?.themeLabel,
     shortDescription,
     description,
     bestFor: bestFor ?? undefined,
     result: normalizeLaunchSurfaceCopy(row.result) ?? undefined,
     heroImagePath,
     introVideoUrl: row.intro_video_url ?? undefined,
-    badges: row.badges?.length ? row.badges : [row.theme_label, row.collection_name].filter(isString),
+    badges: [],
+    tags: normalizeProductTags(row.tags, row, category, normalizedSlug),
     status: row.status,
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
     option: {
       id: option.id,
@@ -1399,7 +1614,7 @@ export function mapProductRow(row: ProductRow): Product {
     galleryImages: sortBySortOrder(asArray(row.product_images)).map((image) => ({
       id: image.id,
       imagePath: normalizeLaunchCatalogAssetPath(image.image_path) ?? image.image_path,
-      altText: image.alt_text || row.name
+      altText: normalizeLaunchSurfaceCopy(image.alt_text) ?? productName
     })),
     includedItems: sortBySortOrder(asArray(row.product_included_items)).map((item) => ({
       id: item.id,
@@ -1418,7 +1633,7 @@ export function mapProductRow(row: ProductRow): Product {
           id: block.id,
           type: "image" as const,
           imagePath: normalizeLaunchCatalogAssetPath(block.image_path) ?? heroImagePath,
-          alt: block.image_alt ?? row.name
+          alt: normalizeLaunchSurfaceCopy(block.image_alt) ?? productName
         };
       }
 
@@ -1427,9 +1642,9 @@ export function mapProductRow(row: ProductRow): Product {
           id: block.id,
           type: "image_text" as const,
           imagePath: normalizeLaunchCatalogAssetPath(block.image_path) ?? heroImagePath,
-          alt: block.image_alt ?? row.name,
+          alt: normalizeLaunchSurfaceCopy(block.image_alt) ?? productName,
           eyebrow: normalizeLaunchSurfaceCopy(block.eyebrow) ?? undefined,
-          title: normalizeLaunchSurfaceCopy(block.title) ?? row.name,
+          title: normalizeLaunchSurfaceCopy(block.title) ?? productName,
           body: normalizeLaunchSurfaceCopy(block.body) ?? description,
           imagePosition: block.image_position ?? "left"
         };
@@ -1439,11 +1654,13 @@ export function mapProductRow(row: ProductRow): Product {
         id: block.id,
         type: "text" as const,
         eyebrow: normalizeLaunchSurfaceCopy(block.eyebrow) ?? undefined,
-        title: normalizeLaunchSurfaceCopy(block.title) ?? row.name,
+        title: normalizeLaunchSurfaceCopy(block.title) ?? productName,
         body: normalizeLaunchSurfaceCopy(block.body) ?? description
       };
     }),
-    detailSections: sortBySortOrder(asArray(row.product_detail_sections)).map(mapProductDetailSectionRow)
+    detailSections: sortBySortOrder(asArray(row.product_detail_sections))
+      .map(mapProductDetailSectionRow)
+      .map(normalizeProductDetailSection)
   };
 }
 
@@ -1473,7 +1690,7 @@ export async function hydrateProductsWithDetailSections(
   const sectionsByProductId = new Map<string, Product["detailSections"]>();
   for (const row of (data ?? []) as ProductDetailSectionHydrationRow[]) {
     const sections = sectionsByProductId.get(row.product_id) ?? [];
-    sections.push(mapProductDetailSectionRow(row));
+    sections.push(normalizeProductDetailSection(mapProductDetailSectionRow(row)));
     sectionsByProductId.set(row.product_id, sections);
   }
 
@@ -1500,12 +1717,67 @@ function normalizeLaunchCatalogAssetPath(value: string | null | undefined) {
   return value?.replace(/^\/demo-assets\//, "/catalog-assets/") ?? null;
 }
 
+const legacyProductSlugs: Record<string, string> = {
+  "daily-k-glow-set": "skincare-starter-set",
+  "k-pop-idol-look": "makeup-starter-set",
+  "glass-skin-starter": "hydration-skincare-set",
+  "y2k-cute-bomb": "gloss-makeup-set",
+  "cool-tone-drama": "definition-makeup-set",
+  "warm-honey-look": "warm-makeup-set"
+};
+
+const canonicalToLegacySlug = Object.fromEntries(
+  Object.entries(legacyProductSlugs).map(([legacy, canonical]) => [canonical, legacy])
+) as Record<string, string>;
+
+const legacyProductNames: Record<string, string> = {
+  "daily-k-glow-set": "Skincare Starter Set",
+  "k-pop-idol-look": "Makeup Starter Set",
+  "glass-skin-starter": "Hydration Skincare Set",
+  "y2k-cute-bomb": "Gloss Makeup Set",
+  "cool-tone-drama": "Definition Makeup Set",
+  "warm-honey-look": "Warm Makeup Set"
+};
+
+const legacyProductDisplayNames: Record<string, string> = {
+  "Daily K-Glow Set": "Skincare Starter Set",
+  "K-Pop Idol Look": "Makeup Starter Set",
+  "Glass Skin Starter": "Hydration Skincare Set",
+  "Y2K Cute Bomb": "Gloss Makeup Set",
+  "Cool Tone Drama": "Definition Makeup Set",
+  "Warm Honey Look": "Warm Makeup Set"
+};
+
+const legacyProductCategories: Record<string, ProductCategory> = {
+  "daily-k-glow-set": "Skincare",
+  "skincare-starter-set": "Skincare",
+  "glass-skin-starter": "Skincare",
+  "hydration-skincare-set": "Skincare",
+  "k-pop-idol-look": "Makeup",
+  "makeup-starter-set": "Makeup",
+  "y2k-cute-bomb": "Makeup",
+  "gloss-makeup-set": "Makeup",
+  "cool-tone-drama": "Makeup",
+  "definition-makeup-set": "Makeup",
+  "warm-honey-look": "Makeup",
+  "warm-makeup-set": "Makeup"
+};
+
 function normalizeLaunchSurfaceCopy(value: string | null | undefined) {
   if (!value) {
     return null;
   }
 
-  return value
+  let normalized = value;
+  for (const [legacyName, productName] of Object.entries(legacyProductDisplayNames)) {
+    normalized = normalized.replaceAll(legacyName, productName);
+  }
+
+  return normalized
+    .replace(/\bFollow the routine in order\b/gi, "Follow the use order")
+    .replace(/\bdaily routines\b/gi, "daily use")
+    .replace(/\broutines\b/gi, "product steps")
+    .replace(/\broutine\b/gi, "set")
     .replace(/\bCreator demos\b/g, "Creator tutorials")
     .replace(/\bcreator demonstrations\b/g, "creator tutorials")
     .replace(/\bCreator Code Demo\b/g, "Creator Code")
@@ -1513,6 +1785,134 @@ function normalizeLaunchSurfaceCopy(value: string | null | undefined) {
     .replace(/\bfictional\s+/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function normalizeLegacyProductSlug(slug: string) {
+  return legacyProductSlugs[slug] ?? slug;
+}
+
+function normalizeLaunchProductName(name: string, slug: string) {
+  return legacyProductNames[slug] ?? name;
+}
+
+function normalizeProductDetailSection(
+  section: Product["detailSections"][number]
+): Product["detailSections"][number] {
+  return normalizeProductDetailSectionValue(section) as Product["detailSections"][number];
+}
+
+function normalizeProductDetailSectionValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return normalizeLaunchSurfaceCopy(value) ?? value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeProductDetailSectionValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, normalizeProductDetailSectionValue(item)])
+    );
+  }
+
+  return value;
+}
+
+const knownProductTags: Record<string, string[]> = {
+  "skincare-starter-set": ["STARTER", "SKINCARE", "5 ITEMS"],
+  "hydration-skincare-set": ["HYDRATION", "SKINCARE", "6 ITEMS"],
+  "makeup-starter-set": ["MAKEUP", "STARTER", "7 ITEMS"],
+  "gloss-makeup-set": ["GLOSS", "MAKEUP", "6 ITEMS"],
+  "definition-makeup-set": ["DEFINITION", "MAKEUP", "7 ITEMS"],
+  "warm-makeup-set": ["WARM", "MAKEUP", "6 ITEMS"],
+  "bubble-tide-seafoam-splash-hydration-set": ["SEAFOAM", "HYDRATION", "SET"],
+  "birch-water-toner-pads": ["TONER PAD", "HYDRATION", "QUICK PREP"],
+  "seoul-cica-calm-ampoule": ["CICA", "AMPOULE", "CALM"],
+  "rice-ceramide-barrier-cream": ["RICE", "CREAM", "COMFORT"],
+  "peach-cloud-cream-blush": ["BLUSH", "PEACH", "CREAM"],
+  "soft-mauve-shadow-quad": ["EYE", "MAUVE", "QUAD"],
+  "cherry-jelly-lip-tint": ["LIP TINT", "CHERRY", "GLOSS"],
+  "shipk-curated": ["SKINCARE", "SET"]
+};
+
+function normalizeMarketingBadges(badges: string[] | null | undefined) {
+  const normalized = normalizeLabelList(badges)
+    .map((badge) => {
+      if (["BEST", "BEST SELLER", "BESTSELLER"].includes(badge)) {
+        return "BESTSELLER";
+      }
+      if (["NEW", "NEWARRIVAL", "NEW ARRIVAL"].includes(badge)) {
+        return "NEW ARRIVAL";
+      }
+      if (["LIMITED", "LIMITED DROP"].includes(badge)) {
+        return "LIMITED";
+      }
+      if (["EDITOR PICK", "EDITOR'S PICK", "RECOMMENDED"].includes(badge)) {
+        return "EDITOR'S PICK";
+      }
+      return "";
+    })
+    .filter(Boolean);
+
+  return uniqueLabels(normalized).slice(0, 3);
+}
+
+function normalizeProductTagList(tags: string[] | null | undefined) {
+  return uniqueLabels(normalizeLabelList(tags)).slice(0, 6);
+}
+
+function normalizeProductTags(
+  tags: string[] | null | undefined,
+  row: ProductRow,
+  category: ProductCategory,
+  normalizedSlug: string
+) {
+  const explicitTags = normalizeProductTagList(tags);
+  if (explicitTags.length > 0) {
+    return explicitTags;
+  }
+
+  const knownTags = knownProductTags[normalizedSlug] ?? knownProductTags[row.slug];
+  if (knownTags) {
+    return knownTags;
+  }
+
+  const migratedTags = normalizeProductTagList(
+    row.badges?.filter((badge) => normalizeMarketingBadges([badge]).length === 0)
+  );
+  if (migratedTags.length > 0) {
+    return migratedTags;
+  }
+
+  const productType = normalizeProductType(row.product_type);
+  return inferProductTags(category, productType, row.item_count ?? undefined);
+}
+
+function inferInputProductTags(input: MutableProductInput, itemCount: number) {
+  return inferProductTags(input.category, input.productType, itemCount);
+}
+
+function inferProductTags(
+  category: ProductCategory,
+  productType: ProductType,
+  itemCount?: number
+) {
+  return [
+    category.toUpperCase(),
+    productType === "set" ? "SET" : "SINGLE",
+    itemCount ? `${itemCount} ITEMS` : undefined
+  ].filter((tag): tag is string => Boolean(tag));
+}
+
+function normalizeLabelList(values: string[] | null | undefined) {
+  return (values ?? [])
+    .map((value) => value.trim().replace(/\s+/g, " ").toUpperCase())
+    .filter(Boolean);
+}
+
+function uniqueLabels(values: string[]) {
+  return [...new Set(values)];
 }
 
 export function mapOrderRow(row: OrderRow): CommerceOrder {
@@ -1631,7 +2031,8 @@ export async function getProductById(productId: string, supabase?: SupabaseClien
   }
 
   const [product] = await hydrateProductsWithDetailSections(client, [mapProductRow(data as ProductRow)]);
-  return product;
+  const [decoratedProduct] = await decorateProductsWithAutomaticMerchandising([product]);
+  return decoratedProduct;
 }
 
 async function upsertPrimaryOption(
@@ -1656,7 +2057,7 @@ async function upsertPrimaryOption(
     product_id: productId,
     name:
       input.optionName ||
-      (input.productType === "curated_set" ? `${itemCount}-item routine kit` : "Default option"),
+      (input.productType === "set" ? `${itemCount}-item set` : "Default option"),
     sku: input.sku || slug.toUpperCase().replace(/-/g, "-").slice(0, 24),
     price_cents: input.priceCents,
     stock_quantity: input.stockQuantity
@@ -1732,7 +2133,7 @@ async function replaceProductChildren(
         },
         {
           type: "text" as const,
-          eyebrow: input.productType === "curated_set" ? "Curated routine" : "Product story",
+          eyebrow: input.productType === "set" ? "Set story" : "Product story",
           title: input.result || input.shortDescription,
           body: input.bestFor || input.description
         }
@@ -1768,6 +2169,30 @@ async function deleteProductChildren(supabase: SupabaseClient, productId: string
     if (error) {
       throw error;
     }
+  }
+}
+
+async function replaceProductDetailSectionsIfNeeded(
+  supabase: SupabaseClient,
+  productId: string,
+  input: MutableProductInput
+) {
+  if (input.detailSections.length === 0) {
+    return;
+  }
+
+  if (!input.detailActorId) {
+    throw new Error("Admin detail section actor is required");
+  }
+
+  const { error } = await supabase.rpc("replace_product_detail_sections", {
+    p_product_id: productId,
+    p_actor_id: input.detailActorId,
+    p_sections: toProductDetailSectionRpcPayload(input.detailSections)
+  });
+
+  if (error) {
+    throw error;
   }
 }
 
@@ -2228,20 +2653,6 @@ function slugify(value: string) {
     .slice(0, 72);
 }
 
-function collectionFallbackImage(collectionSlug: ProductCollectionSlug) {
-  const fallbackByCollection: Record<ProductCollectionSlug, string> = {
-    "daily-glow": "daily-k-glow-set.png",
-    "k-pop-idol": "k-pop-idol-look.png",
-    "glass-skin": "glass-skin-starter.png",
-    "y2k-cute": "y2k-cute-bomb.png",
-    "cool-tone": "cool-tone-drama.png",
-    "warm-tone": "warm-honey-look.png",
-    "date-night": "daily-k-glow-set.png"
-  };
-
-  return fallbackByCollection[collectionSlug];
-}
-
 function createOrderNumber() {
   return `SK${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 100)
     .toString()
@@ -2254,15 +2665,6 @@ function createReferralExpiry() {
   return expiresAt.toISOString();
 }
 
-function getProductCollectionSlug(value: string | null) {
-  if (!value) {
-    return undefined;
-  }
-  return productCollectionSlugs.includes(value as ProductCollectionSlug)
-    ? (value as ProductCollectionSlug)
-    : undefined;
-}
-
 function asArray<T>(value: T[] | T | null | undefined): T[] {
   if (!value) {
     return [];
@@ -2272,6 +2674,68 @@ function asArray<T>(value: T[] | T | null | undefined): T[] {
 
 function getRelationObject<T>(value: T | T[] | null | undefined): T | null {
   return asArray(value)[0] ?? null;
+}
+
+function normalizeProductType(value: ProductType | "curated_set" | null): ProductType {
+  if (value === "curated_set") {
+    return "set";
+  }
+
+  return value ?? "single";
+}
+
+function normalizeProductCategory(value: string | null | undefined): ProductCategory {
+  return value === "Makeup" ? "Makeup" : "Skincare";
+}
+
+function inferProductCategory(row: ProductRow, normalizedSlug: string): ProductCategory {
+  const legacyCategory = legacyProductCategories[normalizedSlug] ?? legacyProductCategories[row.slug];
+  if (legacyCategory) {
+    return legacyCategory;
+  }
+
+  const relationCategory = normalizeProductCategory(
+    getRelationObject<{ name: string }>(row.categories)?.name
+  );
+  const haystack = [
+    row.slug,
+    normalizedSlug,
+    row.name,
+    row.short_description,
+    row.description,
+	    row.best_for,
+	    row.result,
+	    ...(row.badges ?? []),
+	    ...(row.tags ?? []),
+	    ...asArray(row.product_included_items).flatMap((item) => [
+      item.name,
+      item.category,
+      item.description
+    ])
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const looksLikeSkincare =
+    /\b(skincare|skin care|cleanser|foam|toner|pads|serum|ampoule|essence|cica|ceramide|barrier|birch|rice|sunscreen|spf|mask|moisturizer|moisturising|moisturizing|hydration|hydrate|hydro)\b/.test(
+      haystack
+    );
+  const looksLikeMakeup =
+    /\b(makeup|lip|lips|eye|eyes|shadow|liner|brow|lash|blush|cheek|cushion|gloss|tint|powder|primer|palette|idol|k-pop|kpop|y2k|definition)\b/.test(
+      haystack
+    ) ||
+    haystack.includes("cool-tone") ||
+    haystack.includes("warm-honey");
+
+  if (looksLikeMakeup && !looksLikeSkincare) {
+    return "Makeup";
+  }
+  if (looksLikeSkincare && !looksLikeMakeup) {
+    return "Skincare";
+  }
+
+  return relationCategory;
 }
 
 function sortBySortOrder<T extends { sort_order: number }>(items: T[]) {

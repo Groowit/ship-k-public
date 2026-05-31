@@ -4,16 +4,6 @@ import { Product } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
-const skincareCategories = new Set([
-  "Ampoule",
-  "Cleanser",
-  "Cream",
-  "Essence",
-  "Mask",
-  "Serum",
-  "Sun Care",
-  "Toner"
-]);
 const faceSerumCategories = new Set(["Ampoule", "Essence", "Serum"]);
 const moisturizerCategories = new Set(["Cream", "Mask"]);
 
@@ -48,25 +38,24 @@ export default async function ShopPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const selectedCollection =
-    typeof params.collection === "string" ? params.collection : "all";
-  const activeProducts = (await listActiveProducts()).filter(isSkincareRoutine);
+  const selectedFilterSlug =
+    typeof params.filter === "string" ? params.filter : "all";
+  const activeProducts = (await listActiveProducts()).filter(
+    (product) => product.category === "Skincare"
+  );
 
   return (
     <CatalogPage
       activeProducts={activeProducts}
       basePath="/shop"
-      selectedCollection={selectedCollection}
+      selectedFilterSlug={selectedFilterSlug}
       filters={skincareFilters}
+      filterQueryParam="filter"
       allFilterLabel="All"
-      title="Get the Glass Skin"
-      highlightedTitleText="Glass Skin"
+      title="Skincare Sets"
+      highlightedTitleText="Skincare"
     />
   );
-}
-
-function isSkincareRoutine(product: Product) {
-  return hasIncludedCategory(product, (category) => skincareCategories.has(category));
 }
 
 function hasIncludedCategory(

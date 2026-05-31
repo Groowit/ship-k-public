@@ -2,16 +2,15 @@ import { describe, expect, it } from "vitest";
 import { adminProductPayloadSchema } from "./admin-product-input";
 
 describe("adminProductPayloadSchema", () => {
-  it("parses curated set metadata, included items, and routine steps", () => {
+  it("parses set metadata, included items, and routine steps", () => {
     const parsed = adminProductPayloadSchema.parse({
-      productType: "curated_set",
+      productType: "set",
       brandName: "shipK Curated",
       name: "Date Night Demo",
-      category: "Routine Kit",
-      collectionSlug: "date-night",
+      category: "Makeup",
+      tags: [" lip tint ", "gloss"],
       difficulty: "Intermediate",
       itemCount: "6",
-      themeLabel: "DATE",
       shortDescription: "A fictional evening look kit.",
       description: "A demo set assembled for product testing.",
       priceUsd: "59.00",
@@ -26,12 +25,15 @@ describe("adminProductPayloadSchema", () => {
         '[{"title":"Prep the base","body":"Apply a light layer before color."}]',
       contentBlocks:
         '[{"type":"text","eyebrow":"Story","title":"Evening ready","body":"A clear routine story."}]',
+      detailSections:
+        '[{"sectionType":"heading","schemaVersion":1,"text":"Evening story","level":"h2","align":"left"},{"sectionType":"text","schemaVersion":1,"body":"A customer-facing document body.","align":"left"}]',
       status: "active"
     });
 
     expect(parsed).toMatchObject({
-      productType: "curated_set",
-      collectionSlug: "date-night",
+      productType: "set",
+      category: "Makeup",
+      tags: ["LIP TINT", "GLOSS"],
       difficulty: "Intermediate",
       itemCount: 6,
       priceUsd: 59,
@@ -42,14 +44,15 @@ describe("adminProductPayloadSchema", () => {
     expect(parsed.includedItems).toHaveLength(1);
     expect(parsed.routineSteps).toHaveLength(1);
     expect(parsed.contentBlocks).toHaveLength(1);
+    expect(parsed.detailSections).toHaveLength(2);
   });
 
   it("allows incomplete draft products but blocks incomplete publish attempts", () => {
     const draft = adminProductPayloadSchema.parse({
-      productType: "curated_set",
+      productType: "set",
       brandName: "shipK Curated",
       name: "Draft Set",
-      category: "Routine Kit",
+      category: "Skincare",
       shortDescription: "Draft",
       description: "Draft description",
       priceUsd: "39.00",
@@ -71,11 +74,10 @@ describe("adminProductPayloadSchema", () => {
   it("rejects non-embeddable intro video URLs", () => {
     expect(() =>
       adminProductPayloadSchema.parse({
-        productType: "curated_set",
+        productType: "set",
         brandName: "shipK Curated",
         name: "Video Test",
-        category: "Routine Kit",
-        collectionSlug: "daily-glow",
+        category: "Skincare",
         difficulty: "Beginner",
         shortDescription: "Video",
         description: "Video description",

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const bannerThemes = [
   {
     eyebrow: "TODAY'S FOCUS",
-    headline: "Complete a dewy routine in one day",
+    headline: "Build a dewy set in one day",
     background: "from-[#ffe7cf] via-[#ffd2ad] to-[#bdeff2]",
     glow: "bg-[#ff7a5c]"
   },
@@ -21,8 +21,8 @@ const bannerThemes = [
     glow: "bg-[#ff3d7f]"
   },
   {
-    eyebrow: "GLASS SKIN",
-    headline: "Start glass skin the easy way",
+    eyebrow: "SKINCARE",
+    headline: "Start skin prep the easy way",
     background: "from-[#dcfff4] via-[#bde0fe] to-[#fff8f0]",
     glow: "bg-[#49c6a3]"
   }
@@ -59,7 +59,7 @@ export function HomeFeatureBanner({ products }: { products: Product[] }) {
         "relative overflow-hidden border-y-4 border-black bg-gradient-to-r",
         theme.background
       )}
-      aria-label="Featured routine banner"
+      aria-label="Featured product banner"
     >
       <div className="absolute inset-y-0 right-0 hidden w-[48%] bg-white/20 backdrop-blur-[1px] lg:block" />
       <div className="relative mx-auto grid min-h-[26rem] w-full max-w-[1920px] items-center gap-6 px-8 py-8 sm:px-12 md:min-h-[34rem] md:px-16 md:py-14 lg:min-h-[36rem] lg:grid-cols-[0.9fr_1.1fr] lg:px-24 lg:py-16">
@@ -77,7 +77,7 @@ export function HomeFeatureBanner({ products }: { products: Product[] }) {
           <div className="mt-7 flex flex-wrap items-center gap-4">
             <Link
               href={`/products/${product.slug}`}
-              className="inline-flex min-h-12 items-center rounded-full border-2 border-black bg-white px-6 text-sm font-black shadow-[4px_4px_0_#0a0a0a] transition hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0a0a0a]"
+              className="inline-flex min-h-12 items-center rounded-full border-2 border-black bg-white px-6 text-sm font-black transition hover:-translate-y-0.5 hover:bg-[#fff8f0]"
             >
               Shop the focus
             </Link>

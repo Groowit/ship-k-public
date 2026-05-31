@@ -11,6 +11,7 @@ import {
   updateAffiliateStatus,
   updateOrderFulfillment
 } from "./commerce-store";
+import type { Product } from "./products";
 
 const mocks = vi.hoisted(() => ({
   privilegedClient: undefined as unknown,
@@ -45,11 +46,11 @@ describe("Supabase order mapping", () => {
       created_at: "2026-05-19T00:00:00.000Z",
       order_items: [
         {
-          product_name: "Daily K-Glow Set",
-          option_name: "5-item routine kit",
+          product_name: "Skincare Starter Set",
+          option_name: "5-item set",
           quantity: 1,
           product_id: "product_1",
-          products: { slug: "daily-k-glow-set" }
+          products: { slug: "skincare-starter-set" }
         }
       ],
       shipping_addresses: [
@@ -73,8 +74,8 @@ describe("Supabase order mapping", () => {
     expect(mapOrderRow(row)).toMatchObject({
       id: "order_1",
       userId: "user_1",
-      productSlug: "daily-k-glow-set",
-      productName: "Daily K-Glow Set",
+      productSlug: "skincare-starter-set",
+      productName: "Skincare Starter Set",
       paymentProviderOrderId: "paypal_1",
       referralCode: "creator_code",
       shipmentCarrier: "USPS",
@@ -92,28 +93,27 @@ describe("Supabase product mapping", () => {
     const row = {
       id: "product_1",
       brand_name: "shipK Curated",
-      name: "Daily K-Glow Set",
-      slug: "daily-k-glow-set",
+      name: "Skincare Starter Set",
+      slug: "skincare-starter-set",
       short_description: "Short",
       description: "Description",
       hero_image_path: "/hero.png",
       status: "active",
       badges: ["BEST"],
-      product_type: "curated_set",
-      collection_slug: "daily-glow",
-      collection_name: "Daily Glow",
+      tags: ["STARTER", "SKINCARE", "5 ITEMS"],
+      product_type: "set",
       difficulty: "Beginner",
       item_count: 5,
-      theme_label: "DAILY",
       intro_video_url: null,
       best_for: "Daily routines",
       result: "Glow",
+      created_at: "2026-05-18T00:00:00.000Z",
       updated_at: "2026-05-19T00:00:00.000Z",
-      categories: { name: "Routine Kit" },
+      categories: { name: "Skincare" },
       product_options: [
         {
           id: "option_1",
-          name: "5-item routine kit",
+          name: "5-item set",
           sku: "SK-DAILY",
           price_cents: 4900,
           stock_quantity: 10
@@ -171,7 +171,10 @@ describe("Supabase product mapping", () => {
       "First",
       "Second"
     ]);
+    expect(product.createdAt).toBe("2026-05-18T00:00:00.000Z");
     expect(product.updatedAt).toBe("2026-05-19T00:00:00.000Z");
+    expect(product.badges).toEqual([]);
+    expect(product.tags).toEqual(["STARTER", "SKINCARE", "5 ITEMS"]);
     expect(product.contentBlocks[0]).toMatchObject({
       type: "text",
       title: "Story"
@@ -189,17 +192,16 @@ describe("Supabase product mapping", () => {
       hero_image_path: "/demo-assets/sets/k-pop-idol-look.png",
       status: "active",
       badges: ["NEW"],
+      tags: ["MAKEUP", "STARTER", "7 ITEMS"],
       product_type: "curated_set",
-      collection_slug: "k-pop-idol",
-      collection_name: "K-Pop Idol",
       difficulty: "Intermediate",
       item_count: 7,
-      theme_label: "IDOL",
       intro_video_url: null,
       best_for: "Creator demos and easy creator demonstrations.",
       result: "Bright eyes",
+      created_at: "2026-05-18T00:00:00.000Z",
       updated_at: "2026-05-19T00:00:00.000Z",
-      categories: { name: "Routine Kit" },
+      categories: { name: "Makeup" },
       product_options: [],
       product_images: [
         {
@@ -238,8 +240,10 @@ describe("Supabase product mapping", () => {
 
     expect(product.heroImagePath).toBe("/catalog-assets/sets/k-pop-idol-look.png");
     expect(product.galleryImages[0]?.imagePath).toBe("/catalog-assets/sets/k-pop-idol-look.png");
-    expect(product.description).toBe("A color routine for Creator tutorials.");
+    expect(product.description).toBe("A color set for Creator tutorials.");
     expect(product.bestFor).toBe("Creator tutorials and easy creator tutorials.");
+    expect(product.badges).toEqual([]);
+    expect(product.tags).toEqual(["MAKEUP", "STARTER", "7 ITEMS"]);
     expect(product.includedItems[0]?.description).toBe("A base-prep item.");
     expect(product.contentBlocks[0]).toMatchObject({
       eyebrow: "Phase 1 launch",
@@ -652,28 +656,27 @@ function createQueryBuilder(table: string, handler: (call: QueryCall) => unknown
   return builder;
 }
 
-function productFixture() {
+function productFixture(): Product {
   return {
     id: "product_1",
     brandName: "shipK Curated",
-    name: "Daily K-Glow Set",
-    slug: "daily-k-glow-set",
+    name: "Skincare Starter Set",
+    slug: "skincare-starter-set",
     shortDescription: "Short",
     description: "Description",
     heroImagePath: "/hero.png",
-    status: "active" as const,
-    badges: [],
-    category: "Routine Kit",
+	    status: "active" as const,
+	    badges: [],
+	    tags: ["SKINCARE", "SET"],
+	    category: "Skincare",
     option: {
       id: "option_1",
-      name: "5-item routine kit",
+      name: "5-item set",
       sku: "SK-DAILY",
       priceCents: 4_900,
       stockQuantity: 10
     },
-    collectionSlug: "daily-glow" as const,
-    collectionName: "Daily Glow",
-    productType: "curated_set" as const,
+    productType: "set" as const,
     galleryImages: [],
     includedItems: [],
     routineSteps: [],
@@ -714,11 +717,11 @@ function orderRow(
     created_at: "2026-05-19T00:00:00.000Z",
     order_items: [
       {
-        product_name: "Daily K-Glow Set",
-        option_name: "5-item routine kit",
+        product_name: "Skincare Starter Set",
+        option_name: "5-item set",
         quantity: 1,
         product_id: "product_1",
-        products: { slug: "daily-k-glow-set" }
+        products: { slug: "skincare-starter-set" }
       }
     ],
     shipping_addresses: [

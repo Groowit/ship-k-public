@@ -40,9 +40,9 @@ export function AuthForm({
   const isSignUp = mode === "sign-up";
   const copy = isSignUp
     ? {
-        eyebrow: "New routine",
+        eyebrow: "New set",
         title: "Create your shipK account",
-        description: "Save your favorite routine kits and get clear order updates.",
+        description: "Save your favorite beauty sets and get clear order updates.",
         primaryAction: "Create account",
         alternateLead: "Already have an account?",
         alternateAction: "Sign in",

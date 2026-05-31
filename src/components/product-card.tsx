@@ -1,14 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { getCollectionVisual, getProductRank } from "@/lib/brand-visuals";
+import { getProductRank, getProductVisual } from "@/lib/brand-visuals";
 import { Product, getProductPriceLabel } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 export function ProductCard({ product, rank = 0 }: { product: Product; rank?: number }) {
-  const visual = getCollectionVisual(product.collectionSlug);
+  const visual = getProductVisual(product);
+  const primaryTag = product.tags[0] ?? visual.themeWord;
+  const itemCountLabel = product.itemCount ? `${product.itemCount} items` : product.category;
+  const supportingTags = product.tags
+    .slice(1)
+    .filter((tag) => tag.toLowerCase() !== itemCountLabel.toLowerCase())
+    .slice(0, 2);
   const metadata = [
-    product.itemCount ? `${product.itemCount} items` : product.category,
+    ...supportingTags,
+    itemCountLabel,
     product.difficulty
   ].filter(Boolean);
 
@@ -26,16 +33,16 @@ export function ProductCard({ product, rank = 0 }: { product: Product; rank?: nu
             {getProductRank(rank)}
           </span>
           {product.badges[0] ? (
-            <Badge className="absolute right-3 top-3 z-10 rounded-md border-0 bg-[#793de1] px-3 py-1.5 font-brand-heavy text-xs text-[#fff75f] shadow-sm">
+            <Badge className="absolute right-3 top-3 z-10 rounded-md border-0 bg-[#793de1] px-3 py-1.5 font-brand-heavy text-xs text-[#fff75f]">
               {product.badges[0]}
             </Badge>
           ) : null}
           <span className="absolute bottom-3 left-3 z-10 max-w-[8rem] rounded-md bg-black px-3 py-2 text-xs font-black uppercase leading-tight text-white">
-            {visual.themeWord}
+            {primaryTag}
           </span>
           <Image
             src={product.heroImagePath}
-            alt={`${product.name} curated set`}
+            alt={`${product.name} ${product.productType === "set" ? "set" : "product"}`}
             fill
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
             className="object-contain p-5 transition duration-300 group-hover:scale-[1.03]"
@@ -48,7 +55,7 @@ export function ProductCard({ product, rank = 0 }: { product: Product; rank?: nu
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div>
               <p className="text-sm font-bold text-muted-foreground">
-                {product.collectionName ?? product.brandName}
+                {product.category} / {product.brandName}
               </p>
               <h2 className="mt-1 text-lg font-black leading-tight text-[#3c3c3c]">
                 {product.name}
