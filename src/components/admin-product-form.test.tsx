@@ -88,6 +88,8 @@ describe("AdminProductEditor", () => {
     const { rerender } = render(<AdminProductEditor mode="create" />);
 
     expect(screen.getByText("운영 상품 설정")).toBeVisible();
+    expect(screen.getByLabelText("상품 표시 브랜드명")).toBeVisible();
+    expect(screen.getByText("브랜드 포털 연결")).toBeVisible();
     expect(screen.getByText("상세 스토리 에디터")).toBeVisible();
     expect(screen.getByRole("link", { name: "운영 설정" })).toHaveAttribute(
       "href",
@@ -115,6 +117,36 @@ describe("AdminProductEditor", () => {
     expect(screen.getByLabelText("가격 USD")).toBeVisible();
     expect(screen.getByRole("button", { name: "변경사항 발행" })).toBeVisible();
     expect(screen.getByRole("button", { name: "보관 처리" })).toBeVisible();
+  });
+
+  it("sends explicit brand partner assignment fields from the product editor", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ product: { id: "draft-1", name: "Draft Product" } })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AdminProductEditor mode="create" brandOptions={brandOptionsFixture()} />);
+
+    fireEvent.change(screen.getByLabelText("상품 표시 브랜드명"), {
+      target: { value: "Catalog Label" }
+    });
+    fireEvent.change(screen.getByLabelText("상품명"), {
+      target: { value: "Draft Product" }
+    });
+    fireEvent.change(screen.getByLabelText("브랜드 파트너"), {
+      target: { value: "brand_1" }
+    });
+    fireEvent.click(screen.getByLabelText("상세 편집 허용"));
+    fireEvent.click(screen.getByRole("button", { name: "임시저장" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, request] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(request.body));
+
+    expect(body.brandName).toBe("Catalog Label");
+    expect(body.brandPartnerId).toBe("brand_1");
+    expect(body.canEditDetails).toBe(false);
   });
 
   it("selects and reorders detail sections from blocks beyond the first one", () => {
@@ -306,6 +338,18 @@ function productFixture() {
     contentBlocks: [],
     detailSections: []
   } satisfies Product;
+}
+
+function brandOptionsFixture() {
+  return [
+    {
+      id: "brand_1",
+      name: "Bubble Tide",
+      slug: "bubble-tide",
+      status: "active" as const,
+      contactEmail: "owner@bubble.test"
+    }
+  ];
 }
 
 function productWithLongDetailSections() {

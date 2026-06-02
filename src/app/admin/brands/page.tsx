@@ -15,9 +15,10 @@ export default async function AdminBrandsPage() {
   return (
     <div className="grid gap-5">
       <div>
-        <h2 className="text-2xl font-bold tracking-normal">브랜드 상품 관리</h2>
+        <h2 className="text-2xl font-bold tracking-normal">브랜드 파트너 관리</h2>
         <p className="text-sm text-muted-foreground">
-          브랜드를 만들고, 기존 고객 계정을 멤버로 연결한 뒤, 운영자가 등록한 상품을 브랜드에 배정합니다.
+          브랜드 파트너를 만들고 멤버 권한을 관리합니다. 상품 연결은 상품 등록/수정 화면에서 먼저 설정하고,
+          이곳에서는 배정 상태를 감사하거나 이관합니다.
         </p>
       </div>
       <AdminBrandManagementClient brands={brands} products={products} />

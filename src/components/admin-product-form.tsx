@@ -45,6 +45,7 @@ import {
   type ProductDetailSection,
   type ProductDetailSectionInput
 } from "@/lib/product-detail-sections";
+import type { BrandPartnerOption, ProductBrandAssignment } from "@/lib/brand-store";
 import {
   Product,
   ProductCategory,
@@ -78,6 +79,8 @@ type DetailSectionDraft = ProductDetailSectionInput & {
 type EditorState = {
   productType: Product["productType"];
   brandName: string;
+  brandPartnerId: string;
+  canEditDetails: boolean;
   name: string;
   category: ProductCategory;
   tagsText: string;
@@ -186,27 +189,41 @@ const emptyDetailImage: DetailImageDraft = {
 
 export function AdminProductEditor({
   mode,
-  product
+  product,
+  brandOptions = [],
+  currentBrandAssignment = null
 }: {
   mode: "create" | "edit";
   product?: Product;
+  brandOptions?: BrandPartnerOption[];
+  currentBrandAssignment?: ProductBrandAssignment | null;
 }) {
   const router = useRouter();
-  const [state, setState] = useState<EditorState>(() => createInitialState(product));
+  const [state, setState] = useState<EditorState>(() => createInitialState(product, currentBrandAssignment));
   const [currentProduct, setCurrentProduct] = useState<Product | undefined>(product);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("edit");
+  const brandSelectOptions = useMemo(() => {
+    const options = [...brandOptions];
+    const assignedBrand = currentBrandAssignment?.brand;
+
+    if (assignedBrand && !options.some((brand) => brand.id === assignedBrand.id)) {
+      options.unshift(assignedBrand);
+    }
+
+    return options;
+  }, [brandOptions, currentBrandAssignment]);
   const previewProduct = useMemo(() => toPreviewProduct(state, currentProduct), [state, currentProduct]);
   const readinessChecks = useMemo(() => getPublishReadinessChecks(state), [state]);
 
   useEffect(() => {
     setCurrentProduct(product);
-    setState(createInitialState(product));
+    setState(createInitialState(product, currentBrandAssignment));
     setSaveState("idle");
     setMessage(null);
     setPreviewTab("edit");
-  }, [mode, product]);
+  }, [mode, product, currentBrandAssignment]);
 
   async function saveProduct(status: ProductStatus) {
     setSaveState("saving");
@@ -246,7 +263,10 @@ export function AdminProductEditor({
       } else {
         if (isHydratableProduct(savedProduct)) {
           setCurrentProduct(savedProduct);
-          setState(createInitialState(savedProduct));
+          const nextState = createInitialState(savedProduct, currentBrandAssignment);
+          nextState.brandPartnerId = state.brandPartnerId;
+          nextState.canEditDetails = state.canEditDetails;
+          setState(nextState);
         }
         router.refresh();
       }
@@ -393,8 +413,8 @@ export function AdminProductEditor({
               <p className="text-sm font-semibold text-muted-foreground">운영자 전용</p>
               <h3 className="text-xl font-bold">운영 상품 설정</h3>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                브랜드파트너가 수정하는 상세 스토리와 별개로 판매에 필요한 상품명, 가격, 재고, 대표
-                미디어를 먼저 확정합니다.
+                브랜드파트너가 수정하는 상세 스토리와 별개로 판매 정보, 대표 미디어, 브랜드 포털 연결을
+                확정합니다.
               </p>
             </div>
             <span className="rounded-md border bg-muted px-3 py-2 text-sm font-semibold">
@@ -419,13 +439,16 @@ export function AdminProductEditor({
                 <option value="single">단품 상품</option>
               </select>
             </Field>
-            <Field label="브랜드 / 큐레이터">
+            <Field label="상품 표시 브랜드명">
               <Input
-                aria-label="브랜드 / 큐레이터"
+                aria-label="상품 표시 브랜드명"
                 value={state.brandName}
                 onChange={(event) => updateField(setState, "brandName", event.target.value)}
                 required
               />
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                상품 카드와 상세 페이지에 표시되는 카탈로그 이름입니다.
+              </p>
             </Field>
             <Field label="상품명">
               <Input
@@ -515,6 +538,68 @@ export function AdminProductEditor({
             </Field>
           </CardContent>
         </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>브랜드 포털 연결</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <Field label="브랜드 파트너">
+                <select
+                  aria-label="브랜드 파트너"
+                  value={state.brandPartnerId}
+                  onChange={(event) => updateField(setState, "brandPartnerId", event.target.value)}
+                  className="h-11 w-full rounded-md border bg-white px-3 text-sm"
+                >
+                  <option value="">연결하지 않음</option>
+                  {brandSelectOptions.map((brand) => (
+                    <option key={brand.id} value={brand.id}>
+                      {brand.name} / {brand.slug}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  선택한 브랜드 파트너의 활성 멤버에게 이 상품이 표시됩니다.
+                </p>
+              </Field>
+              <Field label="브랜드 상세 권한">
+                <label
+                  className={cn(
+                    "flex h-11 items-center gap-2 rounded-md border px-3 text-sm font-semibold",
+                    !state.brandPartnerId && "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <input
+                    aria-label="상세 편집 허용"
+                    type="checkbox"
+                    checked={state.canEditDetails}
+                    disabled={!state.brandPartnerId}
+                    onChange={(event) => updateField(setState, "canEditDetails", event.target.checked)}
+                  />
+                  상세 편집 허용
+                </label>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  꺼두면 브랜드 포털에서 상품은 보이지만 상세 스토리는 수정할 수 없습니다.
+                </p>
+              </Field>
+              <div className="rounded-md border bg-muted p-3 text-sm md:col-span-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="inline-flex min-w-0 items-center gap-2 font-semibold">
+                    <Store className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 truncate">
+                      {brandSelectOptions.length ? "브랜드 파트너는 기존 항목만 연결합니다." : "활성 브랜드 파트너가 없습니다."}
+                    </span>
+                  </span>
+                  <Link
+                    href="/admin/brands"
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-white")}
+                  >
+                    브랜드 파트너 관리
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -2139,10 +2224,12 @@ async function uploadProductImage(file: File) {
   return body.publicUrl as string;
 }
 
-function createInitialState(product?: Product): EditorState {
+function createInitialState(product?: Product, currentBrandAssignment?: ProductBrandAssignment | null): EditorState {
   return {
     productType: product?.productType ?? "set",
     brandName: product?.brandName ?? "shipK Curated",
+    brandPartnerId: currentBrandAssignment?.brandId ?? "",
+    canEditDetails: currentBrandAssignment?.canEditDetails ?? true,
     name: product?.name ?? "",
     category: product?.category ?? "Skincare",
     tagsText: formatLabelList(product?.tags),
@@ -2236,6 +2323,8 @@ function toPayload(state: EditorState, status: ProductStatus) {
   return {
     productType: state.productType,
     brandName: state.brandName,
+    brandPartnerId: state.brandPartnerId || null,
+    canEditDetails: state.canEditDetails,
     name: state.name,
     category: state.category,
     tags: parseLabelList(state.tagsText),

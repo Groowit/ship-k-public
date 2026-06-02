@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AdminRequiredError, AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
 import { adminProductPayloadSchema } from "@/lib/admin-product-input";
+import { syncProductBrandAssignmentForProduct } from "@/lib/brand-store";
 import { toCents } from "@/lib/commerce";
 import { createProduct } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
@@ -9,7 +10,9 @@ export async function POST(request: Request) {
   try {
     assertSameOriginRequest(request);
     const admin = await requireCurrentAdmin();
-    const body = adminProductPayloadSchema.parse(await request.json());
+    const rawBody = await request.json();
+    const hasBrandAssignmentInput = hasOwnKey(rawBody, "brandPartnerId");
+    const body = adminProductPayloadSchema.parse(rawBody);
     const product = await createProduct({
       productType: body.productType,
       brandName: body.brandName,
@@ -37,6 +40,15 @@ export async function POST(request: Request) {
       status: body.status
     });
 
+    if (hasBrandAssignmentInput) {
+      await syncProductBrandAssignmentForProduct({
+        productId: product.id,
+        brandId: body.brandPartnerId ?? null,
+        canEditDetails: body.canEditDetails,
+        assignedBy: admin.user.id
+      });
+    }
+
     return NextResponse.json({ product });
   } catch (error) {
     if (
@@ -51,4 +63,8 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+}
+
+function hasOwnKey(value: unknown, key: string) {
+  return Boolean(value && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key));
 }

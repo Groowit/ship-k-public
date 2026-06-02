@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatUsd } from "@/lib/commerce";
+import { getImageOptimizationProps } from "@/lib/image-path";
 import { Product, getProductCheckoutSummary } from "@/lib/products";
 
 type CheckoutFormState = {
@@ -162,7 +163,7 @@ export function CheckoutForm({
       city: form.city,
       state: form.state,
       postalCode: form.postalCode,
-      country: "US" as const,
+      country: "US",
       memo: form.memo
     };
   }
@@ -293,6 +294,7 @@ export function CheckoutForm({
               alt=""
               width={72}
               height={72}
+              {...getImageOptimizationProps(product.heroImagePath)}
               className="aspect-square rounded-md border-2 border-black object-contain p-1"
             />
             <div>

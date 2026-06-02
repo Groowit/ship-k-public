@@ -71,6 +71,33 @@ describe("adminProductPayloadSchema", () => {
     ).toThrow(/대표 이미지/);
   });
 
+  it("keeps brand partner assignment input explicit and nullable", () => {
+    const basePayload = {
+      productType: "set",
+      brandName: "shipK Curated",
+      name: "Draft Set",
+      category: "Skincare",
+      shortDescription: "Draft",
+      description: "Draft description",
+      priceUsd: "39.00",
+      stockQuantity: "0",
+      status: "draft"
+    };
+
+    expect(adminProductPayloadSchema.parse(basePayload)).not.toHaveProperty("brandPartnerId");
+    expect(adminProductPayloadSchema.parse({ ...basePayload, brandPartnerId: "" }).brandPartnerId).toBeNull();
+    expect(
+      adminProductPayloadSchema.parse({
+        ...basePayload,
+        brandPartnerId: "brand_1",
+        canEditDetails: false
+      })
+    ).toMatchObject({
+      brandPartnerId: "brand_1",
+      canEditDetails: false
+    });
+  });
+
   it("rejects non-embeddable intro video URLs", () => {
     expect(() =>
       adminProductPayloadSchema.parse({

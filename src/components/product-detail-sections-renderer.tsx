@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PlayCircle } from "lucide-react";
+import { getImageOptimizationProps } from "@/lib/image-path";
 import type { Product, ProductContentBlock } from "@/lib/products";
 import type { ProductDetailSection } from "@/lib/product-detail-sections";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,7 @@ function CanonicalSection({
           alt={section.alt}
           width={1200}
           height={2600}
+          {...getImageOptimizationProps(section.src)}
           sizes="(min-width: 1180px) 1080px, 100vw"
           className="h-auto w-full rounded-md border-2 border-black bg-white object-contain"
         />
@@ -98,7 +100,13 @@ function CanonicalSection({
             section.imagePosition === "right" && "md:order-2"
           )}
         >
-          <Image src={section.src} alt={section.alt} fill className="object-contain p-6" />
+          <Image
+            src={section.src}
+            alt={section.alt}
+            fill
+            {...getImageOptimizationProps(section.src)}
+            className="object-contain p-6"
+          />
         </div>
         <div>
           {section.eyebrow ? (
@@ -147,7 +155,13 @@ function CanonicalSection({
           {section.images.map((image, index) => (
             <figure key={`${image.src}-${index}`} className="grid gap-2">
               <div className="relative aspect-[4/3] overflow-hidden rounded-md border-2 border-black bg-white">
-                <Image src={image.src} alt={image.alt} fill className="object-contain p-4" />
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  fill
+                  {...getImageOptimizationProps(image.src)}
+                  className="object-contain p-4"
+                />
               </div>
               {image.caption ? (
                 <figcaption className="text-sm text-muted-foreground">{image.caption}</figcaption>
@@ -254,7 +268,13 @@ function ImageSection({
             section.aspectRatio === "square" ? "aspect-square" : "aspect-video"
           )}
         >
-          <Image src={section.src} alt={section.alt} fill className="object-contain p-6" />
+          <Image
+            src={section.src}
+            alt={section.alt}
+            fill
+            {...getImageOptimizationProps(section.src)}
+            className="object-contain p-6"
+          />
         </div>
         {section.caption ? (
           <figcaption className="text-sm text-muted-foreground">{section.caption}</figcaption>
@@ -270,6 +290,7 @@ function ImageSection({
         alt={section.alt || product.name}
         width={1200}
         height={900}
+        {...getImageOptimizationProps(section.src)}
         sizes="(min-width: 1180px) 1080px, 100vw"
         className="h-auto w-full rounded-md border-2 border-black bg-white object-contain p-4"
       />
@@ -580,7 +601,13 @@ function LegacyContentBlock({ block }: { block: ProductContentBlock }) {
   if (block.type === "image") {
     return (
       <div className="relative aspect-[16/9] overflow-hidden rounded-md border-2 border-black bg-white">
-        <Image src={block.imagePath} alt={block.alt} fill className="object-contain p-6" />
+        <Image
+          src={block.imagePath}
+          alt={block.alt}
+          fill
+          {...getImageOptimizationProps(block.imagePath)}
+          className="object-contain p-6"
+        />
       </div>
     );
   }
@@ -605,7 +632,13 @@ function LegacyContentBlock({ block }: { block: ProductContentBlock }) {
           block.imagePosition === "right" && "md:order-2"
         )}
       >
-        <Image src={block.imagePath} alt={block.alt} fill className="object-contain p-6" />
+        <Image
+          src={block.imagePath}
+          alt={block.alt}
+          fill
+          {...getImageOptimizationProps(block.imagePath)}
+          className="object-contain p-6"
+        />
       </div>
       <div>
         {block.eyebrow ? (

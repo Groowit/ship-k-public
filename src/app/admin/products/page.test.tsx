@@ -8,8 +8,17 @@ import { listProducts } from "@/lib/commerce-store";
 import type { Product } from "@/lib/products";
 
 vi.mock("next/image", () => ({
-  default: ({ alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    <img alt={alt ?? ""} {...props} />
+  default: ({
+    alt,
+    unoptimized,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) => (
+    <img
+      alt={alt ?? ""}
+      data-testid="next-image"
+      data-unoptimized={unoptimized ? "true" : "false"}
+      {...props}
+    />
   )
 }));
 
@@ -47,9 +56,20 @@ describe("AdminProductsPage", () => {
       "/admin/products/product_1/preview"
     );
   });
+
+  it("renders remote product thumbnails without the Next.js optimizer", async () => {
+    vi.mocked(requireAdminPageAccess).mockResolvedValue(true);
+    vi.mocked(listProducts).mockResolvedValue([
+      productFixture({ heroImagePath: "https://example.com/admin-product.png" })
+    ]);
+
+    render(await AdminProductsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(screen.getByTestId("next-image")).toHaveAttribute("data-unoptimized", "true");
+  });
 });
 
-function productFixture(): Product {
+function productFixture(overrides: Partial<Product> = {}): Product {
   return {
     id: "product_1",
     slug: "glow-set",
@@ -79,6 +99,7 @@ function productFixture(): Product {
     includedItems: [],
     routineSteps: [],
     contentBlocks: [],
-    detailSections: []
+    detailSections: [],
+    ...overrides
   };
 }

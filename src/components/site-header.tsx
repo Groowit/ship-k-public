@@ -7,6 +7,7 @@ const baseNavItems = [
   { href: "/", label: "Home", activePath: "/" },
   { href: "/makeup", label: "Make up", activePath: "/makeup" },
   { href: "/shop", label: "Skincare", activePath: "/shop" },
+  { href: "/promoter", label: "For Sellers", activePath: "/promoter" },
   { href: "/about", label: "About", activePath: "/about" }
 ];
 

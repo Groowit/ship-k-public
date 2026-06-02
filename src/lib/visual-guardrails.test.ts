@@ -46,12 +46,8 @@ describe("visual effect guardrails", () => {
     expect(matches).toEqual([]);
   });
 
-  it("keeps About page body, metadata, header, and footer buyer-facing", () => {
+  it("keeps About page body, metadata, and footer buyer-facing", () => {
     const aboutSource = readFileSync(join(process.cwd(), "src/app/about/page.tsx"), "utf8");
-    const headerSource = readFileSync(
-      join(process.cwd(), "src/components/site-header.tsx"),
-      "utf8"
-    );
     const footerSource = readFileSync(
       join(process.cwd(), "src/components/site-footer.tsx"),
       "utf8"
@@ -68,7 +64,7 @@ describe("visual effect guardrails", () => {
     ];
 
     const matches = forbiddenBuyerStoryPatterns
-      .filter((pattern) => pattern.test(`${aboutSource}\n${headerSource}\n${footerSource}`))
+      .filter((pattern) => pattern.test(`${aboutSource}\n${footerSource}`))
       .map((pattern) => pattern.toString());
 
     expect(matches).toEqual([]);

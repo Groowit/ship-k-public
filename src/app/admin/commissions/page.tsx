@@ -1,7 +1,7 @@
 import { AdminCommissionsClient } from "@/components/admin-commissions-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
-import { listCommissions, listOrders } from "@/lib/commerce-store";
+import { listAdminCommissionSettlements } from "@/lib/commerce-store";
 
 export const dynamic = "force-dynamic";
 
@@ -10,15 +10,15 @@ export default async function AdminCommissionsPage() {
     return null;
   }
 
-  const [commissions, orders] = await Promise.all([listCommissions(), listOrders()]);
+  const settlements = await listAdminCommissionSettlements();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>추천 커미션</CardTitle>
+        <CardTitle>홍보자 정산</CardTitle>
       </CardHeader>
       <CardContent>
-        <AdminCommissionsClient commissions={commissions} orders={orders} />
+        <AdminCommissionsClient settlements={settlements} />
       </CardContent>
     </Card>
   );

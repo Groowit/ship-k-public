@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_COMMISSION_RATE_BPS,
   OrderStatus,
+  canTransitionOrderStatus,
   calculateCommissionCents,
   calculateOrderTotals,
   shouldCreateReferralCommission
@@ -63,7 +64,7 @@ export type ShippingAddressInput = {
   city: string;
   state: string;
   postalCode: string;
-  country: "US";
+  country: string;
   memo?: string;
 };
 
@@ -176,6 +177,48 @@ export type AdminAffiliateSummary = PromoterAffiliate & {
   commissionCents: number;
 };
 
+export type AdminCommissionDetail = CommerceCommission & {
+  orderNumber: string;
+  productName: string;
+  createdAt: string;
+};
+
+export type AdminCommissionSettlement = {
+  affiliateId: string;
+  profileId: string | null;
+  code: string;
+  displayName: string;
+  email: string | null;
+  status: AffiliateStatus | "unknown";
+  createdAt: string | null;
+  termsAcceptedAt: string | null;
+  commissionCount: number;
+  orders: number;
+  salesBaseCents: number;
+  totalCommissionCents: number;
+  unpaidCommissionCents: number;
+  paidCommissionCents: number;
+  cancelledCommissionCents: number;
+  commissions: AdminCommissionDetail[];
+};
+
+export class CommissionStatusUpdateError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 409) {
+    super(message);
+    this.name = "CommissionStatusUpdateError";
+    this.statusCode = statusCode;
+  }
+}
+
+export type CommissionStatusAction = {
+  status: CommerceCommission["status"];
+  label: string;
+  disabledReason?: string;
+  requiresConfirmation: boolean;
+};
+
 type ProductOptionRow = {
   id: string;
   name: string;
@@ -269,7 +312,7 @@ type OrderRow = {
     city: string;
     state: string;
     postal_code: string;
-    country: "US";
+    country: string;
     memo: string | null;
   }> | null;
   shipments?: Array<{
@@ -324,6 +367,30 @@ type CommissionDashboardRow = {
   order_number?: string | null;
   product_name?: string | null;
   link_token?: string | null;
+};
+
+type AdminCommissionQueryRow = {
+  id: string;
+  affiliate_id: string | null;
+  affiliate_link_id: string | null;
+  order_id: string;
+  base_cents: number;
+  rate_bps: number;
+  amount_cents: number;
+  status: CommerceCommission["status"];
+  hold_until: string;
+  created_at: string;
+  orders?: {
+    order_number?: string | null;
+    referral_code?: string | null;
+    order_items?: Array<{ product_name?: string | null }> | null;
+  } | Array<{
+    order_number?: string | null;
+    referral_code?: string | null;
+    order_items?: Array<{ product_name?: string | null }> | null;
+  }> | null;
+  affiliate_links?: { link_token?: string | null } | Array<{ link_token?: string | null }> | null;
+  affiliates?: AffiliateRow | AffiliateRow[] | null;
 };
 
 const PROMOTER_SCHEMA_SETUP_MESSAGE =
@@ -425,11 +492,14 @@ export function sortProductsByPopularity(products: Product[]) {
 
 export async function findProductBySlug(slug: string) {
   const supabase = await createSupabaseServerClient();
-  const legacySlug = canonicalToLegacySlug[slug];
+  const lookupSlug = normalizeProductSlug(slug);
+  const normalizedSlug = normalizeLegacyProductSlug(lookupSlug);
+  const legacySlug = canonicalToLegacySlug[normalizedSlug];
+  const candidateSlugs = [...new Set([lookupSlug, normalizedSlug, legacySlug].filter(Boolean))];
   const { data, error } = await supabase
     .from("products")
     .select(productSelect)
-    .in("slug", legacySlug ? [slug, legacySlug] : [slug])
+    .in("slug", candidateSlugs)
     .eq("status", "active");
 
   if (error) {
@@ -437,7 +507,11 @@ export async function findProductBySlug(slug: string) {
   }
 
   const rows = asArray(data as ProductRow[] | ProductRow | null);
-  const row = rows.find((product) => product.slug === slug) ?? rows[0];
+  const row =
+    rows.find((product) => normalizeProductSlug(product.slug) === normalizedSlug) ??
+    rows.find((product) => normalizeProductSlug(product.slug) === lookupSlug) ??
+    rows.find((product) => normalizeLegacyProductSlug(product.slug) === normalizedSlug) ??
+    rows[0];
 
   if (!row) {
     return undefined;
@@ -892,6 +966,11 @@ export async function createPaidOrder({
     })
       ? referral.code
       : undefined;
+  const commissionReferralLinkId =
+    validReferralCode && referral
+      ? (await findOrCreateActiveAffiliateProductLink(supabase, referral.id, product))?.linkId ??
+        null
+      : null;
   const orderNumber = createOrderNumber();
   let orderId: string | null = null;
 
@@ -975,7 +1054,7 @@ export async function createPaidOrder({
       try {
         await insertRequired(supabase, "commissions", {
           affiliate_id: referral.id,
-          affiliate_link_id: referral.linkId ?? null,
+          affiliate_link_id: commissionReferralLinkId,
           order_id: orderId,
           base_cents: totals.subtotalCents,
           rate_bps: DEFAULT_COMMISSION_RATE_BPS,
@@ -1005,7 +1084,7 @@ export async function createPaidOrder({
     if (orderId) {
       await supabase.from("orders").delete().eq("id", orderId);
     }
-    throw new Error(error instanceof Error ? error.message : "Could not save order");
+    throw new Error(getErrorMessage(error, "Could not save order"));
   }
 }
 
@@ -1137,6 +1216,25 @@ export async function listCommissions() {
   })) as CommerceCommission[];
 }
 
+export async function listAdminCommissionSettlements(): Promise<AdminCommissionSettlement[]> {
+  const supabase = createSupabasePrivilegedClient();
+  const { data, error } = await supabase
+    .from("commissions")
+    .select(
+      "id,affiliate_id,affiliate_link_id,order_id,base_cents,rate_bps,amount_cents,status,hold_until,created_at,orders(order_number,referral_code,order_items(product_name)),affiliate_links(link_token),affiliates(id,profile_id,code,display_name,status,terms_accepted_at,created_at,profiles(email))"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isPromoterSchemaMissingError(error)) {
+      return [];
+    }
+    throw new Error(`Could not load commission settlements: ${error.message}`);
+  }
+
+  return buildAdminCommissionSettlements((data ?? []) as AdminCommissionQueryRow[]);
+}
+
 async function listCommissionsWithoutPromoterLinks(
   supabase: SupabaseClient
 ): Promise<CommerceCommission[]> {
@@ -1162,6 +1260,89 @@ async function listCommissionsWithoutPromoterLinks(
     status: commission.status,
     holdUntil: commission.hold_until
   })) as CommerceCommission[];
+}
+
+function buildAdminCommissionSettlements(
+  rows: AdminCommissionQueryRow[]
+): AdminCommissionSettlement[] {
+  const groups = new Map<
+    string,
+    Omit<
+      AdminCommissionSettlement,
+      | "commissionCount"
+      | "orders"
+      | "salesBaseCents"
+      | "totalCommissionCents"
+      | "unpaidCommissionCents"
+      | "paidCommissionCents"
+      | "cancelledCommissionCents"
+    >
+  >();
+
+  for (const row of rows) {
+    const order = getRelationObject<{
+      order_number?: string | null;
+      referral_code?: string | null;
+      order_items?: Array<{ product_name?: string | null }> | null;
+    }>(row.orders);
+    const affiliate = getRelationObject<AffiliateRow>(row.affiliates);
+    const link = getRelationObject<{ link_token?: string | null }>(row.affiliate_links);
+    const item = asArray(order?.order_items)[0];
+    const fallbackCode = order?.referral_code ?? "unknown";
+    const affiliateId = affiliate?.id ?? row.affiliate_id ?? `missing:${fallbackCode}`;
+    const existing = groups.get(affiliateId);
+    const detail: AdminCommissionDetail = {
+      id: row.id,
+      orderId: row.order_id,
+      orderNumber: order?.order_number ?? row.order_id,
+      referralCode: affiliate?.code ?? fallbackCode,
+      linkToken: link?.link_token ?? undefined,
+      productName: item?.product_name ?? "Promoted order",
+      baseCents: row.base_cents,
+      rateBps: row.rate_bps,
+      amountCents: row.amount_cents,
+      status: row.status,
+      holdUntil: row.hold_until,
+      createdAt: row.created_at
+    };
+
+    if (existing) {
+      existing.commissions.push(detail);
+      continue;
+    }
+
+    groups.set(affiliateId, {
+      affiliateId,
+      profileId: affiliate?.profile_id ?? null,
+      code: affiliate?.code ?? fallbackCode,
+      displayName: affiliate?.display_name ?? fallbackCode,
+      email: getRelationObject<{ email: string | null }>(affiliate?.profiles)?.email ?? null,
+      status: affiliate?.status ?? "unknown",
+      createdAt: affiliate?.created_at ?? null,
+      termsAcceptedAt: affiliate?.terms_accepted_at ?? null,
+      commissions: [detail]
+    });
+  }
+
+  return Array.from(groups.values())
+    .map((group) => {
+      const activeCommissions = group.commissions.filter(
+        (commission) => commission.status !== "cancelled"
+      );
+      const unpaidCommissions = group.commissions.filter(isUnpaidCommission);
+
+      return {
+        ...group,
+        commissionCount: group.commissions.length,
+        orders: new Set(group.commissions.map((commission) => commission.orderId)).size,
+        salesBaseCents: sum(activeCommissions.map((commission) => commission.baseCents)),
+        totalCommissionCents: sum(activeCommissions.map((commission) => commission.amountCents)),
+        unpaidCommissionCents: sum(unpaidCommissions.map((commission) => commission.amountCents)),
+        paidCommissionCents: sumStatusDetails(group.commissions, "paid"),
+        cancelledCommissionCents: sumStatusDetails(group.commissions, "cancelled")
+      };
+    })
+    .sort(sortAdminCommissionSettlements);
 }
 
 export async function getPromoterDashboard({
@@ -1370,13 +1551,41 @@ export async function updateAffiliateStatus({
 
 export async function updateCommissionStatus({
   commissionId,
-  status
+  status,
+  now = new Date().toISOString()
 }: {
   commissionId: string;
   status: CommerceCommission["status"];
+  now?: string;
 }) {
   const supabase = createSupabasePrivilegedClient();
-  const values = getCommissionStatusUpdateValues(status);
+  const { data: current, error: loadError } = await supabase
+    .from("commissions")
+    .select("id,status")
+    .eq("id", commissionId)
+    .maybeSingle();
+
+  if (loadError) {
+    throw new Error(`Could not load commission: ${loadError.message}`);
+  }
+  if (!current) {
+    throw new CommissionStatusUpdateError("Commission not found", 404);
+  }
+
+  const currentStatus = (current as { status: CommerceCommission["status"] }).status;
+  const transitionError = getCommissionStatusTransitionError({
+    currentStatus,
+    targetStatus: status
+  });
+
+  if (transitionError) {
+    throw new CommissionStatusUpdateError(transitionError);
+  }
+  if (currentStatus === status) {
+    return;
+  }
+
+  const values = getCommissionStatusUpdateValues(status, now);
 
   const { error } = await supabase
     .from("commissions")
@@ -1385,6 +1594,25 @@ export async function updateCommissionStatus({
 
   if (error) {
     throw new Error(`Could not update commission: ${error.message}`);
+  }
+}
+
+export async function payUnpaidAffiliateCommissions({
+  affiliateId,
+  now = new Date().toISOString()
+}: {
+  affiliateId: string;
+  now?: string;
+}) {
+  const supabase = createSupabasePrivilegedClient();
+  const { error } = await supabase
+    .from("commissions")
+    .update(getCommissionStatusUpdateValues("paid", now))
+    .eq("affiliate_id", affiliateId)
+    .in("status", ["pending", "approved"]);
+
+  if (error) {
+    throw new Error(`Could not pay affiliate commissions: ${error.message}`);
   }
 }
 
@@ -1397,6 +1625,55 @@ export function getCommissionStatusUpdateValues(
     approved_at: status === "approved" || status === "paid" ? now : null,
     paid_at: status === "paid" ? now : null
   };
+}
+
+export function getCommissionStatusActions({
+  currentStatus
+}: {
+  currentStatus: CommerceCommission["status"];
+}): CommissionStatusAction[] {
+  return (["paid", "cancelled"] as const).map((status) => ({
+    status,
+    label: getCommissionStatusActionLabel(status),
+    disabledReason:
+      status === currentStatus
+        ? "현재 상태입니다."
+        : getCommissionStatusTransitionError({ currentStatus, targetStatus: status }) ?? undefined,
+    requiresConfirmation: true
+  }));
+}
+
+function getCommissionStatusTransitionError({
+  currentStatus,
+  targetStatus
+}: {
+  currentStatus: CommerceCommission["status"];
+  targetStatus: CommerceCommission["status"];
+}) {
+  if (currentStatus === targetStatus) {
+    return null;
+  }
+  if (currentStatus === "paid") {
+    return "지급 완료된 커미션은 상태를 변경할 수 없습니다.";
+  }
+  if (currentStatus === "cancelled") {
+    return "제외된 커미션은 상태를 변경할 수 없습니다.";
+  }
+  if (targetStatus === "paid" && isUnpaidStatus(currentStatus)) {
+    return null;
+  }
+  if (targetStatus === "cancelled" && isUnpaidStatus(currentStatus)) {
+    return null;
+  }
+  return "관리자 정산에서는 미정산 커미션을 지급 완료 또는 정산 제외만 처리할 수 있습니다.";
+}
+
+function getCommissionStatusActionLabel(status: "paid" | "cancelled") {
+  const labels = {
+    paid: "지급 완료",
+    cancelled: "정산 제외"
+  };
+  return labels[status];
 }
 
 async function cancelUnpaidCommissionsForOrder(supabase: SupabaseClient, orderId: string) {
@@ -1447,6 +1724,19 @@ export async function updateOrderFulfillment({
   })
     ? "shipped"
     : status;
+  const existingOrder = await getOrderById(orderId, supabase);
+
+  if (!existingOrder) {
+    throw new Error("Order not found");
+  }
+
+  if (
+    existingOrder.status !== nextStatus &&
+    !canTransitionOrderStatus(existingOrder.status, nextStatus)
+  ) {
+    throw new Error(`Cannot transition order from ${existingOrder.status} to ${nextStatus}`);
+  }
+
   const { error: orderError } = await supabase
     .from("orders")
     .update({ status: nextStatus })
@@ -1713,8 +2003,80 @@ function isProductDetailSectionsSchemaMissingError(error: { code?: string; messa
   );
 }
 
+const launchCatalogAssetPathOverrides: Record<string, string> = {
+  "detail/bubble-tide-seafoam-splash-hydration-set-lifestyle.png":
+    "/catalog-assets/detail/bubble-tide-lifestyle.png",
+  "detail/cool-tone-drama-lifestyle.png": "/catalog-assets/detail/cool-tone-lifestyle.png",
+  "detail/daily-k-glow-set-lifestyle.png": "/catalog-assets/detail/daily-k-glow-lifestyle.png",
+  "detail/glass-skin-starter-lifestyle.png": "/catalog-assets/detail/glass-skin-lifestyle.png",
+  "detail/k-pop-idol-look-lifestyle.png": "/catalog-assets/detail/k-pop-idol-lifestyle.png",
+  "detail/warm-honey-look-lifestyle.png": "/catalog-assets/detail/warm-honey-lifestyle.png",
+  "detail/y2k-cute-bomb-lifestyle.png": "/catalog-assets/detail/y2k-cute-lifestyle.png"
+};
+
 function normalizeLaunchCatalogAssetPath(value: string | null | undefined) {
-  return value?.replace(/^\/demo-assets\//, "/catalog-assets/") ?? null;
+  if (!value) {
+    return null;
+  }
+
+  const demoAssetPath = value.replace(/^\/demo-assets\//, "/catalog-assets/");
+  if (demoAssetPath !== value) {
+    return demoAssetPath;
+  }
+
+  const storageObjectPath = getProductImagesStorageObjectPath(value);
+  if (!storageObjectPath) {
+    return value;
+  }
+
+  const overridePath = launchCatalogAssetPathOverrides[storageObjectPath];
+  if (overridePath) {
+    return overridePath;
+  }
+
+  if (storageObjectPath.startsWith("single-products/")) {
+    return `/catalog-assets/singles/${storageObjectPath.replace("single-products/", "")}`;
+  }
+
+  if (storageObjectPath.startsWith("sets/")) {
+    return `/catalog-assets/sets/${storageObjectPath.replace("sets/", "")}`;
+  }
+
+  if (storageObjectPath.startsWith("detail/")) {
+    return `/catalog-assets/detail/${storageObjectPath.replace("detail/", "")}`;
+  }
+
+  return value;
+}
+
+function getProductImagesStorageObjectPath(value: string) {
+  let pathname = value;
+
+  try {
+    pathname = new URL(value).pathname;
+  } catch {
+    // Non-URL catalog paths are handled by marker matching below.
+  }
+
+  const marker = "/product-images/";
+  const markerIndex = pathname.indexOf(marker);
+  if (markerIndex >= 0) {
+    return safeDecodeURIComponent(pathname.slice(markerIndex + marker.length));
+  }
+
+  if (pathname.startsWith("product-images/")) {
+    return safeDecodeURIComponent(pathname.slice("product-images/".length));
+  }
+
+  return null;
+}
+
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
 }
 
 const legacyProductSlugs: Record<string, string> = {
@@ -1787,8 +2149,13 @@ function normalizeLaunchSurfaceCopy(value: string | null | undefined) {
     .trim();
 }
 
+function normalizeProductSlug(slug: string) {
+  return slug.trim().toLowerCase();
+}
+
 function normalizeLegacyProductSlug(slug: string) {
-  return legacyProductSlugs[slug] ?? slug;
+  const normalizedSlug = normalizeProductSlug(slug);
+  return legacyProductSlugs[normalizedSlug] ?? normalizedSlug;
 }
 
 function normalizeLaunchProductName(name: string, slug: string) {
@@ -2293,7 +2660,10 @@ async function findActiveReferral(
     throw linkError;
   }
 
-  if (!link || link.destination_path !== normalizedLandingPath) {
+  if (
+    !link ||
+    !areEquivalentReferralLandingPaths(link.destination_path as string, normalizedLandingPath)
+  ) {
     return null;
   }
 
@@ -2312,6 +2682,86 @@ async function findActiveReferral(
     linkToken: link.link_token as string,
     linkStatus: link.status as AffiliateLinkStatus
   };
+}
+
+async function findActiveAffiliateProductLink(
+  supabase: SupabaseClient,
+  affiliateId: string,
+  product: Product
+) {
+  const { data: link, error: linkError } = await supabase
+    .from("affiliate_links")
+    .select("id,link_token,destination_path,status")
+    .eq("affiliate_id", affiliateId)
+    .eq("product_id", product.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (linkError) {
+    throw linkError;
+  }
+
+  if (!link || !isProductReferralDestinationPath(link.destination_path as string, product)) {
+    return null;
+  }
+
+  return {
+    linkId: link.id as string,
+    linkToken: link.link_token as string,
+    linkStatus: link.status as AffiliateLinkStatus
+  };
+}
+
+function getProductReferralDestinationPaths(product: Product) {
+  const paths = new Set([normalizeReferralLandingPath(`/products/${product.slug}`)]);
+  const legacySlug = canonicalToLegacySlug[product.slug];
+  if (legacySlug) {
+    paths.add(normalizeReferralLandingPath(`/products/${legacySlug}`));
+  }
+  return paths;
+}
+
+function isProductReferralDestinationPath(value: string, product: Product) {
+  try {
+    return getProductReferralDestinationPaths(product).has(normalizeReferralLandingPath(value));
+  } catch {
+    return false;
+  }
+}
+
+function areEquivalentReferralLandingPaths(left: string, right: string) {
+  try {
+    return (
+      normalizeCanonicalReferralLandingPath(left) ===
+      normalizeCanonicalReferralLandingPath(right)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function normalizeCanonicalReferralLandingPath(path: string) {
+  const normalizedPath = normalizeReferralLandingPath(path);
+  const slug = normalizedPath.replace("/products/", "");
+  return `/products/${normalizeLegacyProductSlug(slug)}`;
+}
+
+async function findOrCreateActiveAffiliateProductLink(
+  supabase: SupabaseClient,
+  affiliateId: string,
+  product: Product
+) {
+  const existing = await findActiveAffiliateProductLink(supabase, affiliateId, product);
+  if (existing) {
+    return existing;
+  }
+
+  await insertAffiliateLink(supabase, affiliateId, {
+    id: product.id,
+    slug: product.slug
+  });
+
+  return findActiveAffiliateProductLink(supabase, affiliateId, product);
 }
 
 function mapAffiliateRow(row: AffiliateRow): PromoterAffiliate {
@@ -2361,6 +2811,8 @@ async function insertAffiliateLink(
   affiliateId: string,
   product: { id: string; slug: string }
 ) {
+  let lastUniqueViolation: { message?: string } | null = null;
+
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const { error } = await supabase.from("affiliate_links").insert({
       affiliate_id: affiliateId,
@@ -2376,7 +2828,14 @@ async function insertAffiliateLink(
     if (!isUniqueViolation(error)) {
       throw new Error(`Could not create affiliate link: ${error.message}`);
     }
+    lastUniqueViolation = error;
   }
+
+  throw new Error(
+    `Could not create affiliate link: ${
+      lastUniqueViolation?.message ?? "unique token retry limit exceeded"
+    }`
+  );
 }
 
 async function listAffiliateLinks(
@@ -2556,6 +3015,38 @@ function sumStatus(
       .filter((commission) => commission.status === status)
       .map((commission) => commission.amount_cents)
   );
+}
+
+function sumStatusDetails(
+  commissions: AdminCommissionDetail[],
+  status: CommerceCommission["status"]
+) {
+  return sum(
+    commissions
+      .filter((commission) => commission.status === status)
+      .map((commission) => commission.amountCents)
+  );
+}
+
+function isUnpaidCommission(commission: AdminCommissionDetail) {
+  return isUnpaidStatus(commission.status);
+}
+
+function isUnpaidStatus(status: CommerceCommission["status"]) {
+  return status === "pending" || status === "approved";
+}
+
+function sortAdminCommissionSettlements(
+  first: AdminCommissionSettlement,
+  second: AdminCommissionSettlement
+) {
+  if (first.unpaidCommissionCents !== second.unpaidCommissionCents) {
+    return second.unpaidCommissionCents - first.unpaidCommissionCents;
+  }
+  if (first.totalCommissionCents !== second.totalCommissionCents) {
+    return second.totalCommissionCents - first.totalCommissionCents;
+  }
+  return first.displayName.localeCompare(second.displayName);
 }
 
 function createRandomToken(length: number) {

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { getImageOptimizationProps } from "@/lib/image-path";
 import { Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +102,7 @@ export function HomeFeatureBanner({ products }: { products: Product[] }) {
               alt={`${product.name} banner image`}
               fill
               priority
+              {...getImageOptimizationProps(product.heroImagePath)}
               sizes="(min-width: 1024px) 52vw, 100vw"
               className="object-contain object-top px-4 pb-20 pt-3 md:px-8 md:pb-24 md:pt-5 lg:px-12 lg:pb-28 lg:pt-6"
             />

@@ -418,6 +418,32 @@ export function getProductPriceLabel(product: Product) {
   return formatUsd(product.option.priceCents);
 }
 
+export function getMaxCheckoutQuantity(product: Product) {
+  if (!Number.isInteger(product.option.stockQuantity)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(9, product.option.stockQuantity));
+}
+
+export function isProductPurchasable(product: Product) {
+  return product.option.priceCents > 0 && getMaxCheckoutQuantity(product) > 0;
+}
+
+export function assertProductCanCheckout(product: Product, quantity: number) {
+  if (!Number.isInteger(product.option.priceCents) || product.option.priceCents <= 0) {
+    throw new Error("Product is not available for checkout");
+  }
+
+  const maxQuantity = getMaxCheckoutQuantity(product);
+  if (maxQuantity === 0) {
+    throw new Error("Product is out of stock");
+  }
+
+  if (quantity > maxQuantity) {
+    throw new Error("Requested quantity exceeds available stock");
+  }
+}
+
 export function getProductCheckoutSummary(product: Product, quantity: number) {
   return calculateOrderTotals([
     {

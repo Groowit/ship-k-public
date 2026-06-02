@@ -5,6 +5,12 @@ import {
   BrandProductNotFoundError,
   buildBrandReportSummary,
   connectBrandMember,
+  getProductBrandAssignmentForAdmin,
+  listActiveBrandPartnerOptions,
+  syncProductBrandAssignmentForProduct,
+  updateBrandMembership,
+  updateBrandPartner,
+  updateProductBrandAssignment,
   updateBrandProductContentForUser
 } from "./brand-store";
 
@@ -229,6 +235,346 @@ describe("brand member connection", () => {
   });
 });
 
+describe("admin brand management", () => {
+  it("loads lightweight active brand partner options for product editor selects", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "brand_partners" && call.operation === "select" && call.terminal === "then") {
+        return {
+          data: [
+            {
+              id: "brand_1",
+              name: "Bubble Tide",
+              slug: "bubble-tide",
+              status: "active",
+              contact_email: "owner@bubble.test"
+            }
+          ],
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const options = await listActiveBrandPartnerOptions();
+
+    expect(options).toEqual([
+      expect.objectContaining({
+        id: "brand_1",
+        name: "Bubble Tide",
+        slug: "bubble-tide",
+        status: "active",
+        contactEmail: "owner@bubble.test"
+      })
+    ]);
+    expect(calls[0]).toMatchObject({
+      table: "brand_partners",
+      filters: [{ column: "status", value: "active" }]
+    });
+  });
+
+  it("loads the active product assignment for admin product editor hydration", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "product_brand_assignments" && call.operation === "select" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "assignment_1",
+            brand_partner_id: "brand_1",
+            product_id: "product_1",
+            status: "active",
+            can_edit_details: false,
+            brand_partners: {
+              id: "brand_1",
+              name: "Bubble Tide",
+              slug: "bubble-tide",
+              status: "active"
+            }
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const assignment = await getProductBrandAssignmentForAdmin("product_1");
+
+    expect(assignment).toMatchObject({
+      id: "assignment_1",
+      brandId: "brand_1",
+      productId: "product_1",
+      canEditDetails: false,
+      brand: {
+        id: "brand_1",
+        name: "Bubble Tide"
+      }
+    });
+    expect(calls[0]).toMatchObject({
+      filters: [
+        { column: "product_id", value: "product_1" },
+        { column: "status", value: "active" }
+      ]
+    });
+  });
+
+  it("updates brand operating status and contact email", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "brand_partners" && call.operation === "update" && call.terminal === "single") {
+        return {
+          data: {
+            id: "brand_1",
+            name: "Glow Brand",
+            slug: "glow-brand",
+            status: "paused",
+            contact_email: null
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const brand = await updateBrandPartner({
+      brandId: "brand_1",
+      status: "paused",
+      contactEmail: null
+    });
+
+    expect(brand).toMatchObject({ id: "brand_1", status: "paused", contactEmail: undefined });
+    expect(calls[0]).toMatchObject({
+      table: "brand_partners",
+      operation: "update",
+      values: {
+        status: "paused",
+        contact_email: null
+      },
+      filters: [{ column: "id", value: "brand_1" }]
+    });
+  });
+
+  it("updates a brand member role and access status inside the selected brand", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "brand_memberships" && call.operation === "update" && call.terminal === "single") {
+        return {
+          data: {
+            id: "membership_1",
+            brand_partner_id: "brand_1",
+            profile_id: "profile_1",
+            member_role: "viewer",
+            status: "paused",
+            profiles: {
+              email: "brand@example.com",
+              full_name: "Brand Member"
+            }
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const membership = await updateBrandMembership({
+      brandId: "brand_1",
+      membershipId: "membership_1",
+      memberRole: "viewer",
+      status: "paused"
+    });
+
+    expect(membership).toMatchObject({
+      id: "membership_1",
+      brandId: "brand_1",
+      memberRole: "viewer",
+      status: "paused",
+      email: "brand@example.com"
+    });
+    expect(calls[0]).toMatchObject({
+      table: "brand_memberships",
+      operation: "update",
+      values: {
+        member_role: "viewer",
+        status: "paused"
+      },
+      filters: [
+        { column: "id", value: "membership_1" },
+        { column: "brand_partner_id", value: "brand_1" }
+      ]
+    });
+  });
+
+  it("archives active product assignments when product editor explicitly unlinks a brand", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "product_brand_assignments" && call.operation === "update" && call.terminal === "then") {
+        return { data: [], error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const assignment = await syncProductBrandAssignmentForProduct({
+      productId: "product_1",
+      brandId: null,
+      assignedBy: "admin_1"
+    });
+
+    expect(assignment).toBeNull();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      table: "product_brand_assignments",
+      operation: "update",
+      values: { status: "archived" },
+      filters: [
+        { column: "product_id", value: "product_1" },
+        { column: "status", value: "active" }
+      ]
+    });
+  });
+
+  it("transfers a product assignment from the product editor through one active upsert", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "brand_partners" && call.operation === "select" && call.terminal === "maybeSingle") {
+        return { data: { id: "brand_2" }, error: null };
+      }
+      if (call.table === "products" && call.operation === "select" && call.terminal === "maybeSingle") {
+        return { data: { id: "product_1" }, error: null };
+      }
+      if (call.table === "product_brand_assignments" && call.operation === "update" && call.terminal === "then") {
+        return { data: [], error: null };
+      }
+      if (call.table === "product_brand_assignments" && call.operation === "upsert" && call.terminal === "single") {
+        return {
+          data: {
+            id: "assignment_2",
+            brand_partner_id: "brand_2",
+            product_id: "product_1",
+            status: "active",
+            can_edit_details: false
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const assignment = await syncProductBrandAssignmentForProduct({
+      productId: "product_1",
+      brandId: "brand_2",
+      canEditDetails: false,
+      assignedBy: "admin_1"
+    });
+
+    expect(assignment).toMatchObject({
+      id: "assignment_2",
+      brandId: "brand_2",
+      productId: "product_1",
+      status: "active",
+      canEditDetails: false
+    });
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          table: "product_brand_assignments",
+          operation: "update",
+          values: { status: "archived" },
+          filters: [
+            { column: "product_id", value: "product_1" },
+            { column: "status", value: "active" }
+          ]
+        }),
+        expect.objectContaining({
+          table: "product_brand_assignments",
+          operation: "upsert",
+          values: {
+            brand_partner_id: "brand_2",
+            product_id: "product_1",
+            status: "active",
+            can_edit_details: false,
+            assigned_by: "admin_1"
+          }
+        })
+      ])
+    );
+  });
+
+  it("archives any active owner before reactivating a product assignment", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "product_brand_assignments" && call.operation === "select" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "assignment_1",
+            product_id: "product_1"
+          },
+          error: null
+        };
+      }
+      if (
+        call.table === "product_brand_assignments" &&
+        call.operation === "update" &&
+        call.terminal === "then" &&
+        call.filters.some((filter) => filter.column === "product_id")
+      ) {
+        return { data: [], error: null };
+      }
+      if (call.table === "product_brand_assignments" && call.operation === "update" && call.terminal === "single") {
+        return {
+          data: {
+            id: "assignment_1",
+            brand_partner_id: "brand_1",
+            product_id: "product_1",
+            status: "active",
+            can_edit_details: false
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const assignment = await updateProductBrandAssignment({
+      brandId: "brand_1",
+      assignmentId: "assignment_1",
+      status: "active",
+      canEditDetails: false
+    });
+
+    expect(assignment).toMatchObject({
+      id: "assignment_1",
+      brandId: "brand_1",
+      status: "active",
+      canEditDetails: false
+    });
+    expect(calls[1]).toMatchObject({
+      operation: "update",
+      values: { status: "archived" },
+      filters: [
+        { column: "product_id", value: "product_1" },
+        { column: "status", value: "active" }
+      ]
+    });
+    expect(calls[2]).toMatchObject({
+      operation: "update",
+      values: {
+        status: "active",
+        can_edit_details: false
+      },
+      filters: [
+        { column: "id", value: "assignment_1" },
+        { column: "brand_partner_id", value: "brand_1" }
+      ]
+    });
+  });
+});
+
 type QueryCall = {
   table: string;
   operation: string;
@@ -263,7 +609,6 @@ function createQueryBuilder(table: string, handler: (call: QueryCall) => unknown
   };
   const builder = {
     select() {
-      state.operation = "select";
       return builder;
     },
     insert(values: unknown) {
@@ -273,6 +618,11 @@ function createQueryBuilder(table: string, handler: (call: QueryCall) => unknown
     },
     update(values: unknown) {
       state.operation = "update";
+      state.values = values;
+      return builder;
+    },
+    upsert(values: unknown) {
+      state.operation = "upsert";
       state.values = values;
       return builder;
     },

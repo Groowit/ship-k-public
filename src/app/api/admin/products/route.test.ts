@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
+import { syncProductBrandAssignmentForProduct } from "@/lib/brand-store";
 import { archiveProduct, createProduct, updateProduct } from "@/lib/commerce-store";
 import { POST } from "./route";
 import { DELETE, PATCH } from "./[id]/route";
@@ -16,6 +17,10 @@ vi.mock("@/lib/commerce-store", () => ({
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
   archiveProduct: vi.fn()
+}));
+
+vi.mock("@/lib/brand-store", () => ({
+  syncProductBrandAssignmentForProduct: vi.fn()
 }));
 
 const productResponse = {
@@ -96,6 +101,7 @@ describe("admin product API routes", () => {
     vi.mocked(createProduct).mockResolvedValue(productResponse as never);
     vi.mocked(updateProduct).mockResolvedValue({ ...productResponse, status: "active" } as never);
     vi.mocked(archiveProduct).mockResolvedValue(undefined);
+    vi.mocked(syncProductBrandAssignmentForProduct).mockResolvedValue({ id: "assignment_1" } as never);
   });
 
   it("blocks unauthenticated product creation before touching storage", async () => {
@@ -127,6 +133,23 @@ describe("admin product API routes", () => {
         status: "draft"
       })
     );
+    expect(syncProductBrandAssignmentForProduct).not.toHaveBeenCalled();
+  });
+
+  it("syncs a brand partner assignment only when creation payload includes the relationship field", async () => {
+    const response = await POST(jsonRequest({
+      ...validPayload,
+      brandPartnerId: "brand_1",
+      canEditDetails: false
+    }));
+
+    expect(response.status).toBe(200);
+    expect(syncProductBrandAssignmentForProduct).toHaveBeenCalledWith({
+      productId: "product_1",
+      brandId: "brand_1",
+      canEditDetails: false,
+      assignedBy: "admin_1"
+    });
   });
 
   it("publishes an active product update through PATCH", async () => {
@@ -144,6 +167,22 @@ describe("admin product API routes", () => {
         status: "active"
       })
     );
+    expect(syncProductBrandAssignmentForProduct).not.toHaveBeenCalled();
+  });
+
+  it("treats explicit null brandPartnerId as an unlink request on PATCH", async () => {
+    const response = await PATCH(
+      jsonRequest({ ...validPayload, brandPartnerId: null }),
+      { params: Promise.resolve({ id: "product_1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(syncProductBrandAssignmentForProduct).toHaveBeenCalledWith({
+      productId: "product_1",
+      brandId: null,
+      canEditDetails: true,
+      assignedBy: "admin_1"
+    });
   });
 
   it("archives products with DELETE instead of hard deleting through the API", async () => {

@@ -120,6 +120,50 @@ describe("PayPal capture API route", () => {
     );
   });
 
+  it("normalizes checkout input before product lookup and paid order persistence", async () => {
+    vi.mocked(findProductBySlug).mockImplementation(async (slug) =>
+      slug === "skincare-starter-set" ? (product as never) : undefined
+    );
+
+    const response = await POST(
+      jsonRequest({
+        ...validPayload(),
+        productSlug: " Skincare-Starter-Set ",
+        shippingAddress: {
+          name: " Jamie Park ",
+          email: " JAMIE@EXAMPLE.COM ",
+          phone: " 2135550144 ",
+          address1: " 123 Ocean Ave ",
+          address2: " Apt 4 ",
+          city: " Los Angeles ",
+          state: " CA ",
+          postalCode: " 90001 ",
+          country: " United States ",
+          memo: " Leave at desk "
+        }
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(findProductBySlug).toHaveBeenCalledWith("skincare-starter-set");
+    expect(createPaidOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shippingAddress: {
+          name: "Jamie Park",
+          email: "jamie@example.com",
+          phone: "2135550144",
+          address1: "123 Ocean Ave",
+          address2: "Apt 4",
+          city: "Los Angeles",
+          state: "CA",
+          postalCode: "90001",
+          country: "United States",
+          memo: "Leave at desk"
+        }
+      })
+    );
+  });
+
   it("rejects captures whose PayPal custom ID does not match the requested item", async () => {
     vi.mocked(capturePayPalOrder).mockResolvedValue(
       captureResponse({ customId: "other-product:1" }) as never
@@ -139,6 +183,24 @@ describe("PayPal capture API route", () => {
     const response = await POST(jsonRequest(validPayload()));
 
     expect(response.status).toBe(400);
+    expect(createPaidOrder).not.toHaveBeenCalled();
+  });
+
+  it("rejects stock changes before capturing PayPal payment", async () => {
+    vi.mocked(findProductBySlug).mockResolvedValue({
+      ...product,
+      option: {
+        ...product.option,
+        stockQuantity: 0
+      }
+    } as never);
+
+    const response = await POST(jsonRequest(validPayload()));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/out of stock/i);
+    expect(capturePayPalOrder).not.toHaveBeenCalled();
     expect(createPaidOrder).not.toHaveBeenCalled();
   });
 

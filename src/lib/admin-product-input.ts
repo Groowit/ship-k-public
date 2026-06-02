@@ -49,6 +49,13 @@ const optionalExternalVideoUrl = z
     "YouTube, Vimeo, Cloudflare Stream 임베드 URL만 사용할 수 있습니다."
   );
 
+const optionalBrandPartnerId = z
+  .preprocess(
+    (value) => (value === "" ? null : value),
+    z.string().trim().min(1).nullable()
+  )
+  .optional();
+
 const includedItemSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1),
@@ -117,6 +124,8 @@ export const adminProductPayloadSchema = z
   .object({
     productType: productTypeSchema.default("set"),
     brandName: z.string().trim().min(1),
+    brandPartnerId: optionalBrandPartnerId,
+    canEditDetails: z.boolean().optional().default(true),
     name: z.string().trim().min(1),
     category: productCategorySchema.default("Skincare"),
     tags: labelListSchema,

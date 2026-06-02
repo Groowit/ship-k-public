@@ -38,6 +38,18 @@ describe("SiteHeader", () => {
     expect(homeLink).toHaveAttribute("aria-current", "page");
   });
 
+  it("keeps the public affiliate entry point in the primary navigation", async () => {
+    vi.mocked(getCurrentAuthState).mockResolvedValue({ user: null, profile: null });
+    vi.mocked(isAdminProfile).mockReturnValue(false);
+
+    render(await SiteHeader());
+
+    expect(screen.getByRole("link", { name: "For Sellers" })).toHaveAttribute(
+      "href",
+      "/promoter"
+    );
+  });
+
   it("shows the brand portal link for signed-in brand members", async () => {
     vi.mocked(getCurrentAuthState).mockResolvedValue({
       user: { id: "brand_owner_1", email: "owner@example.com" } as never,

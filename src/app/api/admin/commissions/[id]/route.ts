@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AdminRequiredError, AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
-import { updateCommissionStatus } from "@/lib/commerce-store";
+import { CommissionStatusUpdateError, updateCommissionStatus } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 
 const commissionStatusSchema = z.object({
-  status: z.enum(["pending", "approved", "paid", "cancelled"])
+  status: z.enum(["paid", "cancelled"])
 });
 
 export async function PATCH(
@@ -26,6 +26,9 @@ export async function PATCH(
       error instanceof UnsafeRequestOriginError
     ) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof CommissionStatusUpdateError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not update commission" },

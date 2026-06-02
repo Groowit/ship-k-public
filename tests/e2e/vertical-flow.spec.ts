@@ -165,6 +165,41 @@ test.describe("authenticated admin flow", () => {
     "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD for live admin auth coverage"
   );
 
+  test("admin orders modal smoke", async ({ page }) => {
+    await signIn(page, adminEmail!, adminPassword!, "/admin/orders");
+
+    await expect(page.getByLabel("Search orders")).toBeVisible();
+    await expect(page.getByLabel("Sort orders")).toHaveValue("created-desc");
+    await page.getByLabel("Sort orders").selectOption("fulfillment-priority");
+    await expect(page.getByLabel("Sort orders")).toHaveValue("fulfillment-priority");
+    await page.getByLabel("Sort orders").selectOption("created-desc");
+
+    const orderCards = page.getByTestId(/^admin-order-/);
+    if ((await orderCards.count()) === 0) {
+      test.skip(true, "No admin orders available for modal smoke");
+    }
+
+    await orderCards.first().click();
+    const dialog = page.getByRole("dialog", { name: /Fulfillment SK/ });
+    await expect(dialog).toBeVisible();
+    const viewport = page.viewportSize();
+    const dialogBox = await dialog.boundingBox();
+    expect(viewport).not.toBeNull();
+    expect(dialogBox).not.toBeNull();
+    if (viewport && dialogBox) {
+      expect(Math.abs(dialogBox.x + dialogBox.width / 2 - viewport.width / 2)).toBeLessThan(24);
+      expect(Math.abs(dialogBox.y + dialogBox.height / 2 - viewport.height / 2)).toBeLessThan(80);
+    }
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: /Fulfillment SK/ })).toHaveCount(0);
+  });
+
   test("admin creates an active product and updates fulfillment without adminEmail input", async ({
     page
   }) => {

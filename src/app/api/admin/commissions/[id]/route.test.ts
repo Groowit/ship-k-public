@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminRequiredError, requireCurrentAdmin } from "@/lib/auth";
-import { updateCommissionStatus } from "@/lib/commerce-store";
+import { CommissionStatusUpdateError, updateCommissionStatus } from "@/lib/commerce-store";
 import { PATCH } from "./route";
 
 vi.mock("@/lib/auth", async () => {
@@ -12,6 +12,14 @@ vi.mock("@/lib/auth", async () => {
 });
 
 vi.mock("@/lib/commerce-store", () => ({
+  CommissionStatusUpdateError: class CommissionStatusUpdateError extends Error {
+    statusCode: number;
+
+    constructor(message: string, statusCode = 409) {
+      super(message);
+      this.statusCode = statusCode;
+    }
+  },
   updateCommissionStatus: vi.fn()
 }));
 
@@ -37,19 +45,45 @@ describe("admin commission status API route", () => {
   });
 
   it("updates commission status for admins", async () => {
-    const response = await PATCH(jsonRequest({ status: "approved" }), {
+    const response = await PATCH(jsonRequest({ status: "paid" }), {
       params: Promise.resolve({ id: "commission_1" })
     });
 
     expect(response.status).toBe(200);
     expect(updateCommissionStatus).toHaveBeenCalledWith({
       commissionId: "commission_1",
-      status: "approved"
+      status: "paid"
     });
   });
 
+  it("returns scoped commission status policy errors", async () => {
+    vi.mocked(updateCommissionStatus).mockRejectedValue(
+      new CommissionStatusUpdateError("지급 완료된 커미션은 상태를 변경할 수 없습니다.")
+    );
+
+    const response = await PATCH(jsonRequest({ status: "paid" }), {
+      params: Promise.resolve({ id: "commission_1" })
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({ error: "지급 완료된 커미션은 상태를 변경할 수 없습니다." });
+  });
+
+  it("blocks cross-origin commission updates", async () => {
+    const response = await PATCH(
+      jsonRequest({ status: "paid" }, { origin: "https://attacker.test" }),
+      {
+        params: Promise.resolve({ id: "commission_1" })
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect(updateCommissionStatus).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid commission statuses", async () => {
-    const response = await PATCH(jsonRequest({ status: "refunded" }), {
+    const response = await PATCH(jsonRequest({ status: "approved" }), {
       params: Promise.resolve({ id: "commission_1" })
     });
 
@@ -58,10 +92,10 @@ describe("admin commission status API route", () => {
   });
 });
 
-function jsonRequest(body: unknown) {
+function jsonRequest(body: unknown, headers?: HeadersInit) {
   return new Request("http://test.local/api/admin/commissions/commission_1", {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body)
   });
 }

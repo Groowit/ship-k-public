@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPaidOrder,
+  findProductBySlug,
   getOrderByUser,
+  listAdminCommissionSettlements,
+  getCommissionStatusActions,
   getCommissionStatusUpdateValues,
   getTrackingUrl,
   isPromoterSchemaMissingError,
   mapOrderRow,
   mapProductRow,
+  payUnpaidAffiliateCommissions,
   updateCustomerAccount,
+  updateCommissionStatus,
   updateAffiliateStatus,
   updateOrderFulfillment
 } from "./commerce-store";
@@ -89,6 +94,107 @@ describe("Supabase order mapping", () => {
 });
 
 describe("Supabase product mapping", () => {
+  it("finds canonical product rows from legacy referral destination slugs", async () => {
+    mocks.serverClient = createSupabaseMock((call) => {
+      if (call.table === "products" && call.terminal === "then") {
+        const slugFilter = call.filters.find((filter) => filter.column === "slug");
+        const slugs = Array.isArray(slugFilter?.value) ? slugFilter.value : [];
+
+        if (!slugs.includes("gloss-makeup-set")) {
+          return { data: [], error: null };
+        }
+
+        return {
+          data: [
+            {
+              id: "product_gloss",
+              brand_name: "shipK Curated",
+              name: "Gloss Makeup Set",
+              slug: "gloss-makeup-set",
+              short_description: "Glossy makeup set.",
+              description: "A glossy makeup set.",
+              hero_image_path: "/hero.png",
+              status: "active",
+              badges: [],
+              tags: ["GLOSS", "MAKEUP", "6 ITEMS"],
+              product_type: "set",
+              difficulty: "Beginner",
+              item_count: 6,
+              intro_video_url: null,
+              best_for: null,
+              result: null,
+              created_at: "2026-05-18T00:00:00.000Z",
+              updated_at: "2026-05-19T00:00:00.000Z",
+              categories: { name: "Makeup" },
+              product_options: [
+                {
+                  id: "option_gloss",
+                  name: "6-item set",
+                  sku: "GLOSS-SET",
+                  price_cents: 5900,
+                  stock_quantity: 10
+                }
+              ],
+              product_images: [],
+              product_included_items: [],
+              product_routine_steps: [],
+              product_content_blocks: [],
+              product_detail_sections: []
+            } satisfies Parameters<typeof mapProductRow>[0]
+          ],
+          error: null
+        };
+      }
+
+      if (call.table === "product_detail_sections") {
+        return { data: [], error: null };
+      }
+
+      return { data: [], error: null };
+    });
+
+    const product = await findProductBySlug("y2k-cute-bomb");
+
+    expect(product?.slug).toBe("gloss-makeup-set");
+    expect(product?.name).toBe("Gloss Makeup Set");
+  });
+
+  it("prefers the active canonical product row when legacy and canonical rows both exist", async () => {
+    mocks.serverClient = createSupabaseMock((call) => {
+      if (call.table === "products" && call.terminal === "then") {
+        return {
+          data: [
+            productRowFixture({
+              id: "product_legacy",
+              name: "Y2K Cute Bomb",
+              slug: "y2k-cute-bomb",
+              priceCents: 3900
+            }),
+            productRowFixture({
+              id: "product_canonical",
+              name: "Gloss Makeup Set",
+              slug: "gloss-makeup-set",
+              priceCents: 5900
+            })
+          ],
+          error: null
+        };
+      }
+
+      if (call.table === "product_detail_sections") {
+        return { data: [], error: null };
+      }
+
+      return { data: [], error: null };
+    });
+
+    const product = await findProductBySlug("y2k-cute-bomb");
+
+    expect(product?.id).toBe("product_canonical");
+    expect(product?.slug).toBe("gloss-makeup-set");
+    expect(product?.option.priceCents).toBe(5900);
+  });
+
   it("maps gallery images and structured detail rows in sort order", () => {
     const row = {
       id: "product_1",
@@ -251,6 +357,116 @@ describe("Supabase product mapping", () => {
       body: "A tutorial block for creator tutorials.",
       imagePath: "/catalog-assets/sets/k-pop-idol-look.png"
     });
+  });
+
+  it("normalizes public storage launch asset URLs to bundled catalog assets", () => {
+    const row = {
+      id: "product_single",
+      brand_name: "Peach Hour",
+      name: "Peach Cloud Cream Blush",
+      slug: "peach-cloud-cream-blush",
+      short_description: "A peach cream blush.",
+      description: "A peach cream blush for soft color.",
+      hero_image_path:
+        "https://example.supabase.co/storage/v1/object/public/product-images/single-products/peach-cloud-cream-blush.png",
+      status: "active",
+      badges: [],
+      tags: ["BLUSH"],
+      product_type: "single",
+      difficulty: null,
+      item_count: null,
+      intro_video_url: null,
+      best_for: null,
+      result: null,
+      created_at: "2026-05-18T00:00:00.000Z",
+      updated_at: "2026-05-19T00:00:00.000Z",
+      categories: { name: "Makeup" },
+      product_options: [],
+      product_images: [
+        {
+          id: "gallery_1",
+          sort_order: 1,
+          image_path:
+            "https://example.supabase.co/storage/v1/object/public/product-images/detail/y2k-cute-bomb-lifestyle.png",
+          alt_text: "Gloss makeup lifestyle"
+        },
+        {
+          id: "gallery_2",
+          sort_order: 2,
+          image_path:
+            "https://example.supabase.co/storage/v1/object/public/product-images/detail/glass-skin-starter-lifestyle.png",
+          alt_text: "Glass skin lifestyle"
+        },
+        {
+          id: "gallery_3",
+          sort_order: 3,
+          image_path:
+            "https://example.supabase.co/storage/v1/object/public/product-images/detail/warm-honey-look-lifestyle.png",
+          alt_text: "Warm honey lifestyle"
+        },
+        {
+          id: "gallery_4",
+          sort_order: 4,
+          image_path:
+            "https://example.supabase.co/storage/v1/object/public/product-images/detail/daily-k-glow-set-lifestyle.png",
+          alt_text: "Daily glow lifestyle"
+        },
+        {
+          id: "gallery_5",
+          sort_order: 5,
+          image_path:
+            "https://example.supabase.co/storage/v1/object/public/product-images/detail/bubble-tide-seafoam-splash-hydration-set-lifestyle.png",
+          alt_text: "Bubble Tide lifestyle"
+        }
+      ],
+      product_included_items: [],
+      product_routine_steps: [],
+      product_content_blocks: []
+    } satisfies Parameters<typeof mapProductRow>[0];
+
+    const product = mapProductRow(row);
+
+    expect(product.heroImagePath).toBe("/catalog-assets/singles/peach-cloud-cream-blush.png");
+    expect(product.galleryImages.map((image) => image.imagePath)).toEqual([
+      "/catalog-assets/detail/y2k-cute-lifestyle.png",
+      "/catalog-assets/detail/glass-skin-lifestyle.png",
+      "/catalog-assets/detail/warm-honey-lifestyle.png",
+      "/catalog-assets/detail/daily-k-glow-lifestyle.png",
+      "/catalog-assets/detail/bubble-tide-lifestyle.png"
+    ]);
+  });
+
+  it("keeps malformed storage URL paths from crashing product mapping", () => {
+    const row = {
+      id: "product_bad_asset",
+      brand_name: "Peach Hour",
+      name: "Peach Cloud Cream Blush",
+      slug: "peach-cloud-cream-blush",
+      short_description: "A peach cream blush.",
+      description: "A peach cream blush for soft color.",
+      hero_image_path:
+        "https://example.supabase.co/storage/v1/object/public/product-images/single-products/bad%zz.png",
+      status: "active",
+      badges: [],
+      tags: ["BLUSH"],
+      product_type: "single",
+      difficulty: null,
+      item_count: null,
+      intro_video_url: null,
+      best_for: null,
+      result: null,
+      created_at: "2026-05-18T00:00:00.000Z",
+      updated_at: "2026-05-19T00:00:00.000Z",
+      categories: { name: "Makeup" },
+      product_options: [],
+      product_images: [],
+      product_included_items: [],
+      product_routine_steps: [],
+      product_content_blocks: []
+    } satisfies Parameters<typeof mapProductRow>[0];
+
+    expect(() => mapProductRow(row)).not.toThrow();
+    expect(mapProductRow(row).heroImagePath).toBe(row.hero_image_path);
   });
 });
 
@@ -421,6 +637,34 @@ describe("order fulfillment updates", () => {
     );
     expect(orderUpdate?.values).toMatchObject({ status: "delivered" });
   });
+
+  it("rejects backward or terminal order status transitions before updating", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "orders" && call.terminal === "maybeSingle") {
+        return {
+          data: orderRow("order_1", "PAYPAL-ORDER-1", "refunded"),
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      updateOrderFulfillment({
+        orderId: "order_1",
+        status: "shipped"
+      })
+    ).rejects.toThrow("Cannot transition order from refunded to shipped");
+
+    expect(
+      calls.some((call) => call.table === "orders" && call.operation === "update")
+    ).toBe(false);
+    expect(
+      calls.some((call) => call.table === "shipments" && call.operation === "upsert")
+    ).toBe(false);
+  });
 });
 
 describe("commission status updates", () => {
@@ -447,6 +691,334 @@ describe("commission status updates", () => {
       approved_at: null,
       paid_at: null
     });
+  });
+
+  it("describes manual monthly settlement actions for an unpaid commission", () => {
+    expect(
+      getCommissionStatusActions({
+        currentStatus: "pending"
+      })
+    ).toEqual([
+      expect.objectContaining({ status: "paid", disabledReason: undefined }),
+      expect.objectContaining({ status: "cancelled", disabledReason: undefined })
+    ]);
+  });
+
+  it("marks pending commissions as paid without a hold gate", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "commissions" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "commission_1",
+            status: "pending"
+          },
+          error: null
+        };
+      }
+      if (call.table === "commissions" && call.operation === "update") {
+        return { data: null, error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await updateCommissionStatus({
+      commissionId: "commission_1",
+      status: "paid",
+      now: "2026-06-01T00:00:00.000Z"
+    });
+
+    const update = calls.find((call) => call.table === "commissions" && call.operation === "update");
+    expect(update?.values).toMatchObject({
+      status: "paid",
+      approved_at: "2026-06-01T00:00:00.000Z",
+      paid_at: "2026-06-01T00:00:00.000Z"
+    });
+  });
+
+  it("blocks hidden workflow statuses before updating", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "commissions" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "commission_1",
+            status: "pending"
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      updateCommissionStatus({
+        commissionId: "commission_1",
+        status: "approved",
+        now: "2026-06-01T00:00:00.000Z"
+      })
+    ).rejects.toThrow("관리자 정산에서는 미정산 커미션을 지급 완료 또는 정산 제외만 처리할 수 있습니다.");
+    expect(calls.some((call) => call.operation === "update")).toBe(false);
+  });
+
+  it("blocks terminal commission status changes before updating", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "commissions" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "commission_1",
+            status: "paid"
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      updateCommissionStatus({
+        commissionId: "commission_1",
+        status: "cancelled",
+        now: "2026-06-01T00:00:00.000Z"
+      })
+    ).rejects.toThrow("지급 완료된 커미션은 상태를 변경할 수 없습니다.");
+    expect(calls.some((call) => call.operation === "update")).toBe(false);
+  });
+
+  it("marks legacy approved commissions as paid", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "commissions" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "commission_1",
+            status: "approved"
+          },
+          error: null
+        };
+      }
+      if (call.table === "commissions" && call.operation === "update") {
+        return { data: null, error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await updateCommissionStatus({
+      commissionId: "commission_1",
+      status: "paid",
+      now: "2026-06-01T00:00:00.000Z"
+    });
+
+    const update = calls.find((call) => call.table === "commissions" && call.operation === "update");
+    expect(update?.values).toMatchObject({
+      status: "paid",
+      approved_at: "2026-06-01T00:00:00.000Z",
+      paid_at: "2026-06-01T00:00:00.000Z"
+    });
+  });
+
+  it("marks every unpaid commission for one affiliate as paid in a single update", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "commissions" && call.operation === "update") {
+        return { data: null, error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await payUnpaidAffiliateCommissions({
+      affiliateId: "affiliate_1",
+      now: "2026-06-01T00:00:00.000Z"
+    });
+
+    const update = calls.find((call) => call.table === "commissions" && call.operation === "update");
+    expect(update?.values).toMatchObject({
+      status: "paid",
+      approved_at: "2026-06-01T00:00:00.000Z",
+      paid_at: "2026-06-01T00:00:00.000Z"
+    });
+    expect(update?.filters).toEqual([
+      { column: "affiliate_id", value: "affiliate_1" },
+      { column: "status", value: ["pending", "approved"] }
+    ]);
+  });
+
+  it("returns a typed not-found error before updating", async () => {
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      if (call.table === "commissions" && call.terminal === "maybeSingle") {
+        return { data: null, error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      updateCommissionStatus({ commissionId: "missing", status: "paid" })
+    ).rejects.toMatchObject({
+      statusCode: 404
+    });
+  });
+});
+
+describe("admin commission settlement aggregation", () => {
+  it("groups commission rows by promoter and derives settlement buckets", async () => {
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      if (call.table === "commissions" && call.terminal === "then") {
+        return {
+          data: [
+            commissionSettlementRow({
+              id: "commission_pending",
+              affiliateId: "affiliate_1",
+              orderId: "order_1",
+              orderNumber: "SK1001",
+              amountCents: 420,
+              baseCents: 4200,
+              status: "pending",
+              holdUntil: "2026-05-20T00:00:00.000Z"
+            }),
+            commissionSettlementRow({
+              id: "commission_future",
+              affiliateId: "affiliate_1",
+              orderId: "order_2",
+              orderNumber: "SK1002",
+              amountCents: 500,
+              baseCents: 5000,
+              status: "pending",
+              holdUntil: "2026-06-30T00:00:00.000Z"
+            }),
+            commissionSettlementRow({
+              id: "commission_approved",
+              affiliateId: "affiliate_1",
+              orderId: "order_2",
+              orderNumber: "SK1002",
+              amountCents: 500,
+              baseCents: 5000,
+              status: "approved",
+              holdUntil: "2026-05-20T00:00:00.000Z"
+            }),
+            commissionSettlementRow({
+              id: "commission_cancelled",
+              affiliateId: "affiliate_1",
+              orderId: "order_3",
+              orderNumber: "SK1003",
+              amountCents: 600,
+              baseCents: 6000,
+              status: "cancelled",
+              holdUntil: "2026-05-20T00:00:00.000Z"
+            }),
+            commissionSettlementRow({
+              id: "commission_paid",
+              affiliateId: "affiliate_2",
+              orderId: "order_4",
+              orderNumber: "SK1004",
+              amountCents: 800,
+              baseCents: 8000,
+              status: "paid",
+              holdUntil: "2026-05-20T00:00:00.000Z",
+              affiliateCode: "sunny_code",
+              displayName: "Sunny Beauty",
+              email: null
+            })
+          ],
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const settlements = await listAdminCommissionSettlements();
+
+    expect(settlements).toHaveLength(2);
+    expect(settlements[0]).toMatchObject({
+      affiliateId: "affiliate_1",
+      code: "creator_code",
+      displayName: "Creator Kim",
+      email: "creator@example.com",
+      commissionCount: 4,
+      orders: 3,
+      salesBaseCents: 14_200,
+      totalCommissionCents: 1_420,
+      unpaidCommissionCents: 1_420,
+      paidCommissionCents: 0,
+      cancelledCommissionCents: 600
+    });
+    expect(settlements[0].commissions[0]).toMatchObject({
+      id: "commission_pending",
+      orderNumber: "SK1001",
+      productName: "Glow Set",
+      linkToken: "link_1"
+    });
+    expect(settlements[1]).toMatchObject({
+      affiliateId: "affiliate_2",
+      displayName: "Sunny Beauty",
+      email: null,
+      paidCommissionCents: 800
+    });
+  });
+
+  it("falls back gracefully when joined promoter context is missing", async () => {
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      if (call.table === "commissions" && call.terminal === "then") {
+        return {
+          data: [
+            {
+              id: "commission_missing",
+              affiliate_id: null,
+              affiliate_link_id: null,
+              order_id: "order_missing",
+              base_cents: 1_000,
+              rate_bps: 1_000,
+              amount_cents: 100,
+              status: "pending",
+              hold_until: "not-a-date",
+              created_at: "2026-05-20T00:00:00.000Z",
+              orders: { referral_code: "legacy_code", order_items: [] },
+              affiliate_links: null,
+              affiliates: null
+            }
+          ],
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const settlements = await listAdminCommissionSettlements();
+
+    expect(settlements).toHaveLength(1);
+    expect(settlements[0]).toMatchObject({
+      affiliateId: "missing:legacy_code",
+      code: "legacy_code",
+      displayName: "legacy_code",
+      status: "unknown",
+      unpaidCommissionCents: 100
+    });
+    expect(settlements[0].commissions[0]).toMatchObject({
+      orderNumber: "order_missing",
+      productName: "Promoted order"
+    });
+  });
+
+  it("returns an empty settlement list when promoter schema is missing", async () => {
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      if (call.table === "commissions" && call.terminal === "then") {
+        return {
+          data: null,
+          error: {
+            code: "PGRST205",
+            message: "Could not find public.affiliate_links in the schema cache"
+          }
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(listAdminCommissionSettlements()).resolves.toEqual([]);
   });
 });
 
@@ -475,6 +1047,386 @@ describe("paid order payment idempotency", () => {
     });
 
     expect(order.id).toBe("order_existing");
+    expect(calls.some((call) => call.table === "orders" && call.operation === "insert")).toBe(false);
+  });
+
+  it("rolls back a new order when child order item insertion fails", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "payment_transactions" && call.terminal === "maybeSingle") {
+        return { data: null, error: null };
+      }
+      if (call.table === "orders" && call.terminal === "single" && call.values) {
+        return { data: { id: "order_new" }, error: null };
+      }
+      if (call.table === "order_items" && call.operation === "insert") {
+        return { error: { message: "order item insert failed" } };
+      }
+      if (call.table === "orders" && call.operation === "delete") {
+        return { error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      createPaidOrder({
+        userId: "buyer_1",
+        product: productFixture(),
+        quantity: 1,
+        shippingAddress: shippingAddressFixture(),
+        paymentProviderOrderId: "PAYPAL-ORDER-1",
+        paymentProviderCaptureId: "CAPTURE-1",
+        paymentPayload: {}
+      })
+    ).rejects.toThrow("order item insert failed");
+
+    expect(calls).toContainEqual(
+      expect.objectContaining({
+        table: "orders",
+        operation: "delete",
+        filters: [{ column: "id", value: "order_new" }]
+      })
+    );
+    expect(
+      calls.some((call) => call.table === "shipping_addresses" && call.operation === "insert")
+    ).toBe(false);
+    expect(
+      calls.some((call) => call.table === "payment_transactions" && call.operation === "insert")
+    ).toBe(false);
+  });
+});
+
+describe("paid order referral attribution", () => {
+  it("attributes commission to the purchased product link inside an active referral window", async () => {
+    const calls: QueryCall[] = [];
+    const purchasedProduct = {
+      ...productFixture(),
+      id: "product_2",
+      name: "Hydration Skincare Set",
+      slug: "hydration-skincare-set"
+    };
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "payment_transactions" && call.terminal === "maybeSingle") {
+        return { data: null, error: null };
+      }
+      if (call.table === "affiliates" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "affiliate_1",
+            profile_id: "promoter_1",
+            code: "creator_code",
+            status: "active",
+            profiles: { email: "creator@example.com", phone: "2135550000" }
+          },
+          error: null
+        };
+      }
+      if (call.table === "affiliate_links" && call.terminal === "maybeSingle") {
+        const filters = Object.fromEntries(
+          call.filters.map((filter) => [filter.column, filter.value])
+        );
+        if (filters.link_token === "skincare_01") {
+          return {
+            data: {
+              id: "link_clicked",
+              link_token: "skincare_01",
+              destination_path: "/products/skincare-starter-set",
+              status: "active"
+            },
+            error: null
+          };
+        }
+        if (filters.product_id === "product_2") {
+          return {
+            data: {
+              id: "link_purchased",
+              link_token: "hydration_02",
+              destination_path: "/products/hydration-skincare-set",
+              status: "active"
+            },
+            error: null
+          };
+        }
+      }
+      if (call.table === "orders" && call.terminal === "single" && call.values) {
+        return { data: { id: "order_new" }, error: null };
+      }
+      if (call.operation === "insert") {
+        return { error: null };
+      }
+      if (call.table === "orders" && call.terminal === "maybeSingle") {
+        return { data: orderRow("order_new", "PAYPAL-ORDER-1"), error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await createPaidOrder({
+      userId: "buyer_1",
+      product: purchasedProduct,
+      quantity: 1,
+      shippingAddress: shippingAddressFixture(),
+      paymentProviderOrderId: "PAYPAL-ORDER-1",
+      paymentProviderCaptureId: "CAPTURE-1",
+      paymentPayload: {},
+      referralCode: "creator_code",
+      referralLinkToken: "skincare_01",
+      referralLandingPath: "/products/skincare-starter-set"
+    });
+
+    const commissionInsert = calls.find(
+      (call) => call.table === "commissions" && call.operation === "insert"
+    );
+    expect(commissionInsert?.values).toMatchObject({
+      affiliate_id: "affiliate_1",
+      affiliate_link_id: "link_purchased"
+    });
+  });
+
+  it("accepts an existing purchased product link that still uses a legacy destination slug", async () => {
+    const calls: QueryCall[] = [];
+    const purchasedProduct = {
+      ...productFixture(),
+      id: "product_2",
+      name: "Hydration Skincare Set",
+      slug: "hydration-skincare-set"
+    };
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "payment_transactions" && call.terminal === "maybeSingle") {
+        return { data: null, error: null };
+      }
+      if (call.table === "affiliates" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "affiliate_1",
+            profile_id: "promoter_1",
+            code: "creator_code",
+            status: "active",
+            profiles: { email: "creator@example.com", phone: "2135550000" }
+          },
+          error: null
+        };
+      }
+      if (call.table === "affiliate_links" && call.terminal === "maybeSingle") {
+        const filters = Object.fromEntries(
+          call.filters.map((filter) => [filter.column, filter.value])
+        );
+        if (filters.link_token === "skincare_01") {
+          return {
+            data: {
+              id: "link_clicked",
+              link_token: "skincare_01",
+              destination_path: "/products/skincare-starter-set",
+              status: "active"
+            },
+            error: null
+          };
+        }
+        if (filters.product_id === "product_2") {
+          return {
+            data: {
+              id: "link_purchased_legacy",
+              link_token: "hydration_02",
+              destination_path: "/products/glass-skin-starter",
+              status: "active"
+            },
+            error: null
+          };
+        }
+      }
+      if (call.table === "orders" && call.terminal === "single" && call.values) {
+        return { data: { id: "order_new" }, error: null };
+      }
+      if (call.operation === "insert") {
+        return { error: null };
+      }
+      if (call.table === "orders" && call.terminal === "maybeSingle") {
+        return { data: orderRow("order_new", "PAYPAL-ORDER-1"), error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await createPaidOrder({
+      userId: "buyer_1",
+      product: purchasedProduct,
+      quantity: 1,
+      shippingAddress: shippingAddressFixture(),
+      paymentProviderOrderId: "PAYPAL-ORDER-1",
+      paymentProviderCaptureId: "CAPTURE-1",
+      paymentPayload: {},
+      referralCode: "creator_code",
+      referralLinkToken: "skincare_01",
+      referralLandingPath: "/products/skincare-starter-set"
+    });
+
+    const commissionInsert = calls.find(
+      (call) => call.table === "commissions" && call.operation === "insert"
+    );
+    expect(commissionInsert?.values).toMatchObject({
+      affiliate_id: "affiliate_1",
+      affiliate_link_id: "link_purchased_legacy"
+    });
+  });
+
+  it("accepts a clicked referral link when the landing path uses the legacy product slug", async () => {
+    const calls: QueryCall[] = [];
+    const purchasedProduct = {
+      ...productFixture(),
+      id: "product_2",
+      name: "Hydration Skincare Set",
+      slug: "hydration-skincare-set"
+    };
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "payment_transactions" && call.terminal === "maybeSingle") {
+        return { data: null, error: null };
+      }
+      if (call.table === "affiliates" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "affiliate_1",
+            profile_id: "promoter_1",
+            code: "creator_code",
+            status: "active",
+            profiles: { email: "creator@example.com", phone: "2135550000" }
+          },
+          error: null
+        };
+      }
+      if (call.table === "affiliate_links" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "link_canonical",
+            link_token: "hydration_02",
+            destination_path: "/products/hydration-skincare-set",
+            status: "active"
+          },
+          error: null
+        };
+      }
+      if (call.table === "orders" && call.terminal === "single" && call.values) {
+        return { data: { id: "order_new" }, error: null };
+      }
+      if (call.operation === "insert") {
+        return { error: null };
+      }
+      if (call.table === "orders" && call.terminal === "maybeSingle") {
+        return { data: orderRow("order_new", "PAYPAL-ORDER-1"), error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await createPaidOrder({
+      userId: "buyer_1",
+      product: purchasedProduct,
+      quantity: 1,
+      shippingAddress: shippingAddressFixture(),
+      paymentProviderOrderId: "PAYPAL-ORDER-1",
+      paymentProviderCaptureId: "CAPTURE-1",
+      paymentPayload: {},
+      referralCode: "creator_code",
+      referralLinkToken: "hydration_02",
+      referralLandingPath: "/products/glass-skin-starter"
+    });
+
+    const commissionInsert = calls.find(
+      (call) => call.table === "commissions" && call.operation === "insert"
+    );
+    expect(commissionInsert?.values).toMatchObject({
+      affiliate_id: "affiliate_1",
+      affiliate_link_id: "link_canonical"
+    });
+  });
+
+  it("does not create an order or commission with a null product link after link conflicts", async () => {
+    const calls: QueryCall[] = [];
+    const purchasedProduct = {
+      ...productFixture(),
+      id: "product_2",
+      name: "Hydration Skincare Set",
+      slug: "hydration-skincare-set"
+    };
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "payment_transactions" && call.terminal === "maybeSingle") {
+        return { data: null, error: null };
+      }
+      if (call.table === "affiliates" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "affiliate_1",
+            profile_id: "promoter_1",
+            code: "creator_code",
+            status: "active",
+            profiles: { email: "creator@example.com", phone: "2135550000" }
+          },
+          error: null
+        };
+      }
+      if (call.table === "affiliate_links" && call.terminal === "maybeSingle") {
+        const filters = Object.fromEntries(
+          call.filters.map((filter) => [filter.column, filter.value])
+        );
+        if (filters.link_token === "skincare_01") {
+          return {
+            data: {
+              id: "link_clicked",
+              link_token: "skincare_01",
+              destination_path: "/products/skincare-starter-set",
+              status: "active"
+            },
+            error: null
+          };
+        }
+        if (filters.product_id === "product_2") {
+          return { data: null, error: null };
+        }
+      }
+      if (call.table === "affiliate_links" && call.operation === "insert") {
+        return {
+          error: {
+            code: "23505",
+            message: "duplicate key value violates unique constraint"
+          }
+        };
+      }
+      if (call.table === "orders" && call.terminal === "single" && call.values) {
+        return { data: { id: "order_new" }, error: null };
+      }
+      if (call.operation === "insert") {
+        return { error: null };
+      }
+      if (call.operation === "delete") {
+        return { error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      createPaidOrder({
+        userId: "buyer_1",
+        product: purchasedProduct,
+        quantity: 1,
+        shippingAddress: shippingAddressFixture(),
+        paymentProviderOrderId: "PAYPAL-ORDER-1",
+        paymentProviderCaptureId: "CAPTURE-1",
+        paymentPayload: {},
+        referralCode: "creator_code",
+        referralLinkToken: "skincare_01",
+        referralLandingPath: "/products/skincare-starter-set"
+      })
+    ).rejects.toThrow(/Could not create affiliate link/);
+
+    expect(
+      calls.some(
+        (call) =>
+          call.table === "commissions" &&
+          call.operation === "insert" &&
+          (call.values as { affiliate_link_id?: unknown }).affiliate_link_id === null
+        )
+    ).toBe(false);
     expect(calls.some((call) => call.table === "orders" && call.operation === "insert")).toBe(false);
   });
 });
@@ -603,7 +1555,6 @@ function createQueryBuilder(table: string, handler: (call: QueryCall) => unknown
   };
   const builder = {
     select() {
-      state.operation = "select";
       return builder;
     },
     insert(values: unknown) {
@@ -656,6 +1607,54 @@ function createQueryBuilder(table: string, handler: (call: QueryCall) => unknown
   return builder;
 }
 
+function productRowFixture({
+  id,
+  name,
+  slug,
+  priceCents
+}: {
+  id: string;
+  name: string;
+  slug: string;
+  priceCents: number;
+}): Parameters<typeof mapProductRow>[0] {
+  return {
+    id,
+    brand_name: "shipK Curated",
+    name,
+    slug,
+    short_description: "Short",
+    description: "Description",
+    hero_image_path: "/hero.png",
+    status: "active",
+    badges: [],
+    tags: ["GLOSS", "MAKEUP", "6 ITEMS"],
+    product_type: "set",
+    difficulty: "Beginner",
+    item_count: 6,
+    intro_video_url: null,
+    best_for: null,
+    result: null,
+    created_at: "2026-05-18T00:00:00.000Z",
+    updated_at: "2026-05-19T00:00:00.000Z",
+    categories: { name: "Makeup" },
+    product_options: [
+      {
+        id: `${id}_option`,
+        name: "6-item set",
+        sku: `${id.toUpperCase()}-SKU`,
+        price_cents: priceCents,
+        stock_quantity: 10
+      }
+    ],
+    product_images: [],
+    product_included_items: [],
+    product_routine_steps: [],
+    product_content_blocks: [],
+    product_detail_sections: []
+  };
+}
+
 function productFixture(): Product {
   return {
     id: "product_1",
@@ -694,7 +1693,7 @@ function shippingAddressFixture() {
     city: "Los Angeles",
     state: "CA",
     postalCode: "90001",
-    country: "US" as const
+        country: "US"
   };
 }
 
@@ -742,5 +1741,60 @@ function orderRow(
       ? [{ carrier: shipment.carrier, tracking_number: shipment.trackingNumber }]
       : [],
     payment_transactions: [{ provider_order_id: providerOrderId }]
+  };
+}
+
+function commissionSettlementRow({
+  id,
+  affiliateId,
+  orderId,
+  orderNumber,
+  amountCents,
+  baseCents,
+  status,
+  holdUntil,
+  affiliateCode = "creator_code",
+  displayName = "Creator Kim",
+  email = "creator@example.com"
+}: {
+  id: string;
+  affiliateId: string;
+  orderId: string;
+  orderNumber: string;
+  amountCents: number;
+  baseCents: number;
+  status: "pending" | "approved" | "paid" | "cancelled";
+  holdUntil: string;
+  affiliateCode?: string;
+  displayName?: string;
+  email?: string | null;
+}) {
+  return {
+    id,
+    affiliate_id: affiliateId,
+    affiliate_link_id: "link_1",
+    order_id: orderId,
+    base_cents: baseCents,
+    rate_bps: 1_000,
+    amount_cents: amountCents,
+    status,
+    hold_until: holdUntil,
+    created_at: "2026-05-20T00:00:00.000Z",
+    orders: {
+      order_number: orderNumber,
+      referral_code: affiliateCode,
+      order_items: [{ product_name: "Glow Set" }]
+    },
+    affiliate_links: { link_token: "link_1" },
+    affiliates: {
+      id: affiliateId,
+      profile_id: `${affiliateId}_profile`,
+      code: affiliateCode,
+      display_name: displayName,
+      status: "active",
+      terms_accepted_at: "2026-05-01T00:00:00.000Z",
+      created_at: "2026-05-01T00:00:00.000Z",
+      profiles: { email }
+    }
   };
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,25 +17,55 @@ import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | (typeof adminFulfillmentStatuses)[number];
 type CarrierFilter = "all" | "none" | (typeof fulfillmentCarriers)[number];
+type SortOption =
+  | "created-desc"
+  | "created-asc"
+  | "fulfillment-priority"
+  | "total-desc"
+  | "total-asc";
 
 export function AdminOrdersClient({ orders }: { orders: CommerceOrder[] }) {
   const [rows, setRows] = useState(orders);
-  const [selectedOrderId, setSelectedOrderId] = useState(orders[0]?.id ?? "");
+  const [editingOrderId, setEditingOrderId] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [carrierFilter, setCarrierFilter] = useState<CarrierFilter>("all");
+  const [sortOption, setSortOption] = useState<SortOption>("created-desc");
   const [errorByOrderId, setErrorByOrderId] = useState<Record<string, string>>({});
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const editorTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const filteredRows = useMemo(
     () => filterOrders(rows, { query, statusFilter, carrierFilter }),
     [rows, query, statusFilter, carrierFilter]
   );
-  const selectedOrder =
-    filteredRows.find((order) => order.id === selectedOrderId) ?? filteredRows[0] ?? null;
+  const displayedRows = useMemo(
+    () => sortOrders(filteredRows, sortOption),
+    [filteredRows, sortOption]
+  );
+  const editingOrder = rows.find((order) => order.id === editingOrderId) ?? null;
+
+  function openFulfillmentEditor(orderId: string, trigger: HTMLButtonElement) {
+    editorTriggerRef.current = trigger;
+    setEditingOrderId(orderId);
+  }
+
+  function closeFulfillmentEditor() {
+    setEditingOrderId("");
+    window.setTimeout(() => {
+      const trigger = editorTriggerRef.current;
+      const focusTarget =
+        trigger && document.contains(trigger) ? trigger : searchInputRef.current;
+      focusTarget?.focus();
+    }, 0);
+  }
 
   async function updateShipment(orderId: string, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await submitShipment(orderId, event.currentTarget);
+    const saved = await submitShipment(orderId, event.currentTarget);
+    if (saved) {
+      closeFulfillmentEditor();
+    }
   }
 
   async function submitShipment(orderId: string, form: HTMLFormElement) {
@@ -54,12 +85,13 @@ export function AdminOrdersClient({ orders }: { orders: CommerceOrder[] }) {
       setRows((current) =>
         current.map((row) => (row.id === orderId ? payload.order : row))
       );
-      setSelectedOrderId(orderId);
+      return true;
     } else {
       setErrorByOrderId((current) => ({
         ...current,
         [orderId]: payload.error ?? "배송 정보를 저장하지 못했습니다."
       }));
+      return false;
     }
   }
 
@@ -74,7 +106,7 @@ export function AdminOrdersClient({ orders }: { orders: CommerceOrder[] }) {
   return (
     <div className="grid gap-5">
       <div className="rounded-md border-2 border-black bg-white p-4">
-        <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_160px_160px_180px]">
           <label className="grid gap-2">
             <span className="text-xs font-black uppercase text-muted-foreground">
               Search
@@ -85,6 +117,7 @@ export function AdminOrdersClient({ orders }: { orders: CommerceOrder[] }) {
                 aria-hidden="true"
               />
               <Input
+                ref={searchInputRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="pl-9"
@@ -113,6 +146,23 @@ export function AdminOrdersClient({ orders }: { orders: CommerceOrder[] }) {
           </label>
           <label className="grid gap-2">
             <span className="text-xs font-black uppercase text-muted-foreground">
+              Sort
+            </span>
+            <select
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value as SortOption)}
+              className="focus-ring h-11 rounded-md border bg-white px-3 text-sm font-semibold"
+              aria-label="Sort orders"
+            >
+              <option value="created-desc">최신 주문순</option>
+              <option value="created-asc">오래된 주문순</option>
+              <option value="fulfillment-priority">처리 필요순</option>
+              <option value="total-desc">주문 금액 높은순</option>
+              <option value="total-asc">주문 금액 낮은순</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-black uppercase text-muted-foreground">
               Carrier
             </span>
             <select
@@ -132,86 +182,220 @@ export function AdminOrdersClient({ orders }: { orders: CommerceOrder[] }) {
           </label>
         </div>
         <p className="mt-3 text-sm font-semibold text-muted-foreground">
-          {filteredRows.length} / {rows.length} orders
+          {displayedRows.length} / {rows.length} orders
         </p>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="grid auto-rows-fr gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {filteredRows.length ? (
-            filteredRows.map((order) => (
-              <button
-                key={order.id}
-                type="button"
-                data-testid={`admin-order-${order.id}`}
-                aria-pressed={selectedOrder?.id === order.id}
-                onClick={() => setSelectedOrderId(order.id)}
-                className={cn(
-                  "focus-ring grid min-h-[13.5rem] gap-4 rounded-md border-2 border-black bg-white p-4 text-left transition hover:bg-[#fff8f0]",
-                  selectedOrder?.id === order.id ? "bg-[#c8f26c]" : ""
-                )}
-              >
-                <span className="flex items-start justify-between gap-3">
-                  <span>
-                    <span className="block font-brand-heavy text-xl leading-tight">
-                      {order.orderNumber}
-                    </span>
-                    <span className="mt-1 block text-sm font-semibold text-muted-foreground">
-                      {formatOrderDate(order.createdAt)}
-                    </span>
+      <div className="grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {displayedRows.length ? (
+          displayedRows.map((order) => (
+            <button
+              key={order.id}
+              type="button"
+              data-testid={`admin-order-${order.id}`}
+              aria-haspopup="dialog"
+              aria-label={`${order.orderNumber} 배송 정보 수정 열기`}
+              onClick={(event) => openFulfillmentEditor(order.id, event.currentTarget)}
+              className="focus-ring grid min-h-[13.5rem] gap-4 rounded-md border-2 border-black bg-white p-4 text-left transition hover:bg-[#fff8f0] focus-visible:bg-[#fff8f0]"
+            >
+              <span className="flex items-start justify-between gap-3">
+                <span>
+                  <span className="block font-brand-heavy text-xl leading-tight">
+                    {order.orderNumber}
                   </span>
-                  <StatusBadge status={order.status} />
-                </span>
-
-                <span className="grid gap-2 text-sm">
-                  <span>
-                    <span className="block text-muted-foreground">Customer</span>
-                    <span className="break-all font-semibold">
-                      {order.shippingAddress.email}
-                    </span>
-                  </span>
-                  <span>
-                    <span className="block text-muted-foreground">Ship to</span>
-                    <span className="font-semibold">
-                      {order.shippingAddress.name || "No recipient"}
-                    </span>
+                  <span className="mt-1 block text-sm font-semibold text-muted-foreground">
+                    {formatOrderDate(order.createdAt)}
                   </span>
                 </span>
+                <StatusBadge status={order.status} />
+              </span>
 
-                <span className="mt-auto grid gap-1 border-t pt-3 text-sm">
-                  <span className="font-semibold">{order.productName}</span>
-                  <span className="flex items-center justify-between gap-3 text-muted-foreground">
-                    <span>{formatShipmentSummary(order)}</span>
-                    <span className="font-black text-foreground">
-                      ${(order.totalCents / 100).toFixed(2)}
-                    </span>
+              <span className="grid gap-2 text-sm">
+                <span>
+                  <span className="block text-muted-foreground">Customer</span>
+                  <span className="break-all font-semibold">
+                    {order.shippingAddress.email}
                   </span>
                 </span>
-              </button>
-            ))
-          ) : (
-            <div className="rounded-md border-2 border-black bg-white p-5 text-muted-foreground md:col-span-2 2xl:col-span-3">
-              조건에 맞는 주문이 없습니다.
-            </div>
-          )}
-        </div>
+                <span>
+                  <span className="block text-muted-foreground">Ship to</span>
+                  <span className="font-semibold">
+                    {order.shippingAddress.name || "No recipient"}
+                  </span>
+                </span>
+              </span>
 
-        <aside className="h-fit rounded-md border-2 border-black bg-white p-5 xl:sticky xl:top-5">
-          {selectedOrder ? (
-            <OrderEditor
-              key={`${selectedOrder.id}-${selectedOrder.status}-${selectedOrder.shipmentCarrier ?? ""}-${selectedOrder.trackingNumber ?? ""}`}
-              order={selectedOrder}
-              error={errorByOrderId[selectedOrder.id]}
-              onSubmit={updateShipment}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              주문을 선택하면 배송 정보를 수정할 수 있습니다.
-            </p>
-          )}
-        </aside>
+              <span className="mt-auto grid gap-3 border-t pt-3 text-sm">
+                <span className="font-semibold">{order.productName}</span>
+                <span className="flex items-center justify-between gap-3 text-muted-foreground">
+                  <span>{formatShipmentSummary(order)}</span>
+                  <span className="font-black text-foreground">
+                    ${(order.totalCents / 100).toFixed(2)}
+                  </span>
+                </span>
+                <span className="inline-flex w-fit items-center rounded-md border-2 border-black bg-[#fff8f0] px-3 py-2 text-xs font-black">
+                  배송 정보 수정
+                </span>
+              </span>
+            </button>
+          ))
+        ) : (
+          <div className="rounded-md border-2 border-black bg-white p-5 text-muted-foreground md:col-span-2 xl:col-span-3 2xl:col-span-4">
+            조건에 맞는 주문이 없습니다.
+          </div>
+        )}
       </div>
+
+      {editingOrder ? (
+        <FulfillmentDialog
+          key={`${editingOrder.id}-${editingOrder.status}-${editingOrder.shipmentCarrier ?? ""}-${editingOrder.trackingNumber ?? ""}`}
+          order={editingOrder}
+          error={errorByOrderId[editingOrder.id]}
+          onClose={closeFulfillmentEditor}
+          onSubmit={updateShipment}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function FulfillmentDialog({
+  order,
+  error,
+  onClose,
+  onSubmit
+}: {
+  order: CommerceOrder;
+  error?: string;
+  onClose: () => void;
+  onSubmit: (orderId: string, event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const titleId = `fulfillment-dialog-title-${order.id}`;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    window.setTimeout(() => {
+      const initialFocusTarget =
+        panelRef.current?.querySelector<HTMLElement>('select[name="status"]') ??
+        panelRef.current?.querySelector<HTMLElement>("button");
+      initialFocusTarget?.focus();
+    }, 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const panel = panelRef.current;
+      if (!panel) {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(panel);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (!panel.contains(activeElement)) {
+        event.preventDefault();
+        firstElement.focus();
+        return;
+      }
+
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMounted, onClose]);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      data-testid="fulfillment-dialog-backdrop"
+      className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/45 px-4 py-5 sm:py-8"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="max-h-[calc(100vh-2.5rem)] w-full max-w-xl overflow-y-auto rounded-md border-2 border-black bg-white p-4 sm:p-5"
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
+              Fulfillment
+            </p>
+            <h2 id={titleId} className="mt-1 shipk-heading text-3xl">
+              Fulfillment {order.orderNumber}
+            </h2>
+            <p className="mt-2 break-all text-sm text-muted-foreground">
+              {order.shippingAddress.email}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="배송 정보 모달 닫기"
+            onClick={onClose}
+            className="shrink-0 border-2"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+        <OrderEditor
+          order={order}
+          error={error}
+          onSubmit={onSubmit}
+        />
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -230,16 +414,6 @@ function OrderEditor({
       data-testid={`fulfillment-form-${order.id}`}
       className="grid gap-4"
     >
-      <div>
-        <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
-          Fulfillment
-        </p>
-        <h2 className="mt-1 shipk-heading text-3xl">{order.orderNumber}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {order.shippingAddress.email}
-        </p>
-      </div>
-
       <div className="grid gap-3 rounded-md border-2 border-black bg-[#fff8f0] p-4 text-sm">
         <p>
           <span className="block text-muted-foreground">Product</span>
@@ -300,10 +474,18 @@ function OrderEditor({
         배송 정보 저장
       </Button>
       {error ? (
-        <p className="text-xs font-semibold text-destructive">{error}</p>
+        <p role="status" className="text-xs font-semibold text-destructive">{error}</p>
       ) : null}
     </form>
   );
+}
+
+function getFocusableElements(container: HTMLElement) {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((element) => !element.hasAttribute("hidden"));
 }
 
 function filterOrders(
@@ -345,6 +527,67 @@ function filterOrders(
 
     return matchesQuery && matchesStatus && matchesCarrier;
   });
+}
+
+function sortOrders(orders: CommerceOrder[], sortOption: SortOption) {
+  return [...orders].sort((left, right) => {
+    const fallback = compareByNewest(left, right);
+
+    if (sortOption === "created-desc") {
+      return fallback;
+    }
+
+    if (sortOption === "created-asc") {
+      return compareByOldest(left, right);
+    }
+
+    if (sortOption === "fulfillment-priority") {
+      return (
+        getFulfillmentPriority(left.status) -
+          getFulfillmentPriority(right.status) ||
+        fallback
+      );
+    }
+
+    if (sortOption === "total-desc") {
+      return right.totalCents - left.totalCents || fallback;
+    }
+
+    return left.totalCents - right.totalCents || fallback;
+  });
+}
+
+function compareByNewest(left: CommerceOrder, right: CommerceOrder) {
+  return (
+    getOrderTimestamp(right.createdAt) - getOrderTimestamp(left.createdAt) ||
+    right.orderNumber.localeCompare(left.orderNumber)
+  );
+}
+
+function compareByOldest(left: CommerceOrder, right: CommerceOrder) {
+  return (
+    getOrderTimestamp(left.createdAt) - getOrderTimestamp(right.createdAt) ||
+    left.orderNumber.localeCompare(right.orderNumber)
+  );
+}
+
+function getOrderTimestamp(value: string) {
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getFulfillmentPriority(status: CommerceOrder["status"]) {
+  const priorities: Record<CommerceOrder["status"], number> = {
+    paid: 0,
+    preparing: 1,
+    shipped: 2,
+    pending_payment: 3,
+    delivered: 4,
+    refunded: 5,
+    cancelled: 6
+  };
+
+  return priorities[status];
 }
 
 function StatusBadge({ status }: { status: CommerceOrder["status"] }) {

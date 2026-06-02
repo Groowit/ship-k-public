@@ -1,12 +1,14 @@
 import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight, Droplets, Palette } from "lucide-react";
 import { HomeFeatureBanner } from "@/components/home-feature-banner";
 import { ProductCard } from "@/components/product-card";
 import { getProductVisual } from "@/lib/brand-visuals";
-import { listActiveProducts, sortProductsByPopularity } from "@/lib/commerce-store";
-import { getActiveCategories, getProductPriceLabel, Product } from "@/lib/products";
+import { listActiveProducts } from "@/lib/commerce-store";
+import { getHomeMerchandisingProducts } from "@/lib/home-merchandising";
+import { getImageOptimizationProps } from "@/lib/image-path";
+import { getProductPriceLabel, Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const products = await listActiveProducts();
   const featuredProducts = products.slice(0, 6);
-  const categories = getActiveCategories(products);
-  const trendingProducts = sortProductsByPopularity(products).slice(0, 4);
+  const { trendingProducts, popularProducts } = getHomeMerchandisingProducts(products);
 
   return (
     <div className="overflow-hidden">
@@ -33,42 +34,16 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <section className="container py-12">
-        <div className="mb-8 grid gap-5">
-          <div>
-            <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
-              Starter bundles
-            </p>
-            <h2 className="mt-2 shipk-heading text-4xl">
-              Shop by category
-            </h2>
-          </div>
-          <nav className="flex gap-3 overflow-x-auto pb-1" aria-label="Product categories">
-            <Link href="/shop" className="shipk-chip shipk-chip-active shrink-0">
-              All sets
-            </Link>
-            {categories.map((category) => (
-              <Link
-                key={category}
-                href={category === "Makeup" ? "/makeup" : "/shop"}
-                className="shipk-chip shrink-0 hover:bg-[#ffd6e3]"
-              >
-                {category}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featuredProducts.map((product, index) => (
-            <ProductCard key={product.id} product={product} rank={index} />
-          ))}
-        </div>
-      </section>
+      <PopularProductsSection products={popularProducts} />
     </div>
   );
 }
 
 function BestSellerSection({ products }: { products: Product[] }) {
+  if (!products.length) {
+    return null;
+  }
+
   return (
     <section className="border-b-2 border-black bg-white">
       <div className="container py-12">
@@ -78,6 +53,106 @@ function BestSellerSection({ products }: { products: Product[] }) {
         />
       </div>
     </section>
+  );
+}
+
+function PopularProductsSection({ products }: { products: Product[] }) {
+  if (!products.length) {
+    return null;
+  }
+
+  return (
+    <section className="container py-12">
+      <div className="mb-8 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
+            Popular picks
+          </p>
+          <h2 className="mt-2 shipk-heading text-4xl">
+            Loved across shipK
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
+            Sets and single products ranked together, so shoppers can scan what is moving now.
+          </p>
+        </div>
+        <p className="text-sm font-black uppercase text-muted-foreground">
+          Showing up to 18
+        </p>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {products.map((product, index) => (
+          <ProductCard key={product.id} product={product} rank={index} />
+        ))}
+      </div>
+      <ExploreMoreLinks />
+    </section>
+  );
+}
+
+function ExploreMoreLinks() {
+  return (
+    <div className="mt-10 grid gap-4 md:grid-cols-2">
+      <ExploreMoreLink
+        href="/shop"
+        eyebrow="Skincare"
+        title="Explore skincare sets"
+        body="Hydration, skin prep, and routine-first picks."
+        className="bg-[#dcfff4]"
+        icon={<Droplets className="h-5 w-5" aria-hidden="true" />}
+      />
+      <ExploreMoreLink
+        href="/makeup"
+        eyebrow="Makeup"
+        title="Explore makeup sets"
+        body="Glossy, warm, and defined looks in one place."
+        className="bg-[#fff8f0]"
+        icon={<Palette className="h-5 w-5" aria-hidden="true" />}
+      />
+    </div>
+  );
+}
+
+function ExploreMoreLink({
+  href,
+  eyebrow,
+  title,
+  body,
+  className,
+  icon
+}: {
+  href: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  className: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group grid min-h-40 gap-4 rounded-md border-2 border-black p-5 transition hover:-translate-y-0.5 focus-ring",
+        className
+      )}
+    >
+      <span className="flex items-center justify-between gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-black bg-white">
+          {icon}
+        </span>
+        <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" aria-hidden="true" />
+      </span>
+      <span>
+        <span className="font-brand-heavy text-xs uppercase text-[#ff3d7f]">
+          {eyebrow}
+        </span>
+        <span className="mt-1 block text-2xl font-black leading-tight text-foreground">
+          {title}
+        </span>
+        <span className="mt-2 block text-sm font-semibold leading-6 text-muted-foreground">
+          {body}
+        </span>
+      </span>
+    </Link>
   );
 }
 
@@ -147,6 +222,7 @@ function CompactProductCard({ product, rank }: { product: Product; rank: number 
             src={product.heroImagePath}
             alt={`${product.name} bestseller image`}
             fill
+            {...getImageOptimizationProps(product.heroImagePath)}
             sizes="(min-width: 1024px) 18vw, (min-width: 640px) 40vw, 90vw"
             className="object-contain p-4 transition duration-300 group-hover:scale-[1.03]"
           />

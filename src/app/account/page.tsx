@@ -29,7 +29,7 @@ export default async function AccountPage() {
     city: "",
     state: "",
     postalCode: "",
-    country: "US" as const,
+    country: "US",
     memo: ""
   };
 

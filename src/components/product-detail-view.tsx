@@ -9,6 +9,7 @@ import { ProductDetailSectionsRenderer } from "@/components/product-detail-secti
 import { Badge } from "@/components/ui/badge";
 import { getProductVisual } from "@/lib/brand-visuals";
 import { formatUsd } from "@/lib/commerce";
+import { getImageOptimizationProps } from "@/lib/image-path";
 import { Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -235,6 +236,7 @@ function MediaFrame({
         alt={item.alt}
         fill
         priority={item.priority && !modal}
+        {...getImageOptimizationProps(item.src)}
         sizes={modal ? "90vw" : "(min-width: 1024px) 50vw, 100vw"}
         className={cn("object-contain", modal ? "p-4 md:p-6" : "p-5 md:p-8")}
       />
@@ -257,6 +259,7 @@ function MediaThumbnail({ item }: { item: ProductMediaItem }) {
       src={item.src}
       alt=""
       fill
+      {...getImageOptimizationProps(item.src)}
       sizes="(min-width: 1024px) 12vw, 25vw"
       className="object-contain p-2"
     />

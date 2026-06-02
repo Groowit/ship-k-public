@@ -27,6 +27,8 @@ export type BrandPartner = {
   updatedAt?: string;
 };
 
+export type BrandPartnerOption = Pick<BrandPartner, "id" | "name" | "slug" | "status" | "contactEmail">;
+
 export type BrandMembership = {
   id: string;
   brandId: string;
@@ -442,6 +444,46 @@ export async function listAdminBrands(): Promise<AdminBrandSummary[]> {
   }));
 }
 
+export async function listActiveBrandPartnerOptions(): Promise<BrandPartnerOption[]> {
+  const supabase = createSupabasePrivilegedClient();
+  const { data, error } = await supabase
+    .from("brand_partners")
+    .select("id,name,slug,status,contact_email")
+    .eq("status", "active")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(`Could not load brand partner options: ${error.message}`);
+  }
+
+  return ((data ?? []) as BrandPartnerRow[]).map(mapBrandPartnerRow);
+}
+
+export async function getProductBrandAssignmentForAdmin(productId: string): Promise<ProductBrandAssignment | null> {
+  const supabase = createSupabasePrivilegedClient();
+  const { data, error } = await supabase
+    .from("product_brand_assignments")
+    .select("id,brand_partner_id,product_id,status,can_edit_details,created_at,brand_partners(id,name,slug,status,contact_email,created_at,updated_at)")
+    .eq("product_id", productId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load product brand assignment: ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const row = data as AssignmentRowWithBrand;
+  const brand = getRelationObject(row.brand_partners);
+  return {
+    ...mapAssignmentRow(row),
+    brand: brand ? mapBrandPartnerRow(brand) : undefined
+  };
+}
+
 export async function createBrandPartner({
   name,
   slug,
@@ -465,6 +507,44 @@ export async function createBrandPartner({
 
   if (error) {
     throw new BrandInputError(`브랜드를 생성하지 못했습니다: ${error.message}`);
+  }
+
+  return mapBrandPartnerRow(data as BrandPartnerRow);
+}
+
+export async function updateBrandPartner({
+  brandId,
+  status,
+  contactEmail
+}: {
+  brandId: string;
+  status?: BrandPartnerStatus;
+  contactEmail?: string | null;
+}) {
+  const values: Record<string, string | null> = {};
+
+  if (status) {
+    values.status = status;
+  }
+
+  if (contactEmail !== undefined) {
+    values.contact_email = contactEmail?.trim() || null;
+  }
+
+  if (Object.keys(values).length === 0) {
+    throw new BrandInputError("변경할 브랜드 관리 항목이 없습니다.");
+  }
+
+  const supabase = createSupabasePrivilegedClient();
+  const { data, error } = await supabase
+    .from("brand_partners")
+    .update(values)
+    .eq("id", brandId)
+    .select("id,name,slug,status,contact_email,created_at,updated_at")
+    .single();
+
+  if (error) {
+    throw new BrandInputError(`브랜드 상태를 변경하지 못했습니다: ${error.message}`);
   }
 
   return mapBrandPartnerRow(data as BrandPartnerRow);
@@ -524,6 +604,36 @@ export async function connectBrandMember({
   };
 }
 
+export async function updateBrandMembership({
+  brandId,
+  membershipId,
+  memberRole,
+  status
+}: {
+  brandId: string;
+  membershipId: string;
+  memberRole: BrandMemberRole;
+  status: BrandMembershipStatus;
+}) {
+  const supabase = createSupabasePrivilegedClient();
+  const { data, error } = await supabase
+    .from("brand_memberships")
+    .update({
+      member_role: memberRole,
+      status
+    })
+    .eq("id", membershipId)
+    .eq("brand_partner_id", brandId)
+    .select("id,brand_partner_id,profile_id,member_role,status,created_at,profiles(email,full_name)")
+    .single();
+
+  if (error) {
+    throw new BrandInputError(`브랜드 멤버를 변경하지 못했습니다: ${error.message}`);
+  }
+
+  return mapMembershipRow(data as MembershipRow);
+}
+
 export async function assignProductToBrand({
   brandId,
   productId,
@@ -533,20 +643,67 @@ export async function assignProductToBrand({
   productId: string;
   assignedBy: string;
 }) {
+  const assignment = await syncProductBrandAssignmentForProduct({
+    brandId,
+    productId,
+    canEditDetails: true,
+    assignedBy
+  });
+
+  if (!assignment) {
+    throw new BrandInputError("상품을 브랜드에 배정하지 못했습니다.");
+  }
+
+  return assignment;
+}
+
+export async function syncProductBrandAssignmentForProduct({
+  productId,
+  brandId,
+  canEditDetails = true,
+  assignedBy
+}: {
+  productId: string;
+  brandId: string | null;
+  canEditDetails?: boolean;
+  assignedBy: string;
+}) {
   const supabase = createSupabasePrivilegedClient();
 
-  const [{ data: brand, error: brandError }, product] = await Promise.all([
+  if (!brandId) {
+    const { error } = await supabase
+      .from("product_brand_assignments")
+      .update({ status: "archived" })
+      .eq("product_id", productId)
+      .eq("status", "active");
+
+    if (error) {
+      throw new BrandInputError(`상품의 브랜드 연결을 해제하지 못했습니다: ${error.message}`);
+    }
+
+    return null;
+  }
+
+  const [{ data: brand, error: brandError }, { data: product, error: productError }] = await Promise.all([
     supabase
       .from("brand_partners")
       .select("id")
       .eq("id", brandId)
       .eq("status", "active")
       .maybeSingle(),
-    getProductById(productId, supabase)
+    supabase
+      .from("products")
+      .select("id")
+      .eq("id", productId)
+      .maybeSingle()
   ]);
 
   if (brandError) {
     throw new Error(`Could not load brand partner: ${brandError.message}`);
+  }
+
+  if (productError) {
+    throw new Error(`Could not load product: ${productError.message}`);
   }
 
   if (!brand) {
@@ -574,7 +731,7 @@ export async function assignProductToBrand({
         brand_partner_id: brandId,
         product_id: productId,
         status: "active",
-        can_edit_details: true,
+        can_edit_details: canEditDetails,
         assigned_by: assignedBy
       },
       { onConflict: "brand_partner_id,product_id" }
@@ -583,7 +740,64 @@ export async function assignProductToBrand({
     .single();
 
   if (error) {
-    throw new BrandInputError(`상품을 브랜드에 배정하지 못했습니다: ${error.message}`);
+    throw new BrandInputError(`상품을 브랜드에 연결하지 못했습니다: ${error.message}`);
+  }
+
+  return mapAssignmentRow(data as AssignmentRow);
+}
+
+export async function updateProductBrandAssignment({
+  brandId,
+  assignmentId,
+  status,
+  canEditDetails
+}: {
+  brandId: string;
+  assignmentId: string;
+  status: BrandAssignmentStatus;
+  canEditDetails: boolean;
+}) {
+  const supabase = createSupabasePrivilegedClient();
+  const { data: currentAssignment, error: currentError } = await supabase
+    .from("product_brand_assignments")
+    .select("id,product_id")
+    .eq("id", assignmentId)
+    .eq("brand_partner_id", brandId)
+    .maybeSingle();
+
+  if (currentError) {
+    throw new Error(`Could not load brand assignment: ${currentError.message}`);
+  }
+
+  if (!currentAssignment) {
+    throw new BrandInputError("변경할 상품 배정을 찾을 수 없습니다.");
+  }
+
+  if (status === "active") {
+    const { error: archiveError } = await supabase
+      .from("product_brand_assignments")
+      .update({ status: "archived" })
+      .eq("product_id", (currentAssignment as { product_id: string }).product_id)
+      .eq("status", "active");
+
+    if (archiveError) {
+      throw new Error(`Could not archive existing brand assignment: ${archiveError.message}`);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("product_brand_assignments")
+    .update({
+      status,
+      can_edit_details: canEditDetails
+    })
+    .eq("id", assignmentId)
+    .eq("brand_partner_id", brandId)
+    .select("id,brand_partner_id,product_id,status,can_edit_details,created_at")
+    .single();
+
+  if (error) {
+    throw new BrandInputError(`상품 배정을 변경하지 못했습니다: ${error.message}`);
   }
 
   return mapAssignmentRow(data as AssignmentRow);
@@ -684,6 +898,10 @@ type AssignmentRowWithProduct = AssignmentRow & {
     slug: string;
     status: Product["status"];
   }> | null;
+};
+
+type AssignmentRowWithBrand = AssignmentRow & {
+  brand_partners?: BrandPartnerRow | BrandPartnerRow[] | null;
 };
 
 function mapBrandPartnerRow(row: BrandPartnerRow): BrandPartner {

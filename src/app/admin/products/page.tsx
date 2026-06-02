@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
 import { formatUsd } from "@/lib/commerce";
 import { listProducts } from "@/lib/commerce-store";
+import { getImageOptimizationProps } from "@/lib/image-path";
 import { Product, productCategories } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ export default async function AdminProductsPage({
                   alt=""
                   width={72}
                   height={72}
+                  {...getImageOptimizationProps(product.heroImagePath)}
                   className="aspect-square rounded-md border object-cover"
                 />
                 <div className="min-w-0">

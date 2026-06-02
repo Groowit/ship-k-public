@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { getProductRank, getProductVisual } from "@/lib/brand-visuals";
+import { getImageOptimizationProps } from "@/lib/image-path";
 import { Product, getProductPriceLabel } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ export function ProductCard({ product, rank = 0 }: { product: Product; rank?: nu
             src={product.heroImagePath}
             alt={`${product.name} ${product.productType === "set" ? "set" : "product"}`}
             fill
+            {...getImageOptimizationProps(product.heroImagePath)}
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
             className="object-contain p-5 transition duration-300 group-hover:scale-[1.03]"
           />

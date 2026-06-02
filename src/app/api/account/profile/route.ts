@@ -12,7 +12,7 @@ const defaultShippingAddressSchema = z.object({
   city: z.string(),
   state: z.string(),
   postalCode: z.string(),
-  country: z.literal("US"),
+  country: z.string().trim().min(1).max(80),
   memo: z.string().optional()
 });
 

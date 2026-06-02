@@ -7,6 +7,7 @@ import {
   listBrandMembershipsForUser,
   listBrandProductsForUser
 } from "@/lib/brand-store";
+import { getImageOptimizationProps } from "@/lib/image-path";
 import type { Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,7 @@ export default async function BrandProductsPage() {
                         alt=""
                         width={56}
                         height={56}
+                        {...getImageOptimizationProps(product.heroImagePath)}
                         className="aspect-square rounded-md border object-cover"
                       />
                       <span>

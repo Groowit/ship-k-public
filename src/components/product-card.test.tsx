@@ -25,4 +25,20 @@ describe("ProductCard", () => {
 
     expect(screen.getByText("BESTSELLER")).toBeVisible();
   });
+
+  it("renders remote product images without the Next.js optimizer URL", () => {
+    render(
+      <ProductCard
+        product={{
+          ...launchCatalogProducts[0],
+          heroImagePath: "https://example.com/product-image.png"
+        }}
+      />
+    );
+
+    expect(screen.getByAltText("Skincare Starter Set set")).toHaveAttribute(
+      "src",
+      "https://example.com/product-image.png"
+    );
+  });
 });
