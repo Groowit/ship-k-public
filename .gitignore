@@ -38,10 +38,7 @@ playwright/.cache/
 !public/shipk-brand/**/*.png
 !public/shipk-brand/**/*.svg
 !public/shipk-brand/**/*.webp
-
-# This route intentionally serves /favicon.ico without committing a binary .ico.
-!src/app/favicon.ico/
-!src/app/favicon.ico/route.ts
+!public/favicon.ico
 
 # Logs
 *.log

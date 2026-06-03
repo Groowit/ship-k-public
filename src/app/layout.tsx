@@ -14,7 +14,17 @@ import {
 
 export const metadata: Metadata = {
   title: "shipK | Korean beauty shipped to the US",
-  description: "A US-first storefront for Korean beauty sets, single products, and creator referrals."
+  description: "A US-first storefront for Korean beauty sets, single products, and creator referrals.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48 64x64", type: "image/x-icon" },
+      { url: "/shipk-brand/favicon/cherry-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/shipk-brand/favicon/cherry-48.png", sizes: "48x48", type: "image/png" }
+    ],
+    apple: [
+      { url: "/shipk-brand/favicon/cherry-180.png", sizes: "180x180", type: "image/png" }
+    ]
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
