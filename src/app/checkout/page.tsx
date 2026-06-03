@@ -29,6 +29,8 @@ export default async function CheckoutPage({
     redirect(buildAuthRedirectPath(`/checkout?product=${slug}&qty=${quantity}`));
   }
 
+  const defaultShippingAddress = profile?.defaultShippingAddress;
+
   return (
     <section className="container py-10">
       <div className="mb-8 max-w-2xl">
@@ -45,15 +47,15 @@ export default async function CheckoutPage({
         product={product}
         quantity={quantity}
         initialCustomer={{
-          name: profile?.fullName ?? "",
+          name: defaultShippingAddress?.name || profile?.fullName || "",
           email: profile?.email ?? user.email ?? "",
-          phone: profile?.phone ?? "",
-          address1: profile?.defaultShippingAddress.address1 ?? "",
-          address2: profile?.defaultShippingAddress.address2 ?? "",
-          city: profile?.defaultShippingAddress.city ?? "",
-          state: profile?.defaultShippingAddress.state ?? "",
-          postalCode: profile?.defaultShippingAddress.postalCode ?? "",
-          memo: profile?.defaultShippingAddress.memo ?? ""
+          phone: defaultShippingAddress?.phone || profile?.phone || "",
+          address1: defaultShippingAddress?.address1 ?? "",
+          address2: defaultShippingAddress?.address2 ?? "",
+          city: defaultShippingAddress?.city ?? "",
+          state: defaultShippingAddress?.state ?? "",
+          postalCode: defaultShippingAddress?.postalCode ?? "",
+          memo: defaultShippingAddress?.memo ?? ""
         }}
       />
     </section>

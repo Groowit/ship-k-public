@@ -1,25 +1,35 @@
 import type { OrderStatus } from "@/lib/commerce";
 import { cn } from "@/lib/utils";
 
-const steps: Array<{ label: string; status: OrderStatus; description: string }> = [
+const steps: Array<{
+  label: string;
+  status: OrderStatus;
+  description: string;
+}> = [
   { label: "Paid", status: "paid", description: "Payment received" },
-  { label: "Preparing", status: "preparing", description: "Getting packed" },
-  { label: "Shipped", status: "shipped", description: "On the way" },
-  { label: "Delivered", status: "delivered", description: "Arrived" }
+  { label: "Preparing", status: "preparing", description: "Packing order" },
+  { label: "Shipped", status: "shipped", description: "With carrier" },
+  { label: "Delivered", status: "delivered", description: "Delivery complete" },
 ];
 
 const stepIndexByStatus: Partial<Record<OrderStatus, number>> = {
   paid: 0,
   preparing: 1,
   shipped: 2,
-  delivered: 3
+  delivered: 3,
 };
 
 export function OrderShippingProgress({ status }: { status: OrderStatus }) {
   if (status === "cancelled" || status === "refunded") {
     return (
-      <div className="rounded-md border-2 border-black bg-[#fff8f0] p-4 text-sm font-semibold">
-        This order is {status === "cancelled" ? "cancelled" : "refunded"}.
+      <div
+        role="status"
+        className="rounded-md border border-zinc-200 bg-white p-4 text-sm"
+      >
+        <p className="font-brand-heavy text-sm uppercase">Order closed</p>
+        <p className="mt-2 font-semibold">
+          This order is {status === "cancelled" ? "cancelled" : "refunded"}.
+        </p>
       </div>
     );
   }
@@ -31,14 +41,14 @@ export function OrderShippingProgress({ status }: { status: OrderStatus }) {
   return (
     <div className="grid gap-4">
       {message ? (
-        <div className="rounded-md border-2 border-black bg-[#fff8f0] p-4">
+        <div className="rounded-md border border-zinc-200 bg-white p-4">
           <p className="font-brand-heavy text-sm uppercase">
             {currentStep?.label ?? "Order received"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{message}</p>
         </div>
       ) : null}
-      <ol className="grid gap-3 sm:grid-cols-4" aria-label="Shipping progress">
+      <ol className="grid gap-3 sm:grid-cols-4" aria-label="Delivery progress">
         {steps.map((step, index) => {
           const active = index <= activeIndex;
           const current = index === activeIndex;
@@ -47,9 +57,11 @@ export function OrderShippingProgress({ status }: { status: OrderStatus }) {
             <li
               key={step.status}
               className={cn(
-                "min-h-20 rounded-md border-2 border-black p-3 text-sm shadow-none",
-                active ? "bg-[#c8f26c]" : "bg-white text-muted-foreground",
-                current ? "ring-2 ring-black ring-offset-2" : ""
+                "min-h-20 rounded-md border p-3 text-sm",
+                active
+                  ? "border-emerald-200 bg-white text-foreground"
+                  : "border-zinc-200 bg-white text-muted-foreground",
+                current ? "ring-2 ring-[#ff3d7f]/70 ring-offset-2" : "",
               )}
             >
               <span
@@ -76,7 +88,7 @@ function getProgressMessage(status: OrderStatus) {
     paid: "Your order is confirmed. We will start preparing it soon.",
     preparing: "Your order is being packed for shipment.",
     shipped: "Your package is on the way.",
-    delivered: "Your package has been delivered."
+    delivered: "Your package has been delivered.",
   };
 
   return messages[status];

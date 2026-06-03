@@ -7,8 +7,10 @@
 @font-face {
   font-family: "Climate Crisis";
   src:
-    url("/shipk-brand/fonts/ClimateCrisis-Regular-VariableFont_YEAR.ttf") format("truetype-variations"),
-    url("/shipk-brand/fonts/ClimateCrisis-Regular-VariableFont_YEAR.ttf") format("truetype");
+    url("/shipk-brand/fonts/ClimateCrisis-Regular-VariableFont_YEAR.ttf")
+      format("truetype-variations"),
+    url("/shipk-brand/fonts/ClimateCrisis-Regular-VariableFont_YEAR.ttf")
+      format("truetype");
   font-weight: 400;
   font-style: normal;
   font-display: block;
@@ -72,8 +74,20 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: radial-gradient(rgba(10, 10, 10, 0.05) 1px, transparent 1px);
+  background-image: radial-gradient(
+    rgba(10, 10, 10, 0.05) 1px,
+    transparent 1px
+  );
   background-size: 24px 24px;
+}
+
+body:has(.account-page-shell)::before {
+  display: none;
+}
+
+.account-page-shell {
+  min-height: calc(100vh - 10rem);
+  background: white;
 }
 
 a {

@@ -7,8 +7,18 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    pool: "forks",
+    maxWorkers: 1,
+    minWorkers: 1,
     setupFiles: ["./vitest.setup.ts"],
-    exclude: ["tests/e2e/**", "node_modules/**", ".next/**", ".next-stale-*/**", "dist/**"]
+    exclude: [
+      "tests/e2e/**",
+      "node_modules/**",
+      ".next/**",
+      ".next-verify/**",
+      ".next-stale-*/**",
+      "dist/**"
+    ]
   },
   resolve: {
     alias: {
