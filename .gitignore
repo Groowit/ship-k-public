@@ -20,10 +20,24 @@ coverage/
 *.tsbuildinfo
 
 # Test and browser automation artifacts
+.playwright-cli/
 playwright-report/
 test-results/
 blob-report/
 playwright/.cache/
+
+# Public storefront assets must ship with Git-based deployments, even if a
+# local editor excludes media files broadly.
+!public/catalog-assets/**/*.jpg
+!public/catalog-assets/**/*.jpeg
+!public/catalog-assets/**/*.png
+!public/catalog-assets/**/*.svg
+!public/catalog-assets/**/*.webp
+!public/shipk-brand/**/*.jpg
+!public/shipk-brand/**/*.jpeg
+!public/shipk-brand/**/*.png
+!public/shipk-brand/**/*.svg
+!public/shipk-brand/**/*.webp
 
 # Logs
 *.log
