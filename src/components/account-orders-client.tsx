@@ -8,6 +8,7 @@ import {
   Clock,
   PackageCheck,
   Search,
+  SlidersHorizontal,
   ShoppingBag,
   Truck,
   XCircle,
@@ -24,8 +25,18 @@ import {
 } from "@/lib/fulfillment";
 import { cn } from "@/lib/utils";
 
-type StatusFilter = "all" | OrderStatus;
+type StatusFilter =
+  | "all"
+  | "active"
+  | "tracking-ready"
+  | "closed"
+  | OrderStatus;
 type SortOption = "newest" | "oldest" | "total-desc" | "status";
+type QuickFilter = {
+  value: StatusFilter;
+  label: string;
+  count: number;
+};
 
 const activeStatuses = new Set<OrderStatus>([
   "pending_payment",
@@ -74,6 +85,15 @@ export function AccountOrdersClient({ orders }: { orders: CommerceOrder[] }) {
   const closedCount = orders.filter((order) =>
     closedStatuses.has(order.status),
   ).length;
+  const quickFilters: QuickFilter[] = [
+    { value: "all", label: "All", count: orders.length },
+    { value: "active", label: "Active", count: activeCount },
+    { value: "tracking-ready", label: "Tracking ready", count: trackingCount },
+    { value: "closed", label: "Closed", count: closedCount },
+  ];
+  const exactStatusFilter = isSpecificStatusFilter(statusFilter)
+    ? statusFilter
+    : "";
   const hasActiveControls =
     Boolean(query.trim()) || statusFilter !== "all" || sortOption !== "newest";
 
@@ -85,9 +105,9 @@ export function AccountOrdersClient({ orders }: { orders: CommerceOrder[] }) {
 
   return (
     <section className="account-page-shell bg-white">
-      <div className="container py-7 sm:py-9">
+      <div className="container py-6 sm:py-8">
         <div className="rounded-md border border-zinc-200 bg-white p-5 sm:p-6">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
               <Link
                 href="/account"
@@ -96,13 +116,13 @@ export function AccountOrdersClient({ orders }: { orders: CommerceOrder[] }) {
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Back to My Page
               </Link>
-              <p className="mt-5 font-brand-heavy text-sm uppercase text-[#ff3d7f]">
+              <p className="mt-4 font-brand-heavy text-sm uppercase text-[#ff3d7f]">
                 Order management
               </p>
-              <h1 className="mt-2 shipk-heading text-4xl sm:text-5xl">
+              <h1 className="mt-1 shipk-heading text-4xl sm:text-5xl">
                 Orders
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 Search your purchases, check current delivery status, and open
                 the detail page for tracking, payment, and shipping information.
               </p>
@@ -119,7 +139,7 @@ export function AccountOrdersClient({ orders }: { orders: CommerceOrder[] }) {
             </Link>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid gap-px overflow-hidden rounded-md border border-zinc-200 bg-zinc-200 sm:grid-cols-2 xl:grid-cols-4">
             <Metric
               icon={<PackageCheck className="h-4 w-4" aria-hidden="true" />}
               label="Total orders"
@@ -147,212 +167,176 @@ export function AccountOrdersClient({ orders }: { orders: CommerceOrder[] }) {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="grid gap-4">
-            <section
-              aria-label="Order filters"
-              className="rounded-md border border-zinc-200 bg-white p-4"
-            >
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px_180px_auto] lg:items-end">
-                <div>
-                  <Label
-                    htmlFor="account-orders-search"
-                    className="font-semibold"
-                  >
-                    Search orders
-                  </Label>
-                  <div className="relative mt-2">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    <Input
-                      id="account-orders-search"
-                      className="pl-9"
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Order number, product, tracking"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label
-                    htmlFor="account-orders-status"
-                    className="font-semibold"
-                  >
-                    Status
-                  </Label>
-                  <select
-                    id="account-orders-status"
-                    className="focus-ring mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold"
-                    value={statusFilter}
-                    onChange={(event) =>
-                      setStatusFilter(event.target.value as StatusFilter)
-                    }
-                  >
-                    <option value="all">All statuses</option>
-                    {statusOptions.map(([status, label]) => (
-                      <option key={status} value={status}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label
-                    htmlFor="account-orders-sort"
-                    className="font-semibold"
-                  >
-                    Sort
-                  </Label>
-                  <select
-                    id="account-orders-sort"
-                    aria-label="Sort orders"
-                    className="focus-ring mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold"
-                    value={sortOption}
-                    onChange={(event) =>
-                      setSortOption(event.target.value as SortOption)
-                    }
-                  >
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="total-desc">Highest total</option>
-                    <option value="status">Status stage</option>
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "border-zinc-300 bg-white",
-                    !hasActiveControls && "opacity-60",
-                  )}
-                  onClick={resetFilters}
-                  disabled={!hasActiveControls}
-                >
-                  Reset filters
-                </button>
+        <section
+          aria-label="Order filters"
+          className="sticky top-0 z-20 mt-5 rounded-md border border-zinc-200 bg-white/95 p-4 shadow-[0_8px_24px_rgba(24,24,27,0.06)] backdrop-blur"
+        >
+          <div className="grid gap-3 xl:grid-cols-[minmax(280px,1fr)_auto] xl:items-end">
+            <div>
+              <Label htmlFor="account-orders-search" className="font-semibold">
+                Search orders
+              </Label>
+              <div className="relative mt-2">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="account-orders-search"
+                  className="pl-9"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Order number, product, tracking"
+                />
               </div>
-              <p
-                role="status"
-                className="mt-4 text-sm font-semibold text-muted-foreground"
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[180px_180px_auto] sm:items-end">
+              <div>
+                <Label
+                  htmlFor="account-orders-status"
+                  className="font-semibold"
+                >
+                  Exact status
+                </Label>
+                <select
+                  id="account-orders-status"
+                  className="focus-ring mt-2 h-11 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold"
+                  value={exactStatusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(
+                      event.target.value
+                        ? (event.target.value as OrderStatus)
+                        : "all",
+                    )
+                  }
+                >
+                  <option value="">Any status</option>
+                  {statusOptions.map(([status, label]) => (
+                    <option key={status} value={status}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="account-orders-sort" className="font-semibold">
+                  Sort
+                </Label>
+                <select
+                  id="account-orders-sort"
+                  aria-label="Sort orders"
+                  className="focus-ring mt-2 h-11 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold"
+                  value={sortOption}
+                  onChange={(event) =>
+                    setSortOption(event.target.value as SortOption)
+                  }
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="total-desc">Highest total</option>
+                  <option value="status">Status stage</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "border-zinc-300 bg-white",
+                  !hasActiveControls && "opacity-60",
+                )}
+                onClick={resetFilters}
+                disabled={!hasActiveControls}
               >
-                Showing {displayedOrders.length} of {orders.length} orders
-              </p>
-            </section>
-
-            {displayedOrders.length > 0 ? (
-              <div className="grid gap-3" data-testid="orders-list">
-                {displayedOrders.map((order) => (
-                  <article
-                    key={order.id}
-                    aria-label={`${order.orderNumber} ${order.productName}`}
-                    className="rounded-md border border-zinc-200 bg-white p-4 transition hover:border-zinc-400 hover:bg-zinc-50"
-                  >
-                    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-lg font-black">
-                            {order.orderNumber}
-                          </h2>
-                          <StatusBadge status={order.status} />
-                        </div>
-                        <p className="mt-2 font-semibold">
-                          {order.productName}
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {order.optionName} · Qty {order.quantity}
-                        </p>
-                      </div>
-                      <Link
-                        href={`/account/orders/${order.id}`}
-                        className={cn(
-                          buttonVariants({ variant: "outline" }),
-                          "border-zinc-300 bg-white",
-                        )}
-                      >
-                        View details
-                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                      </Link>
-                    </div>
-                    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
-                      <RecordDetail
-                        label="Ordered"
-                        value={formatOrderDate(order.createdAt)}
-                      />
-                      <RecordDetail
-                        label="Total"
-                        value={formatUsd(order.totalCents)}
-                      />
-                      <RecordDetail
-                        label="Shipment"
-                        value={getShipmentSummary(order)}
-                      />
-                      <RecordDetail
-                        label="Tracking"
-                        value={order.trackingNumber ?? "Tracking pending"}
-                      />
-                    </dl>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <section className="rounded-md border border-dashed border-zinc-300 bg-white p-6">
-                <p className="text-lg font-black">
-                  No orders match your filters.
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Clear the search or choose a different status to see more
-                  orders.
-                </p>
-                <button
-                  type="button"
-                  className={cn(buttonVariants(), "mt-4")}
-                  onClick={resetFilters}
-                >
-                  Reset filters
-                </button>
-              </section>
-            )}
+                Reset filters
+              </button>
+            </div>
           </div>
 
-          <aside className="grid h-fit gap-4">
-            <section className="rounded-md border border-zinc-200 bg-white p-5">
-              <h2 className="text-lg font-black">Status guide</h2>
-              <dl className="mt-4 grid gap-3 text-sm">
-                <GuideItem
-                  label="Preparing"
-                  value="We are packing your order."
-                />
-                <GuideItem
-                  label="Shipped"
-                  value="Carrier details are available when added."
-                />
-                <GuideItem
-                  label="Delivered"
-                  value="The order has reached the address on file."
-                />
-                <GuideItem
-                  label="Refunded"
-                  value="Payment follow-up is complete."
-                />
-              </dl>
-            </section>
-            <section className="rounded-md border border-zinc-200 bg-white p-5">
-              <h2 className="text-lg font-black">Order help</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Open a detail page for tracking, payment summary, shipping
-                address, and support links tied to that order.
-              </p>
-              <Link
-                href="/policies/shipping"
-                className="mt-4 inline-flex text-sm font-semibold underline-offset-4 hover:underline"
-              >
-                Review shipping policy
-              </Link>
-            </section>
-          </aside>
-        </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 pr-1 text-sm font-semibold text-muted-foreground">
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              View
+            </span>
+            {quickFilters.map((filter) => (
+              <QuickFilterButton
+                key={filter.value}
+                filter={filter}
+                selected={statusFilter === filter.value}
+                onClick={() => setStatusFilter(filter.value)}
+              />
+            ))}
+          </div>
+
+          <p
+            role="status"
+            className="mt-3 text-sm font-semibold text-muted-foreground"
+          >
+            Showing {displayedOrders.length} of {orders.length} orders
+          </p>
+        </section>
+
+        {displayedOrders.length > 0 ? (
+          <div
+            role="table"
+            aria-label="Orders list"
+            className="mt-5 overflow-hidden rounded-md border border-zinc-200 bg-white"
+            data-testid="orders-list"
+          >
+            <div
+              role="row"
+              className="hidden border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-semibold uppercase text-muted-foreground md:grid md:grid-cols-[minmax(128px,0.9fr)_minmax(220px,1.45fr)_112px_116px_minmax(170px,1fr)_96px_104px] md:items-center md:gap-4"
+            >
+              <div role="columnheader">Order</div>
+              <div role="columnheader">Product</div>
+              <div role="columnheader">Placed</div>
+              <div role="columnheader">Status</div>
+              <div role="columnheader">Shipment</div>
+              <div role="columnheader">Total</div>
+              <div role="columnheader" className="text-right">
+                Action
+              </div>
+            </div>
+            <div role="rowgroup" className="divide-y divide-zinc-200">
+              {displayedOrders.map((order) => (
+                <OrderRow key={order.id} order={order} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <section className="mt-5 rounded-md border border-dashed border-zinc-300 bg-white p-6">
+            <p className="text-lg font-black">No orders match your filters.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Clear the search or choose a different status to see more orders.
+            </p>
+            <button
+              type="button"
+              className={cn(buttonVariants(), "mt-4")}
+              onClick={resetFilters}
+            >
+              Reset filters
+            </button>
+          </section>
+        )}
+
+        <section className="mt-5 rounded-md border border-zinc-200 bg-white p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+          <div>
+            <h2 className="text-base font-black">Need help with an order?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Shipping timelines, carrier handoff, and delivery terms are kept
+              in one place.
+            </p>
+          </div>
+          <Link
+            href="/policies/shipping"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "mt-3 border-zinc-300 bg-white sm:mt-0",
+            )}
+          >
+            Shipping policy
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </section>
       </div>
     </section>
   );
@@ -370,7 +354,7 @@ function Metric({
   caption: string;
 }) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-4">
+    <div className="bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="text-xs font-semibold uppercase text-muted-foreground">
           {label}
@@ -385,23 +369,107 @@ function Metric({
   );
 }
 
-function RecordDetail({ label, value }: { label: string; value: string }) {
+function QuickFilterButton({
+  filter,
+  selected,
+  onClick,
+}: {
+  filter: QuickFilter;
+  selected: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div>
-      <dt className="text-xs font-semibold uppercase text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="mt-1 break-words font-semibold">{value}</dd>
-    </div>
+    <button
+      type="button"
+      aria-label={`${filter.label} ${filter.count}`}
+      aria-pressed={selected}
+      className={cn(
+        "focus-ring inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm font-semibold transition hover:border-zinc-500",
+        selected
+          ? "border-[#ff3d7f] text-[#d91b5c] ring-1 ring-[#ff3d7f]/20"
+          : "border-zinc-300 text-foreground",
+      )}
+      onClick={onClick}
+    >
+      <span>{filter.label}</span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "rounded-sm px-1.5 py-0.5 text-xs",
+          selected ? "bg-[#ff3d7f] text-white" : "bg-zinc-100 text-zinc-600",
+        )}
+      >
+        {filter.count}
+      </span>
+    </button>
   );
 }
 
-function GuideItem({ label, value }: { label: string; value: string }) {
+function OrderRow({ order }: { order: CommerceOrder }) {
   return (
-    <div>
-      <dt className="font-black">{label}</dt>
-      <dd className="mt-1 text-muted-foreground">{value}</dd>
-    </div>
+    <article
+      role="row"
+      aria-label={`${order.orderNumber} ${order.productName}`}
+      className="grid gap-3 px-4 py-4 transition hover:bg-zinc-50 md:grid-cols-[minmax(128px,0.9fr)_minmax(220px,1.45fr)_112px_116px_minmax(170px,1fr)_96px_104px] md:items-center md:gap-4 md:py-3"
+    >
+      <div role="cell" className="min-w-0">
+        <MobileCellLabel>Order</MobileCellLabel>
+        <p className="truncate font-black">{order.orderNumber}</p>
+        <p className="mt-1 text-xs font-semibold text-muted-foreground md:hidden">
+          {formatOrderDate(order.createdAt)}
+        </p>
+      </div>
+      <div role="cell" className="min-w-0">
+        <MobileCellLabel>Product</MobileCellLabel>
+        <p className="truncate font-semibold">{order.productName}</p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {order.optionName} · Qty {order.quantity}
+        </p>
+      </div>
+      <div role="cell" className="text-sm font-semibold">
+        <MobileCellLabel>Placed</MobileCellLabel>
+        {formatOrderDate(order.createdAt)}
+      </div>
+      <div role="cell">
+        <MobileCellLabel>Status</MobileCellLabel>
+        <StatusBadge status={order.status} />
+      </div>
+      <div role="cell" className="min-w-0">
+        <MobileCellLabel>Shipment</MobileCellLabel>
+        <p className="truncate text-sm font-semibold">
+          {getShipmentSummary(order)}
+        </p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {order.trackingNumber ?? "Tracking pending"}
+        </p>
+      </div>
+      <div role="cell" className="text-sm font-black">
+        <MobileCellLabel>Total</MobileCellLabel>
+        {formatUsd(order.totalCents)}
+      </div>
+      <div role="cell" className="md:flex md:justify-end">
+        <Link
+          href={`/account/orders/${order.id}`}
+          aria-label="View details"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "w-full whitespace-nowrap border-zinc-300 bg-white md:w-auto",
+          )}
+        >
+          <span className="md:hidden">View details</span>
+          <span className="hidden md:inline">Details</span>
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function MobileCellLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="mb-1 block text-xs font-semibold uppercase text-muted-foreground md:hidden">
+      {children}
+    </span>
   );
 }
 
@@ -422,8 +490,7 @@ function filterOrders(
   const normalizedQuery = query.trim().toLowerCase();
 
   return orders.filter((order) => {
-    const matchesStatus =
-      statusFilter === "all" || order.status === statusFilter;
+    const matchesStatus = matchesStatusFilter(order, statusFilter);
     if (!matchesStatus) {
       return false;
     }
@@ -446,6 +513,28 @@ function filterOrders(
 
     return searchable.includes(normalizedQuery);
   });
+}
+
+function matchesStatusFilter(order: CommerceOrder, statusFilter: StatusFilter) {
+  if (statusFilter === "all") {
+    return true;
+  }
+  if (statusFilter === "active") {
+    return activeStatuses.has(order.status);
+  }
+  if (statusFilter === "tracking-ready") {
+    return Boolean(order.shipmentCarrier && order.trackingNumber);
+  }
+  if (statusFilter === "closed") {
+    return closedStatuses.has(order.status);
+  }
+  return order.status === statusFilter;
+}
+
+function isSpecificStatusFilter(
+  statusFilter: StatusFilter,
+): statusFilter is OrderStatus {
+  return statusFilter in customerOrderStatusLabels;
 }
 
 function sortOrders(orders: CommerceOrder[], sortOption: SortOption) {

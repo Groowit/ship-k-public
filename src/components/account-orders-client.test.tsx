@@ -8,57 +8,94 @@ describe("AccountOrdersClient", () => {
   it("renders an order management summary and detail links", () => {
     render(<AccountOrdersClient orders={ordersFixture()} />);
 
-    expect(screen.getByRole("link", { name: /Back to My Page/i })).toHaveAttribute(
-      "href",
-      "/account"
-    );
+    expect(
+      screen.getByRole("link", { name: /Back to My Page/i }),
+    ).toHaveAttribute("href", "/account");
     expect(screen.getByRole("heading", { name: "Orders" })).toBeVisible();
     expect(screen.getByText("Total orders")).toBeVisible();
     expect(screen.getByText("3 orders")).toBeVisible();
-    expect(screen.getByText("Active")).toBeVisible();
+    expect(screen.getAllByText("Active")[0]).toBeVisible();
     expect(screen.getByText("Carrier details ready")).toBeVisible();
-    expect(screen.getByText("Closed")).toBeVisible();
-    expect(screen.getByRole("status")).toHaveTextContent("Showing 3 of 3 orders");
-    expect(screen.getAllByRole("link", { name: /View details/i })).toHaveLength(3);
+    expect(screen.getAllByText("Closed")[0]).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Showing 3 of 3 orders",
+    );
+    expect(screen.getAllByRole("link", { name: /View details/i })).toHaveLength(
+      3,
+    );
+  });
+
+  it("uses a dense order table with quick status filters for larger histories", () => {
+    render(<AccountOrdersClient orders={ordersFixture()} />);
+
+    const table = screen.getByRole("table", { name: "Orders list" });
+
+    expect(
+      within(table).getByRole("columnheader", { name: "Order" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("columnheader", { name: "Product" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("columnheader", { name: "Placed" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("columnheader", { name: "Shipment" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Status guide")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tracking ready 1" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Showing 1 of 3 orders",
+    );
+    expect(screen.getByText("Hydration Routine")).toBeVisible();
+    expect(screen.queryByText("Glow Set")).not.toBeInTheDocument();
   });
 
   it("filters by search query and status, then restores results", () => {
     render(<AccountOrdersClient orders={ordersFixture()} />);
 
     fireEvent.change(screen.getByLabelText("Search orders"), {
-      target: { value: "hydration" }
+      target: { value: "hydration" },
     });
 
-    expect(screen.getByRole("status")).toHaveTextContent("Showing 1 of 3 orders");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Showing 1 of 3 orders",
+    );
     expect(screen.getByText("Hydration Routine")).toBeVisible();
     expect(screen.queryByText("Glow Set")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Status"), {
-      target: { value: "delivered" }
+    fireEvent.change(screen.getByLabelText("Exact status"), {
+      target: { value: "delivered" },
     });
 
     expect(screen.getByText("No orders match your filters.")).toBeVisible();
 
-    const resetButtons = screen.getAllByRole("button", { name: "Reset filters" });
+    const resetButtons = screen.getAllByRole("button", {
+      name: "Reset filters",
+    });
     fireEvent.click(resetButtons[resetButtons.length - 1]);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Showing 3 of 3 orders");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Showing 3 of 3 orders",
+    );
   });
 
   it("sorts by oldest order when selected", () => {
     render(<AccountOrdersClient orders={ordersFixture()} />);
 
     const list = screen.getByTestId("orders-list");
-    expect(within(list).getAllByRole("article")[0]).toHaveAccessibleName(
-      "SK-1003 Lip Tint Trio"
+    expect(within(list).getAllByRole("row")[1]).toHaveAccessibleName(
+      "SK-1003 Lip Tint Trio",
     );
 
     fireEvent.change(screen.getByLabelText("Sort orders"), {
-      target: { value: "oldest" }
+      target: { value: "oldest" },
     });
 
-    expect(within(list).getAllByRole("article")[0]).toHaveAccessibleName(
-      "SK-1001 Glow Set"
+    expect(within(list).getAllByRole("row")[1]).toHaveAccessibleName(
+      "SK-1001 Glow Set",
     );
   });
 });
@@ -71,7 +108,7 @@ function ordersFixture(): CommerceOrder[] {
       productName: "Glow Set",
       status: "paid",
       createdAt: "2026-05-28T12:00:00.000Z",
-      totalCents: 5899
+      totalCents: 5899,
     }),
     orderFixture({
       id: "order_2",
@@ -81,7 +118,7 @@ function ordersFixture(): CommerceOrder[] {
       createdAt: "2026-05-30T12:00:00.000Z",
       shipmentCarrier: "UPS",
       trackingNumber: "1Z999AA10123456784",
-      totalCents: 7599
+      totalCents: 7599,
     }),
     orderFixture({
       id: "order_3",
@@ -89,8 +126,8 @@ function ordersFixture(): CommerceOrder[] {
       productName: "Lip Tint Trio",
       status: "delivered",
       createdAt: "2026-06-01T12:00:00.000Z",
-      totalCents: 3299
-    })
+      totalCents: 3299,
+    }),
   ];
 }
 
@@ -120,9 +157,9 @@ function orderFixture(overrides: Partial<CommerceOrder> = {}): CommerceOrder {
       state: "CA",
       postalCode: "90001",
       country: "US",
-      memo: ""
+      memo: "",
     },
     createdAt: "2026-05-28T12:00:00.000Z",
-    ...overrides
+    ...overrides,
   };
 }
