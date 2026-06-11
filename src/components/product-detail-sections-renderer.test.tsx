@@ -125,7 +125,7 @@ describe("ProductDetailSectionsRenderer", () => {
     expect(image.parentElement).toHaveClass("aspect-square", "overflow-hidden", "rounded-lg");
   });
 
-  it("centers default long detail images with layout margins instead of transforms", () => {
+  it("matches default long detail images to the product detail content width", () => {
     render(
       <ProductDetailSectionsRenderer
         product={{
@@ -148,14 +148,13 @@ describe("ProductDetailSectionsRenderer", () => {
 
     const image = screen.getByAltText("Long detail image");
 
-    expect(image).toHaveAttribute("sizes", "100vw");
+    expect(image).toHaveAttribute("sizes", "(min-width: 1180px) 1148px, calc(100vw - 2rem)");
     expect(image.parentElement).toHaveClass(
-      "w-[calc(100vw-2rem)]",
+      "mx-auto",
+      "w-full",
       "max-w-none"
     );
-    expect(image.parentElement).toHaveStyle(
-      "margin-inline: calc((100% - 100vw + 2rem) / 2)"
-    );
-    expect(image.parentElement).not.toHaveClass("relative", "left-1/2", "-translate-x-1/2");
+    expect(image.parentElement).not.toHaveAttribute("style");
+    expect(image.parentElement).not.toHaveClass("relative", "left-1/2", "-translate-x-1/2", "w-[calc(100vw-2rem)]");
   });
 });
