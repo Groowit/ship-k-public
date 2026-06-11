@@ -13,10 +13,10 @@ type HeaderNavItem = {
 };
 
 const accountTriggerClass =
-  "focus-ring inline-flex h-10 items-center justify-center gap-1.5 rounded-full border-2 border-black bg-white px-2.5 text-foreground transition hover:bg-[#fff8f0] sm:h-11 sm:px-3";
+  "focus-ring inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-zinc-300 bg-white px-2.5 text-foreground transition hover:bg-[#fff8f0] sm:h-11 sm:px-3";
 
 const accountMenuClass =
-  "absolute right-0 top-[calc(100%+0.85rem)] z-50 grid w-[15.5rem] gap-1 rounded-md border-2 border-black bg-white p-2 text-sm font-black text-foreground";
+  "absolute right-0 top-[calc(100%+0.85rem)] z-50 grid w-[15.5rem] gap-1 rounded-md border border-zinc-200 bg-white p-2 text-sm font-black text-foreground";
 
 const accountMenuEyebrowClass =
   "px-3 py-2 text-[0.68rem] uppercase leading-none text-[#ff3d7f]";
@@ -78,7 +78,7 @@ export function SiteHeaderNav({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "border-b-[3px] px-1 pb-5 text-base font-black text-foreground transition hover:text-primary md:text-lg",
+                "border-b-2 px-1 pb-5 text-base font-black text-foreground transition hover:text-primary md:text-lg",
                 active ? "border-primary" : "border-transparent"
               )}
             >

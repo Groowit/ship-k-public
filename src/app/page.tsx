@@ -45,7 +45,7 @@ function BestSellerSection({ products }: { products: Product[] }) {
   }
 
   return (
-    <section className="border-b-2 border-black bg-white">
+    <section className="border-b border-zinc-200 bg-white">
       <div className="container py-12">
         <ProductShelf
           title="Trending now"
@@ -131,12 +131,12 @@ function ExploreMoreLink({
     <Link
       href={href}
       className={cn(
-        "group grid min-h-40 gap-4 rounded-md border-2 border-black p-5 transition hover:-translate-y-0.5 focus-ring",
+        "group grid min-h-40 gap-4 rounded-lg border border-zinc-200 p-5 transition hover:-translate-y-0.5 focus-ring",
         className
       )}
     >
       <span className="flex items-center justify-between gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-black bg-white">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 bg-white">
           {icon}
         </span>
         <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" aria-hidden="true" />
@@ -198,13 +198,12 @@ function CompactProductCard({ product, rank }: { product: Product; rank: number 
   ].filter(Boolean);
 
   return (
-    <Link href={`/products/${product.slug}`} className="group block focus-ring rounded-md">
+    <Link href={`/products/${product.slug}`} className="group block focus-ring rounded-lg">
       <article className="grid gap-3">
         <div
           className={cn(
-            "relative aspect-square overflow-hidden border-4 bg-white",
-            rank === 0 ? "border-[#ffb000]" : "border-[#111827]",
-            visual.bgClass
+            "relative aspect-square overflow-hidden rounded-lg border bg-white",
+            rank === 0 ? "border-[#e9c64d]" : "border-zinc-200"
           )}
         >
           <span className="absolute left-3 top-3 z-10 rounded-md bg-white/90 px-3 py-1.5 text-sm font-black text-black">
@@ -224,7 +223,7 @@ function CompactProductCard({ product, rank }: { product: Product; rank: number 
             fill
             {...getImageOptimizationProps(product.heroImagePath)}
             sizes="(min-width: 1024px) 18vw, (min-width: 640px) 40vw, 90vw"
-            className="object-contain p-4 transition duration-300 group-hover:scale-[1.03]"
+            className="object-cover"
           />
         </div>
         <div className="grid gap-2">

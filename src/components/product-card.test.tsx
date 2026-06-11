@@ -36,9 +36,18 @@ describe("ProductCard", () => {
       />
     );
 
-    expect(screen.getByAltText("Skincare Starter Set set")).toHaveAttribute(
+    const productImage = screen.getByAltText("Skincare Starter Set set");
+
+    expect(productImage).toHaveAttribute(
       "src",
       "https://example.com/product-image.png"
     );
+    expect(productImage).toHaveClass("object-cover");
+    expect(productImage.parentElement).toHaveClass("bg-white");
+    expect(productImage.parentElement).toHaveClass("aspect-square");
+    expect(productImage.parentElement).toHaveClass("rounded-lg");
+    expect(productImage.parentElement).toHaveClass("border-zinc-200");
+    expect(productImage.parentElement?.className).not.toContain("bg-[#b4f0dc]");
+    expect(productImage.parentElement?.className).not.toContain("border-black");
   });
 });

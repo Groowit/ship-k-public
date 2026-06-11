@@ -147,7 +147,7 @@ a {
   min-height: 2.5rem;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--shipk-black);
+  border: 1px solid #d8d8d8;
   border-radius: 999px;
   background: white;
   padding: 0.5rem 1rem;
@@ -159,6 +159,7 @@ a {
 
 .shipk-chip-active {
   background: var(--shipk-black);
+  border-color: var(--shipk-black);
   color: white;
 }
 

@@ -28,8 +28,8 @@ export function ProductCard({ product, rank = 0 }: { product: Product; rank?: nu
         product.itemCount ? `${product.itemCount} items` : product.category
       } ${product.difficulty ?? ""}`}
     >
-      <article className="shipk-lift grid h-full overflow-hidden rounded-md bg-white">
-        <div className={cn("relative aspect-[0.93] overflow-hidden border border-black", visual.bgClass)}>
+      <article className="shipk-lift grid h-full overflow-hidden rounded-lg bg-white">
+        <div className="relative aspect-square overflow-hidden rounded-lg border border-zinc-200 bg-white">
           <span className="absolute left-3 top-3 z-10 rounded-md bg-white/90 px-2.5 py-1 font-brand-heavy text-xs">
             {getProductRank(rank)}
           </span>
@@ -47,7 +47,7 @@ export function ProductCard({ product, rank = 0 }: { product: Product; rank?: nu
             fill
             {...getImageOptimizationProps(product.heroImagePath)}
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-contain p-5 transition duration-300 group-hover:scale-[1.03]"
+            className="object-cover"
           />
         </div>
         <div className="grid gap-3 px-1 pt-4">

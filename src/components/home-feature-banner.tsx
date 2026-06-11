@@ -57,7 +57,7 @@ export function HomeFeatureBanner({ products }: { products: Product[] }) {
   return (
     <section
       className={cn(
-        "relative overflow-hidden border-y-4 border-black bg-gradient-to-r",
+        "relative overflow-hidden border-y border-zinc-200 bg-gradient-to-r",
         theme.background
       )}
       aria-label="Featured product banner"
@@ -78,7 +78,7 @@ export function HomeFeatureBanner({ products }: { products: Product[] }) {
           <div className="mt-7 flex flex-wrap items-center gap-4">
             <Link
               href={`/products/${product.slug}`}
-              className="inline-flex min-h-12 items-center rounded-full border-2 border-black bg-white px-6 text-sm font-black transition hover:-translate-y-0.5 hover:bg-[#fff8f0]"
+              className="inline-flex min-h-12 items-center rounded-full border border-zinc-900 bg-white px-6 text-sm font-black transition hover:-translate-y-0.5 hover:bg-[#fff8f0]"
             >
               Shop the focus
             </Link>
