@@ -81,7 +81,10 @@ function CanonicalSection({
 
   if (section.sectionType === "long_detail_image") {
     return (
-      <figure className={cn("mx-auto grid gap-3", getLongImageWidthClass(section.maxWidth))}>
+      <figure
+        className={cn("grid gap-3", getLongImageWidthClass(section.maxWidth))}
+        style={{ marginInline: "calc((100% - 100vw + 2rem) / 2)" }}
+      >
         <Image
           src={section.src}
           alt={section.alt}
@@ -784,7 +787,7 @@ function getAlignClass(align: "left" | "center" | "right") {
 }
 
 function getLongImageWidthClass(maxWidth: "default" | "wide" | "full") {
-  const pageWidthClass = "relative left-1/2 w-[calc(100vw-2rem)] max-w-none -translate-x-1/2";
+  const pageWidthClass = "w-[calc(100vw-2rem)] max-w-none";
 
   return {
     default: pageWidthClass,
