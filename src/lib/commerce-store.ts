@@ -81,6 +81,8 @@ export type CustomerAccountUpdateInput = {
 export type CommerceOrder = {
   id: string;
   userId: string;
+  orderItemId?: string;
+  productId?: string;
   orderNumber: string;
   productSlug: string;
   productName: string;
@@ -98,6 +100,20 @@ export type CommerceOrder = {
   shipmentCarrier?: string;
   trackingNumber?: string;
   createdAt: string;
+};
+
+export type CheckoutSession = {
+  id: string;
+  userId: string;
+  productId: string;
+  productSlug: string;
+  quantity: number;
+  totalCents: number;
+  currency: "USD";
+  nonce: string;
+  providerOrderId?: string;
+  status: "created" | "paypal_order_created" | "captured" | "expired";
+  expiresAt: string;
 };
 
 export type CommerceCommission = {
@@ -212,6 +228,15 @@ export class CommissionStatusUpdateError extends Error {
   }
 }
 
+export class PaymentReferenceConflictError extends Error {
+  statusCode = 409;
+
+  constructor() {
+    super("Payment reference is already linked to another account");
+    this.name = "PaymentReferenceConflictError";
+  }
+}
+
 export type CommissionStatusAction = {
   status: CommerceCommission["status"];
   label: string;
@@ -297,6 +322,7 @@ type OrderRow = {
   referral_code: string | null;
   created_at: string;
   order_items?: Array<{
+    id?: string;
     product_name: string;
     option_name: string;
     quantity: number;
@@ -322,6 +348,20 @@ type OrderRow = {
   payment_transactions?: Array<{
     provider_order_id: string;
   }> | null;
+};
+
+type CheckoutSessionRow = {
+  id: string;
+  user_id: string;
+  product_id: string;
+  product_slug: string;
+  quantity: number;
+  total_cents: number;
+  currency: "USD";
+  nonce: string;
+  provider_order_id: string | null;
+  status: CheckoutSession["status"];
+  expires_at: string;
 };
 
 type AffiliateRow = {
@@ -434,7 +474,7 @@ const orderSelect = `
   total_cents,
   referral_code,
   created_at,
-  order_items(product_name,option_name,quantity,product_id,products(slug)),
+  order_items(id,product_name,option_name,quantity,product_id,products(slug)),
   shipping_addresses(name,email,phone,address1,address2,city,state,postal_code,country,memo),
   shipments(carrier,tracking_number),
   payment_transactions(provider_order_id)
@@ -896,6 +936,138 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+export async function createCheckoutSession({
+  userId,
+  productId,
+  productSlug,
+  quantity,
+  totalCents,
+  currency = "USD",
+  now = new Date()
+}: {
+  userId: string;
+  productId: string;
+  productSlug: string;
+  quantity: number;
+  totalCents: number;
+  currency?: "USD";
+  now?: Date;
+}) {
+  const supabase = createSupabasePrivilegedClient();
+  const expiresAt = new Date(now);
+  expiresAt.setUTCMinutes(expiresAt.getUTCMinutes() + 30);
+
+  const { data, error } = await supabase
+    .from("checkout_sessions")
+    .insert({
+      user_id: userId,
+      product_id: productId,
+      product_slug: productSlug,
+      quantity,
+      total_cents: totalCents,
+      currency,
+      nonce: createSecureRandomToken(32),
+      status: "created",
+      expires_at: expiresAt.toISOString()
+    })
+    .select(
+      "id,user_id,product_id,product_slug,quantity,total_cents,currency,nonce,provider_order_id,status,expires_at"
+    )
+    .single();
+
+  if (error) {
+    throw new Error(`Could not create checkout session: ${error.message}`);
+  }
+
+  return mapCheckoutSessionRow(data as CheckoutSessionRow);
+}
+
+export async function bindCheckoutSessionPayment({
+  sessionId,
+  providerOrderId
+}: {
+  sessionId: string;
+  providerOrderId: string;
+}) {
+  const supabase = createSupabasePrivilegedClient();
+  const { data, error } = await supabase
+    .from("checkout_sessions")
+    .update({
+      provider: "paypal",
+      provider_order_id: providerOrderId,
+      status: "paypal_order_created",
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", sessionId)
+    .eq("status", "created")
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Could not bind checkout session payment: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error("Could not bind checkout session payment");
+  }
+}
+
+export async function findCheckoutSessionForCapture({
+  userId,
+  providerOrderId,
+  expectedCustomId,
+  productId,
+  quantity,
+  totalCents,
+  now = new Date()
+}: {
+  userId: string;
+  providerOrderId: string;
+  expectedCustomId: string;
+  productId: string;
+  quantity: number;
+  totalCents: number;
+  now?: Date;
+}) {
+  const supabase = createSupabasePrivilegedClient();
+  const { data, error } = await supabase
+    .from("checkout_sessions")
+    .select(
+      "id,user_id,product_id,product_slug,quantity,total_cents,currency,nonce,provider_order_id,status,expires_at"
+    )
+    .eq("user_id", userId)
+    .eq("provider", "paypal")
+    .eq("provider_order_id", providerOrderId)
+    .eq("status", "paypal_order_created")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load checkout session: ${error.message}`);
+  }
+  if (!data) {
+    return null;
+  }
+
+  const session = mapCheckoutSessionRow(data as CheckoutSessionRow);
+  const expiresAt = Date.parse(session.expiresAt);
+  if (
+    session.productId !== productId ||
+    session.quantity !== quantity ||
+    session.totalCents !== totalCents ||
+    session.currency !== "USD" ||
+    getCheckoutSessionCustomId(session) !== expectedCustomId ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= now.getTime()
+  ) {
+    return null;
+  }
+
+  return session;
+}
+
+export function getCheckoutSessionCustomId(session: Pick<CheckoutSession, "id" | "nonce">) {
+  return `${session.id}:${session.nonce}`;
+}
+
 export async function createPaidOrder({
   userId,
   product,
@@ -928,6 +1100,9 @@ export async function createPaidOrder({
   });
 
   if (existingOrder) {
+    if (existingOrder.userId !== userId) {
+      throw new PaymentReferenceConflictError();
+    }
     return existingOrder;
   }
 
@@ -1042,6 +1217,10 @@ export async function createPaidOrder({
         });
         if (racedOrder) {
           await supabase.from("orders").delete().eq("id", orderId);
+          orderId = null;
+          if (racedOrder.userId !== userId) {
+            throw new PaymentReferenceConflictError();
+          }
           return racedOrder;
         }
       }
@@ -1083,6 +1262,9 @@ export async function createPaidOrder({
   } catch (error) {
     if (orderId) {
       await supabase.from("orders").delete().eq("id", orderId);
+    }
+    if (error instanceof PaymentReferenceConflictError) {
+      throw error;
     }
     throw new Error(getErrorMessage(error, "Could not save order"));
   }
@@ -1408,7 +1590,7 @@ export async function applyForPromoter({
     const codeBase = slugify(displayName).replace(/-/g, "_") || "shipk_promoter";
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const code = `${codeBase.slice(0, 40)}_${createRandomToken(6)}`;
+      const code = `${codeBase.slice(0, 40)}_${createSecureRandomToken(6)}`;
       const { data, error } = await supabase
         .from("affiliates")
         .insert({
@@ -2292,6 +2474,8 @@ export function mapOrderRow(row: OrderRow): CommerceOrder {
   return {
     id: row.id,
     userId: row.user_id ?? "",
+    orderItemId: item?.id ?? undefined,
+    productId: item?.product_id ?? undefined,
     orderNumber: row.order_number,
     productSlug: productRelation?.slug ?? "",
     productName: item?.product_name ?? "Order item",
@@ -2320,6 +2504,22 @@ export function mapOrderRow(row: OrderRow): CommerceOrder {
     shipmentCarrier: shipment?.carrier ?? undefined,
     trackingNumber: shipment?.tracking_number ?? undefined,
     createdAt: row.created_at
+  };
+}
+
+function mapCheckoutSessionRow(row: CheckoutSessionRow): CheckoutSession {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    productId: row.product_id,
+    productSlug: row.product_slug,
+    quantity: row.quantity,
+    totalCents: row.total_cents,
+    currency: row.currency,
+    nonce: row.nonce,
+    providerOrderId: row.provider_order_id ?? undefined,
+    status: row.status,
+    expiresAt: row.expires_at
   };
 }
 
@@ -2817,7 +3017,7 @@ async function insertAffiliateLink(
     const { error } = await supabase.from("affiliate_links").insert({
       affiliate_id: affiliateId,
       product_id: product.id,
-      link_token: createRandomToken(12),
+      link_token: createSecureRandomToken(12),
       destination_path: `/products/${product.slug}`,
       status: "active"
     });
@@ -3049,12 +3249,29 @@ function sortAdminCommissionSettlements(
   return first.displayName.localeCompare(second.displayName);
 }
 
-function createRandomToken(length: number) {
-  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let token = "";
-  for (let index = 0; index < length; index += 1) {
-    token += alphabet[Math.floor(Math.random() * alphabet.length)];
+export function createSecureRandomToken(length: number) {
+  if (!Number.isInteger(length) || length <= 0) {
+    throw new Error("Token length must be a positive integer");
   }
+
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const maxAcceptedByte = 256 - (256 % alphabet.length);
+  let token = "";
+
+  while (token.length < length) {
+    const bytes = new Uint8Array(length - token.length);
+    crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      if (byte >= maxAcceptedByte) {
+        continue;
+      }
+      token += alphabet[byte % alphabet.length];
+      if (token.length === length) {
+        break;
+      }
+    }
+  }
+
   return token;
 }
 

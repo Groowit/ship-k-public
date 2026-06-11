@@ -8,6 +8,7 @@ import {
   HelpCircle,
   MapPin,
   PackageCheck,
+  Pencil,
   Receipt,
   Truck,
   Wallet,
@@ -22,6 +23,7 @@ import { buildAuthRedirectPath } from "@/lib/authz";
 import { formatUsd, type OrderStatus } from "@/lib/commerce";
 import { getOrderByUser, getTrackingUrl } from "@/lib/commerce-store";
 import { getCustomerOrderStatusLabel } from "@/lib/fulfillment";
+import { getReviewEligibilityForProduct } from "@/lib/reviews-store";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +56,15 @@ export default async function AccountOrderDetailPage({
     trackingNumber: order.trackingNumber,
     trackingUrl,
   });
+  const reviewEligibility = order.productId
+    ? await getReviewEligibilityForProduct({
+        userId: user.id,
+        productId: order.productId,
+      })
+    : undefined;
+  const currentItemReview = order.orderItemId
+    ? reviewEligibility?.items.find((item) => item.orderItemId === order.orderItemId)
+    : undefined;
 
   return (
     <section className="account-page-shell bg-white">
@@ -193,6 +204,28 @@ export default async function AccountOrderDetailPage({
                     value={order.quantity.toString()}
                   />
                 </dl>
+                {order.productSlug && currentItemReview ? (
+                  <div className="mt-5 rounded-md border border-zinc-200 bg-[#fff8f0] p-4">
+                    <p className="text-sm font-black">Review this item</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {currentItemReview.canReview
+                        ? "Your payment is confirmed, so you can leave a verified review."
+                        : currentItemReview.existingReviewId && !currentItemReview.existingReviewDeleted
+                          ? "You already left a review for this purchase."
+                          : "This purchase is not currently eligible for a new review."}
+                    </p>
+                    {currentItemReview.canReview ||
+                    (currentItemReview.existingReviewId && !currentItemReview.existingReviewDeleted) ? (
+                      <Link
+                        href={`/products/${order.productSlug}#reviews`}
+                        className={cn(buttonVariants({ size: "sm" }), "mt-3")}
+                      >
+                        <PencilIcon />
+                        {currentItemReview.canReview ? "Write review" : "View review"}
+                      </Link>
+                    ) : null}
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </div>
@@ -297,6 +330,12 @@ export default async function AccountOrderDetailPage({
         </div>
       </div>
     </section>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <Pencil className="h-4 w-4" aria-hidden="true" />
   );
 }
 

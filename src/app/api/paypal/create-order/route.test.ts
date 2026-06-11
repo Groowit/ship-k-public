@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
-import { findProductBySlug } from "@/lib/commerce-store";
+import {
+  bindCheckoutSessionPayment,
+  createCheckoutSession,
+  findProductBySlug
+} from "@/lib/commerce-store";
 import { createPayPalOrder } from "@/lib/paypal";
 import { POST } from "./route";
 
@@ -13,7 +17,11 @@ vi.mock("@/lib/auth", async () => {
 });
 
 vi.mock("@/lib/commerce-store", () => ({
-  findProductBySlug: vi.fn()
+  bindCheckoutSessionPayment: vi.fn(),
+  createCheckoutSession: vi.fn(),
+  findProductBySlug: vi.fn(),
+  getCheckoutSessionCustomId: (session: { id: string; nonce: string }) =>
+    `${session.id}:${session.nonce}`
 }));
 
 vi.mock("@/lib/paypal", () => ({
@@ -47,6 +55,11 @@ describe("PayPal create order API route", () => {
       id: "PAYPAL-ORDER-1",
       status: "CREATED"
     } as never);
+    vi.mocked(createCheckoutSession).mockResolvedValue({
+      id: "checkout_session_1",
+      nonce: "session_nonce_1"
+    } as never);
+    vi.mocked(bindCheckoutSessionPayment).mockResolvedValue(undefined);
   });
 
   it("requires an authenticated buyer before creating a PayPal order", async () => {
@@ -83,10 +96,23 @@ describe("PayPal create order API route", () => {
     expect(findProductBySlug).toHaveBeenCalledWith("skincare-starter-set");
     expect(createPayPalOrder).toHaveBeenCalledWith(
       expect.objectContaining({
-        customId: "skincare-starter-set:1",
+        customId: "checkout_session_1:session_nonce_1",
         value: "58.99"
       })
     );
+    expect(createCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "buyer_1",
+        productId: "product_1",
+        productSlug: "skincare-starter-set",
+        quantity: 1,
+        totalCents: 5899
+      })
+    );
+    expect(bindCheckoutSessionPayment).toHaveBeenCalledWith({
+      sessionId: "checkout_session_1",
+      providerOrderId: "PAYPAL-ORDER-1"
+    });
   });
 
   it("rejects whitespace-only required shipping fields before PayPal calls", async () => {

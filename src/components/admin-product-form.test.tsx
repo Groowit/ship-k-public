@@ -77,7 +77,7 @@ describe("AdminProductEditor", () => {
     expect(screen.getByRole("heading", { name: "Rice Calm Cream", level: 1 })).toBeVisible();
     expect(screen.getByText("RICE")).toBeVisible();
     expect(screen.getByAltText("Rice Calm Cream intro image")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "미디어 보기: Cream texture" }));
+    fireEvent.click(screen.getByRole("button", { name: "View media: Cream texture" }));
     expect(screen.getByAltText("Cream texture")).toBeVisible();
     const storyHeading = screen.getByRole("heading", { name: "Rice Calm Story" });
     expect(storyHeading).toBeVisible();

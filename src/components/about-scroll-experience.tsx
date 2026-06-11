@@ -97,7 +97,7 @@ export function AboutScrollExperience({ children }: { children: React.ReactNode 
     function updateRevealElements() {
       const viewportHeight = window.innerHeight;
 
-      document.querySelectorAll<HTMLElement>(".about-reveal").forEach((element) => {
+      document.querySelectorAll<HTMLElement>(".about-redesign-reveal").forEach((element) => {
         const rect = element.getBoundingClientRect();
         const reveal = clamp(
           (viewportHeight * 0.92 - rect.top) / Math.max(1, viewportHeight * 0.32),

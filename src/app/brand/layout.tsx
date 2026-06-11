@@ -28,6 +28,9 @@ export default async function BrandLayout({ children }: { children: React.ReactN
           <Link className="rounded-md border bg-white px-3 py-2" href="/brand/products">
             상품
           </Link>
+          <Link className="rounded-md border bg-white px-3 py-2" href="/brand/reviews">
+            리뷰
+          </Link>
           <Link className="rounded-md border bg-white px-3 py-2" href="/brand/reports">
             매출/정산 요약
           </Link>

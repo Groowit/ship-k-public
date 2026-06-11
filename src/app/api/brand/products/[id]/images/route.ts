@@ -7,9 +7,7 @@ import {
 } from "@/lib/brand-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 import { createSupabasePrivilegedClient } from "@/lib/supabase/admin";
-
-const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const maxImageBytes = 5 * 1024 * 1024;
+import { getUploadImageExtension, validateUploadImageFile } from "@/lib/image-upload";
 
 export async function POST(
   request: Request,
@@ -22,7 +20,8 @@ export async function POST(
     const brandProduct = await getBrandProductForUser({
       userId: auth.user.id,
       productId: id,
-      requireEditable: true
+      requireEditable: true,
+      requireEditor: true
     });
     const form = await request.formData();
     const file = form.get("file");
@@ -31,15 +30,12 @@ export async function POST(
       return NextResponse.json({ error: "Image file is required" }, { status: 400 });
     }
 
-    if (!allowedImageTypes.has(file.type)) {
-      return NextResponse.json({ error: "Unsupported image type" }, { status: 400 });
+    const imageError = await validateUploadImageFile(file);
+    if (imageError) {
+      return NextResponse.json({ error: imageError }, { status: 400 });
     }
 
-    if (file.size > maxImageBytes) {
-      return NextResponse.json({ error: "Image must be 5MB or smaller" }, { status: 400 });
-    }
-
-    const extension = getImageExtension(file);
+    const extension = getUploadImageExtension(file);
     const path = `brand/${brandProduct.brand.slug}/${id}/${Date.now()}-${getSafeFileStem(file.name)}.${extension}`;
     const supabase = createSupabasePrivilegedClient();
     const { error } = await supabase.storage.from("product-images").upload(path, file, {
@@ -68,18 +64,6 @@ export async function POST(
       { status: 400 }
     );
   }
-}
-
-function getImageExtension(file: File) {
-  if (file.type === "image/jpeg") {
-    return "jpg";
-  }
-
-  if (file.type === "image/webp") {
-    return "webp";
-  }
-
-  return "png";
 }
 
 function getSafeFileStem(name: string) {

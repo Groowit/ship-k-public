@@ -9,7 +9,12 @@ import {
   parseReferralAttribution
 } from "@/lib/referral";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
-import { createPaidOrder, findProductBySlug } from "@/lib/commerce-store";
+import {
+  createPaidOrder,
+  findCheckoutSessionForCapture,
+  findProductBySlug,
+  getCheckoutSessionCustomId
+} from "@/lib/commerce-store";
 import { assertProductCanCheckout, getProductCheckoutSummary } from "@/lib/products";
 
 export async function POST(request: Request) {
@@ -24,10 +29,25 @@ export async function POST(request: Request) {
     }
 
     assertProductCanCheckout(product, body.quantity);
+    const totals = getProductCheckoutSummary(product, body.quantity);
     const capture = await capturePayPalOrder(body.orderID);
+    const capturedCustomId = getPayPalCaptureCustomId(capture);
+    const checkoutSession = await findCheckoutSessionForCapture({
+      userId: user.id,
+      providerOrderId: body.orderID,
+      expectedCustomId: capturedCustomId ?? "",
+      productId: product.id,
+      quantity: body.quantity,
+      totalCents: totals.totalCents
+    });
+
+    if (!checkoutSession) {
+      throw new Error("Checkout session does not match PayPal capture");
+    }
+
     assertCapturedOrderMatchesCheckout(capture, {
-      customId: `${product.slug}:${body.quantity}`,
-      value: (getProductCheckoutSummary(product, body.quantity).totalCents / 100).toFixed(2),
+      customId: getCheckoutSessionCustomId(checkoutSession),
+      value: (totals.totalCents / 100).toFixed(2),
       currencyCode: "USD"
     });
     const cookieStore = await cookies();
@@ -76,6 +96,20 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+}
+
+function getPayPalCaptureCustomId(capture: {
+  purchase_units?: Array<{
+    custom_id?: string;
+    payments?: {
+      captures?: Array<{
+        custom_id?: string;
+      }>;
+    };
+  }>;
+}) {
+  const purchaseUnit = capture.purchase_units?.[0];
+  return purchaseUnit?.payments?.captures?.[0]?.custom_id ?? purchaseUnit?.custom_id ?? null;
 }
 
 function getFirstPayPalCapture(capture: {

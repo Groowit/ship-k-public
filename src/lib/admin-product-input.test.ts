@@ -120,4 +120,27 @@ describe("adminProductPayloadSchema", () => {
       })
     ).toThrow(/YouTube, Vimeo, Cloudflare/);
   });
+
+  it("rejects intro video URLs on attacker-controlled lookalike hosts", () => {
+    expect(() =>
+      adminProductPayloadSchema.parse({
+        productType: "set",
+        brandName: "shipK Curated",
+        name: "Spoofed Video Test",
+        category: "Skincare",
+        difficulty: "Beginner",
+        shortDescription: "Video",
+        description: "Video description",
+        priceUsd: "39.00",
+        stockQuantity: "1",
+        heroImagePath: "/catalog-assets/admin-product-placeholder.svg",
+        introVideoUrl: "https://youtube.com.evil.test/embed/dQw4w9WgXcQ",
+        includedItems: [
+          { name: "Item", category: "Skincare", description: "Usage" }
+        ],
+        routineSteps: [{ title: "Step", body: "Do it" }],
+        status: "active"
+      })
+    ).toThrow(/YouTube, Vimeo, Cloudflare/);
+  });
 });

@@ -39,14 +39,14 @@ describe("admin product image upload API", () => {
   it("blocks non-admin uploads", async () => {
     vi.mocked(requireCurrentAdmin).mockRejectedValue(new AdminRequiredError());
 
-    const response = await POST(uploadRequest(new File(["image"], "hero.png", { type: "image/png" })));
+    const response = await POST(uploadRequest(testFile(pngBytes(), "hero.png", "image/png")));
 
     expect(response.status).toBe(403);
     expect(createSupabasePrivilegedClient).not.toHaveBeenCalled();
   });
 
   it("uploads supported images to the product-images bucket and returns a public URL", async () => {
-    const response = await POST(uploadRequest(new File(["image"], "Hero Image.webp", { type: "image/webp" })));
+    const response = await POST(uploadRequest(testFile(webpBytes(), "Hero Image.webp", "image/webp")));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -65,6 +65,15 @@ describe("admin product image upload API", () => {
     expect(response.status).toBe(400);
     expect(upload).not.toHaveBeenCalled();
   });
+
+  it("rejects spoofed image uploads whose bytes do not match the declared MIME type", async () => {
+    const response = await POST(
+      uploadRequest(testFile(textBytes("<svg onload=alert(1)>"), "hero.png", "image/png"))
+    );
+
+    expect(response.status).toBe(400);
+    expect(upload).not.toHaveBeenCalled();
+  });
 });
 
 function uploadRequest(file: File) {
@@ -76,4 +85,37 @@ function uploadRequest(file: File) {
 
   vi.spyOn(request, "formData").mockResolvedValue(form);
   return request;
+}
+
+function testFile(bytes: ArrayBuffer, name: string, type: string) {
+  const file = new File([bytes], name, { type });
+  Object.defineProperty(file, "arrayBuffer", {
+    value: async () => bytes
+  });
+  return file;
+}
+
+function textBytes(value: string) {
+  return new TextEncoder().encode(value).buffer;
+}
+
+function pngBytes() {
+  return new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer;
+}
+
+function webpBytes() {
+  return new Uint8Array([
+    0x52,
+    0x49,
+    0x46,
+    0x46,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x57,
+    0x45,
+    0x42,
+    0x50
+  ]).buffer;
 }

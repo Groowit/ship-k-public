@@ -6,20 +6,28 @@ import { createPortal } from "react-dom";
 import { Maximize2, PlayCircle, X } from "lucide-react";
 import { BuyBox } from "@/components/buy-box";
 import { ProductDetailSectionsRenderer } from "@/components/product-detail-sections-renderer";
+import { ProductReviewsSection } from "@/components/product-reviews-section";
 import { Badge } from "@/components/ui/badge";
 import { getProductVisual } from "@/lib/brand-visuals";
 import { formatUsd } from "@/lib/commerce";
 import { getImageOptimizationProps } from "@/lib/image-path";
 import { Product } from "@/lib/products";
+import type { ProductReviewEligibility, ProductReviewsPayload } from "@/lib/reviews-store";
 import { cn } from "@/lib/utils";
 
 export function ProductDetailView({
   product,
   isAuthenticated,
+  viewerId,
+  reviewsPayload,
+  reviewEligibility,
   previewMode = false
 }: {
   product: Product;
   isAuthenticated: boolean;
+  viewerId?: string;
+  reviewsPayload?: ProductReviewsPayload;
+  reviewEligibility?: ProductReviewEligibility;
   previewMode?: boolean;
 }) {
   const visual = getProductVisual(product);
@@ -71,7 +79,15 @@ export function ProductDetailView({
         </div>
       </section>
 
-      <ProductDetailSectionsRenderer product={product} />
+      <ProductReviewsSection
+        productId={product.id}
+        productName={product.name}
+        initialPayload={reviewsPayload}
+        eligibility={reviewEligibility}
+        isAuthenticated={isAuthenticated}
+        viewerId={viewerId}
+        detailContent={<ProductDetailSectionsRenderer product={product} />}
+      />
     </article>
   );
 }
@@ -122,13 +138,13 @@ function ProductMediaViewer({
           <MediaFrame item={selectedMedia} productName={product.name} visualClassName={visualClassName} />
           <button
             type="button"
-            aria-label={`크게 보기: ${selectedMedia.label}`}
+            aria-label={`View larger: ${selectedMedia.label}`}
             onClick={() => setExpandedMedia(selectedMedia)}
             className="absolute inset-0 z-10 flex cursor-zoom-in items-start justify-end p-4 text-left"
           >
             <span className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-black bg-white px-3 text-xs font-black">
               <Maximize2 className="h-4 w-4" aria-hidden="true" />
-              크게 보기
+              View larger
             </span>
           </button>
         </div>
@@ -142,7 +158,7 @@ function ProductMediaViewer({
               <button
                 key={item.id}
                 type="button"
-                aria-label={`미디어 보기: ${item.label}`}
+                aria-label={`View media: ${item.label}`}
                 aria-pressed={isSelected}
                 onClick={() => setSelectedId(item.id)}
                 className={cn(
@@ -176,7 +192,7 @@ function buildProductMediaItems(product: Product): ProductMediaItem[] {
       id: "intro-video",
       type: "video",
       src: normalizeEmbeddableVideoUrl(product.introVideoUrl),
-      label: "인트로 영상"
+      label: "Intro video"
     });
   }
 
@@ -185,7 +201,7 @@ function buildProductMediaItems(product: Product): ProductMediaItem[] {
     type: "image",
     src: product.heroImagePath,
     alt: `${product.name} intro image`,
-    label: "대표 이미지",
+    label: "Main image",
     priority: true
   });
 
@@ -195,7 +211,7 @@ function buildProductMediaItems(product: Product): ProductMediaItem[] {
       type: "image",
       src: image.imagePath,
       alt: image.altText || `${product.name} gallery image ${index + 1}`,
-      label: image.altText || `갤러리 이미지 ${index + 1}`
+      label: image.altText || `Gallery image ${index + 1}`
     });
   });
 
@@ -223,6 +239,8 @@ function MediaFrame({
             className="h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
           />
         </div>
       </div>
@@ -249,7 +267,7 @@ function MediaThumbnail({ item }: { item: ProductMediaItem }) {
     return (
       <span className="flex h-full w-full flex-col items-center justify-center gap-2 bg-foreground text-white">
         <PlayCircle className="h-8 w-8" aria-hidden="true" />
-        <span className="text-xs font-black">영상</span>
+        <span className="text-xs font-black">Video</span>
       </span>
     );
   }
@@ -308,7 +326,7 @@ function MediaLightbox({
     >
       <button
         type="button"
-        aria-label="미디어 닫기"
+        aria-label="Close media"
         onClick={onClose}
         className="absolute right-4 top-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-black text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30 md:right-8 md:top-8"
       >

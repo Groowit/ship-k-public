@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  bindCheckoutSessionPayment,
   createPaidOrder,
+  createSecureRandomToken,
+  findCheckoutSessionForCapture,
   findProductBySlug,
   getOrderByUser,
   listAdminCommissionSettlements,
@@ -14,7 +17,8 @@ import {
   updateCustomerAccount,
   updateCommissionStatus,
   updateAffiliateStatus,
-  updateOrderFulfillment
+  updateOrderFulfillment,
+  PaymentReferenceConflictError
 } from "./commerce-store";
 import type { Product } from "./products";
 
@@ -1050,6 +1054,106 @@ describe("paid order payment idempotency", () => {
     expect(calls.some((call) => call.table === "orders" && call.operation === "insert")).toBe(false);
   });
 
+  it("rejects duplicate PayPal references that belong to another user", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "payment_transactions" && call.terminal === "maybeSingle") {
+        return { data: { order_id: "order_existing" }, error: null };
+      }
+      if (call.table === "orders" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            ...orderRow("order_existing", "PAYPAL-ORDER-1"),
+            user_id: "other_buyer"
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      createPaidOrder({
+        userId: "buyer_1",
+        product: productFixture(),
+        quantity: 1,
+        shippingAddress: shippingAddressFixture(),
+        paymentProviderOrderId: "PAYPAL-ORDER-1",
+        paymentProviderCaptureId: "CAPTURE-1",
+        paymentPayload: {}
+      })
+    ).rejects.toThrow(/payment reference/i);
+
+    expect(calls.some((call) => call.table === "orders" && call.operation === "insert")).toBe(false);
+  });
+
+  it("preserves payment reference conflicts discovered during concurrent inserts", async () => {
+    const calls: QueryCall[] = [];
+    let providerOrderLookups = 0;
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "payment_transactions" && call.terminal === "maybeSingle") {
+        const filters = Object.fromEntries(
+          call.filters.map((filter) => [filter.column, filter.value])
+        );
+        if (filters.provider_capture_id === "CAPTURE-1") {
+          return { data: null, error: null };
+        }
+        if (filters.provider_order_id === "PAYPAL-ORDER-1") {
+          providerOrderLookups += 1;
+          return providerOrderLookups === 1
+            ? { data: null, error: null }
+            : { data: { order_id: "order_existing" }, error: null };
+        }
+      }
+      if (call.table === "orders" && call.terminal === "single" && call.values) {
+        return { data: { id: "order_new" }, error: null };
+      }
+      if (call.table === "order_items" && call.operation === "insert") {
+        return { error: null };
+      }
+      if (call.table === "shipping_addresses" && call.operation === "insert") {
+        return { error: null };
+      }
+      if (call.table === "payment_transactions" && call.operation === "insert") {
+        return {
+          error: {
+            code: "23505",
+            message: "duplicate key value violates unique constraint"
+          }
+        };
+      }
+      if (call.table === "orders" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            ...orderRow("order_existing", "PAYPAL-ORDER-1"),
+            user_id: "other_buyer"
+          },
+          error: null
+        };
+      }
+      if (call.table === "orders" && call.operation === "delete") {
+        return { error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      createPaidOrder({
+        userId: "buyer_1",
+        product: productFixture(),
+        quantity: 1,
+        shippingAddress: shippingAddressFixture(),
+        paymentProviderOrderId: "PAYPAL-ORDER-1",
+        paymentProviderCaptureId: "CAPTURE-1",
+        paymentPayload: {}
+      })
+    ).rejects.toBeInstanceOf(PaymentReferenceConflictError);
+
+    expect(calls.filter((call) => call.table === "orders" && call.operation === "delete")).toHaveLength(1);
+  });
+
   it("rolls back a new order when child order item insertion fails", async () => {
     const calls: QueryCall[] = [];
     mocks.privilegedClient = createSupabaseMock((call) => {
@@ -1527,6 +1631,93 @@ describe("promoter schema detection", () => {
         message: "duplicate key value violates unique constraint"
       })
     ).toBe(false);
+  });
+});
+
+describe("checkout session capture binding", () => {
+  it("requires checkout session payment binding to update a created session", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "checkout_sessions" && call.operation === "update" && call.terminal === "single") {
+        return { data: null, error: null };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await expect(
+      bindCheckoutSessionPayment({
+        sessionId: "checkout_session_1",
+        providerOrderId: "PAYPAL-ORDER-1"
+      })
+    ).rejects.toThrow(/bind checkout session/i);
+
+    expect(calls[0]?.filters).toEqual(
+      expect.arrayContaining([
+        { column: "id", value: "checkout_session_1" },
+        { column: "status", value: "created" }
+      ])
+    );
+  });
+
+  it("rejects sessions with malformed expiry timestamps", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+      if (call.table === "checkout_sessions" && call.terminal === "maybeSingle") {
+        return {
+          data: {
+            id: "checkout_session_1",
+            user_id: "buyer_1",
+            product_id: "product_1",
+            product_slug: "skincare-starter-set",
+            quantity: 1,
+            total_cents: 5899,
+            currency: "USD",
+            nonce: "session_nonce_1",
+            provider_order_id: "PAYPAL-ORDER-1",
+            status: "paypal_order_created",
+            expires_at: "not-a-date"
+          },
+          error: null
+        };
+      }
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    const session = await findCheckoutSessionForCapture({
+      userId: "buyer_1",
+      providerOrderId: "PAYPAL-ORDER-1",
+      expectedCustomId: "checkout_session_1:session_nonce_1",
+      productId: "product_1",
+      quantity: 1,
+      totalCents: 5899,
+      now: new Date("2026-06-07T00:00:00.000Z")
+    });
+
+    expect(session).toBeNull();
+    expect(calls[0]?.filters).toEqual(
+      expect.arrayContaining([
+        { column: "user_id", value: "buyer_1" },
+        { column: "provider", value: "paypal" },
+        { column: "provider_order_id", value: "PAYPAL-ORDER-1" },
+        { column: "status", value: "paypal_order_created" }
+      ])
+    );
+  });
+});
+
+describe("promotion token generation", () => {
+  it("creates URL-safe random tokens without Math.random", () => {
+    const mathRandom = vi.spyOn(Math, "random");
+
+    const token = createSecureRandomToken(24);
+
+    expect(token).toHaveLength(24);
+    expect(token).toMatch(/^[a-z0-9]+$/);
+    expect(mathRandom).not.toHaveBeenCalled();
+
+    mathRandom.mockRestore();
   });
 });
 

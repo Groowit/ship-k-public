@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
+  isEmbeddableVideoUrl,
   maxProductDetailSections,
+  normalizeEmbeddableVideoUrl,
   productDetailSectionInputSchema
 } from "./product-detail-sections";
 import { productCategories } from "./products";
@@ -42,7 +44,7 @@ const optionalExternalVideoUrl = z
   .string()
   .trim()
   .optional()
-  .transform((value) => (value ? normalizeIntroVideoUrl(value) : undefined))
+  .transform((value) => (value ? normalizeEmbeddableVideoUrl(value) : undefined))
   .refine((value) => !value || value.startsWith("https://"), "https://로 시작하는 영상 URL을 입력해주세요.")
   .refine(
     (value) => !value || isEmbeddableVideoUrl(value),
@@ -222,51 +224,5 @@ function requireField(
 ) {
   if (!value) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
-  }
-}
-
-function normalizeIntroVideoUrl(value: string) {
-  try {
-    const url = new URL(value);
-
-    if (url.hostname === "youtu.be") {
-      const id = url.pathname.replace("/", "");
-      return id ? `https://www.youtube.com/embed/${id}` : value;
-    }
-
-    if (url.hostname.includes("youtube.com")) {
-      const watchId = url.searchParams.get("v");
-      if (watchId) {
-        return `https://www.youtube.com/embed/${watchId}`;
-      }
-
-      if (url.pathname.startsWith("/shorts/")) {
-        const id = url.pathname.split("/")[2];
-        return id ? `https://www.youtube.com/embed/${id}` : value;
-      }
-    }
-
-    if (url.hostname === "vimeo.com") {
-      const id = url.pathname.replace("/", "");
-      return id ? `https://player.vimeo.com/video/${id}` : value;
-    }
-  } catch {
-    return value;
-  }
-
-  return value;
-}
-
-function isEmbeddableVideoUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return (
-      url.hostname.includes("youtube.com") ||
-      url.hostname === "player.vimeo.com" ||
-      url.hostname.includes("cloudflarestream.com") ||
-      url.hostname === "iframe.videodelivery.net"
-    );
-  } catch {
-    return false;
   }
 }

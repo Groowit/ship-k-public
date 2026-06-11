@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthRequiredError, requireCurrentUser } from "@/lib/auth";
-import { createPaidOrder, findProductBySlug } from "@/lib/commerce-store";
+import { createPaidOrder, findCheckoutSessionForCapture, findProductBySlug } from "@/lib/commerce-store";
 import { capturePayPalOrder } from "@/lib/paypal";
 import { applyReferralClick, serializeReferralAttribution } from "@/lib/referral";
 import { POST } from "./route";
@@ -19,7 +19,10 @@ vi.mock("@/lib/auth", async () => {
 
 vi.mock("@/lib/commerce-store", () => ({
   createPaidOrder: vi.fn(),
-  findProductBySlug: vi.fn()
+  findCheckoutSessionForCapture: vi.fn(),
+  findProductBySlug: vi.fn(),
+  getCheckoutSessionCustomId: (session: { id: string; nonce: string }) =>
+    `${session.id}:${session.nonce}`
 }));
 
 vi.mock("@/lib/paypal", () => ({
@@ -56,6 +59,16 @@ describe("PayPal capture API route", () => {
     });
     vi.mocked(findProductBySlug).mockResolvedValue(product as never);
     vi.mocked(capturePayPalOrder).mockResolvedValue(captureResponse() as never);
+    vi.mocked(findCheckoutSessionForCapture).mockResolvedValue({
+      id: "checkout_session_1",
+      userId: "buyer_1",
+      productId: "product_1",
+      productSlug: "skincare-starter-set",
+      quantity: 1,
+      totalCents: 5899,
+      currency: "USD",
+      nonce: "session_nonce_1"
+    } as never);
     vi.mocked(createPaidOrder).mockResolvedValue(order as never);
     const { cookies } = await import("next/headers");
     vi.mocked(cookies).mockResolvedValue({
@@ -118,6 +131,25 @@ describe("PayPal capture API route", () => {
         referralLandingPath: "/products/skincare-starter-set"
       })
     );
+    expect(findCheckoutSessionForCapture).toHaveBeenCalledWith({
+      userId: "buyer_1",
+      providerOrderId: "PAYPAL-ORDER-1",
+      expectedCustomId: "checkout_session_1:session_nonce_1",
+      productId: "product_1",
+      quantity: 1,
+      totalCents: 5899
+    });
+  });
+
+  it("rejects completed captures when the PayPal order is not bound to the current checkout session", async () => {
+    vi.mocked(findCheckoutSessionForCapture).mockResolvedValue(null);
+
+    const response = await POST(jsonRequest(validPayload()));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/checkout session/i);
+    expect(createPaidOrder).not.toHaveBeenCalled();
   });
 
   it("normalizes checkout input before product lookup and paid order persistence", async () => {
@@ -298,7 +330,7 @@ function jsonRequest(body: unknown, headers: Record<string, string> = {}) {
 function captureResponse({
   orderStatus = "COMPLETED",
   captureStatus = "COMPLETED",
-  customId = "skincare-starter-set:1",
+  customId = "checkout_session_1:session_nonce_1",
   value = "58.99"
 }: {
   orderStatus?: string;

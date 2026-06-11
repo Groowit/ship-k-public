@@ -53,6 +53,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link className="rounded-md border bg-white px-3 py-2" href="/admin/orders">
             주문
           </Link>
+          <Link className="rounded-md border bg-white px-3 py-2" href="/admin/reviews">
+            리뷰
+          </Link>
           <Link className="rounded-md border bg-white px-3 py-2" href="/admin/affiliates">
             홍보자
           </Link>

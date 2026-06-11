@@ -169,7 +169,7 @@ export function AccountOrdersClient({ orders }: { orders: CommerceOrder[] }) {
 
         <section
           aria-label="Order filters"
-          className="sticky top-0 z-20 mt-5 rounded-md border border-zinc-200 bg-white/95 p-4 shadow-[0_8px_24px_rgba(24,24,27,0.06)] backdrop-blur"
+          className="sticky top-0 z-20 mt-5 rounded-md border border-zinc-200 bg-white/95 p-4 backdrop-blur"
         >
           <div className="grid gap-3 xl:grid-cols-[minmax(280px,1fr)_auto] xl:items-end">
             <div>

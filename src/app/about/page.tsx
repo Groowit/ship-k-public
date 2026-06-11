@@ -152,7 +152,7 @@ export default function AboutPage() {
 
         <section id="guided-story" className="about-redesign-story border-b-2 border-black bg-white">
           <div className="container grid gap-8 py-16 lg:grid-cols-[0.47fr_0.53fr] lg:gap-14 lg:py-24">
-            <div className="about-redesign-story-sticky about-reveal">
+            <div className="about-redesign-story-sticky about-redesign-reveal">
               <p className="font-brand-heavy text-xs uppercase text-[#ff3d7f] md:text-sm">
                 From set to routine
               </p>
@@ -207,7 +207,7 @@ export default function AboutPage() {
 
         <section className="border-b-2 border-black bg-[#f7fbf2]">
           <div className="container grid gap-10 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:py-20">
-            <div className="about-reveal">
+            <div className="about-redesign-reveal">
               <p className="font-brand-heavy text-xs uppercase text-[#ff3d7f] md:text-sm">
                 Why shipK exists
               </p>
@@ -227,7 +227,7 @@ export default function AboutPage() {
                 return (
                   <article
                     key={note.title}
-                    className="about-reveal about-value-card grid gap-4 rounded-md border-2 border-black bg-white p-5 sm:grid-cols-[auto_1fr]"
+                    className="about-redesign-reveal about-redesign-value-card grid gap-4 rounded-md border-2 border-black bg-white p-5 sm:grid-cols-[auto_1fr]"
                   >
                     <span className="grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-[#c8f26c]">
                       <Icon className="h-5 w-5" aria-hidden="true" />
@@ -247,7 +247,7 @@ export default function AboutPage() {
 
         <section className="border-b-2 border-black bg-[#0a0a0a] text-white">
           <div className="container grid gap-8 py-14 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-            <div className="about-reveal">
+            <div className="about-redesign-reveal">
               <p className="font-brand-heavy text-xs uppercase text-[#c8f26c] md:text-sm">
                 Purchase confidence
               </p>
@@ -267,7 +267,7 @@ export default function AboutPage() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="about-reveal about-trust-card group grid min-h-44 gap-5 rounded-md border-2 border-white bg-white/10 p-5 transition hover:bg-white hover:text-[#0a0a0a] focus-ring"
+                    className="about-redesign-reveal about-redesign-trust-card group grid min-h-44 gap-5 rounded-md border-2 border-white bg-white/10 p-5 transition hover:bg-white hover:text-[#0a0a0a] focus-ring"
                   >
                     <span className="grid h-11 w-11 place-items-center rounded-full border-2 border-white bg-[#c8f26c] text-[#0a0a0a] group-hover:border-black">
                       <Icon className="h-5 w-5" aria-hidden="true" />
@@ -290,7 +290,7 @@ export default function AboutPage() {
 
         <section className="bg-[#fff8f0]">
           <div className="container grid gap-6 py-16 text-center lg:py-20">
-            <div className="about-reveal mx-auto max-w-4xl">
+            <div className="about-redesign-reveal mx-auto max-w-4xl">
               <p className="font-brand-heavy text-xs uppercase text-[#ff3d7f] md:text-sm">
                 Ready when your routine is
               </p>
@@ -302,7 +302,7 @@ export default function AboutPage() {
                 routines that feel easier from the first step.
               </p>
             </div>
-            <div className="about-reveal flex flex-wrap justify-center gap-3">
+            <div className="about-redesign-reveal flex flex-wrap justify-center gap-3">
               <Link href="/shop" className={cn(buttonVariants({ size: "lg" }), "shipk-btn-pop")}>
                 Shop guided sets
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />

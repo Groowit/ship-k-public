@@ -331,7 +331,7 @@ a {
   align-self: start;
 }
 
-.about-redesign-scroll[data-motion-ready="true"] .about-reveal {
+.about-redesign-scroll[data-motion-ready="true"] .about-redesign-reveal {
   opacity: var(--about-reveal-opacity, 1);
   transform: translate3d(0, var(--about-reveal-y, 0), 0)
     scale(var(--about-reveal-scale, 1));
@@ -346,7 +346,6 @@ a {
   border: 2px solid var(--shipk-black);
   border-radius: 0.5rem;
   background: var(--shipk-cream);
-  box-shadow: 0 1.6rem 4rem rgba(10, 10, 10, 0.1);
   transform: translate3d(0, var(--about-story-copy-y), 0);
   will-change: transform;
 }
@@ -380,12 +379,10 @@ a {
   --about-card-y: 0rem;
   --about-card-scale: 1;
   --about-card-image-scale: 1;
-  --about-card-shadow-opacity: 0.06;
   --about-card-border-alpha: 1;
   position: relative;
   overflow: hidden;
   border-color: rgba(10, 10, 10, var(--about-card-border-alpha));
-  box-shadow: 0 1rem 2.7rem rgba(10, 10, 10, var(--about-card-shadow-opacity));
   will-change: transform, opacity;
 }
 
@@ -394,19 +391,10 @@ a {
   transform: translate3d(0, var(--about-card-y), 0) scale(var(--about-card-scale));
 }
 
-.about-redesign-story-art {
-  box-shadow: inset 0 0 0 0.35rem rgba(255, 255, 255, 0.5);
-}
-
 .about-redesign-story-art img {
   transform: scale(var(--about-card-image-scale));
   transform-origin: center;
   will-change: transform;
-}
-
-.about-value-card,
-.about-trust-card {
-  box-shadow: 0 1rem 2.6rem rgba(10, 10, 10, 0.08);
 }
 
 @media (min-width: 1024px) {
@@ -489,8 +477,8 @@ a {
   .about-redesign-routine-panel,
   .about-redesign-routine-panel img,
   .about-redesign-story-art img,
-  .about-reveal,
-  .about-redesign-scroll[data-motion-ready="true"] .about-reveal,
+  .about-redesign-reveal,
+  .about-redesign-scroll[data-motion-ready="true"] .about-redesign-reveal,
   .about-redesign-scroll[data-motion-ready="true"] .about-redesign-story-card,
   .about-redesign-story-card {
     transition: none;
@@ -498,8 +486,8 @@ a {
   }
 
   .about-redesign-hero-copy,
-  .about-reveal,
-  .about-redesign-scroll[data-motion-ready="true"] .about-reveal,
+  .about-redesign-reveal,
+  .about-redesign-scroll[data-motion-ready="true"] .about-redesign-reveal,
   .about-redesign-scroll[data-motion-ready="true"] .about-redesign-story-card,
   .about-redesign-story-card {
     opacity: 1 !important;

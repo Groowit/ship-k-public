@@ -331,7 +331,7 @@ function isPublicPathOrHttpsUrl(value: string) {
   }
 }
 
-function normalizeEmbeddableVideoUrl(value: string) {
+export function normalizeEmbeddableVideoUrl(value: string) {
   try {
     const url = new URL(value);
 
@@ -340,7 +340,7 @@ function normalizeEmbeddableVideoUrl(value: string) {
       return id ? `https://www.youtube.com/embed/${id}` : value;
     }
 
-    if (url.hostname.includes("youtube.com")) {
+    if (isHostnameOrSubdomain(url.hostname, "youtube.com")) {
       const watchId = url.searchParams.get("v");
       if (watchId) {
         return `https://www.youtube.com/embed/${watchId}`;
@@ -363,17 +363,21 @@ function normalizeEmbeddableVideoUrl(value: string) {
   return value;
 }
 
-function isEmbeddableVideoUrl(value: string) {
+export function isEmbeddableVideoUrl(value: string) {
   try {
     const url = new URL(value);
     return (
       url.protocol === "https:" &&
-      (url.hostname.includes("youtube.com") ||
+      (isHostnameOrSubdomain(url.hostname, "youtube.com") ||
         url.hostname === "player.vimeo.com" ||
-        url.hostname.includes("cloudflarestream.com") ||
+        isHostnameOrSubdomain(url.hostname, "cloudflarestream.com") ||
         url.hostname === "iframe.videodelivery.net")
     );
   } catch {
     return false;
   }
+}
+
+function isHostnameOrSubdomain(hostname: string, domain: string) {
+  return hostname === domain || hostname.endsWith(`.${domain}`);
 }

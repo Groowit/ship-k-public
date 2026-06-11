@@ -192,11 +192,13 @@ export async function listBrandMembershipsForUser(userId: string) {
 export async function getBrandProductForUser({
   userId,
   productId,
-  requireEditable = false
+  requireEditable = false,
+  requireEditor = false
 }: {
   userId: string;
   productId: string;
   requireEditable?: boolean;
+  requireEditor?: boolean;
 }): Promise<BrandProductSummary> {
   const supabase = createSupabasePrivilegedClient();
   const memberships = await listActiveBrandMembershipsForUser(supabase, userId);
@@ -227,7 +229,12 @@ export async function getBrandProductForUser({
     throw new BrandProductNotFoundError();
   }
 
-  const brand = memberships.find((membership) => membership.brandId === assignment.brandId)?.brand;
+  const membership = memberships.find((candidate) => candidate.brandId === assignment.brandId);
+  if (requireEditor && !isEditorBrandRole(membership?.memberRole)) {
+    throw new BrandAccessDeniedError("Brand editor access required");
+  }
+
+  const brand = membership?.brand;
   const product = await getProductById(productId, supabase);
 
   if (!brand || !product) {
@@ -235,6 +242,10 @@ export async function getBrandProductForUser({
   }
 
   return { product, brand, assignment };
+}
+
+function isEditorBrandRole(role: BrandMemberRole | undefined) {
+  return role === "owner" || role === "editor";
 }
 
 export async function updateBrandProductContentForUser({
