@@ -102,6 +102,10 @@ const stepsLayoutOptions: Array<[string, string]> = [
   ["timeline", "세로 타임라인"],
   ["simple_list", "간단 목록"]
 ];
+const imageFitOptions: Array<[string, string]> = [
+  ["cover", "프레임 채우기"],
+  ["contain", "전체 맞춤"]
+];
 const textColorOptions = [
   { value: "default", label: "기본", color: "#0a0a0a" },
   { value: "muted", label: "회색", color: "#6b7280" },
@@ -959,16 +963,24 @@ function SectionInspector({
               />
             </Field>
             {section.sectionType === "image" ? (
-              <SelectField
-                label="비율"
-                value={section.aspectRatio}
-                options={[
-                  ["natural", "원본"],
-                  ["square", "정사각"],
-                  ["video", "와이드"]
-                ]}
-                onChange={(value) => patch({ aspectRatio: value as typeof section.aspectRatio })}
-              />
+              <>
+                <SelectField
+                  label="비율"
+                  value={section.aspectRatio}
+                  options={[
+                    ["natural", "원본"],
+                    ["square", "정사각"],
+                    ["video", "와이드"]
+                  ]}
+                  onChange={(value) => patch({ aspectRatio: value as typeof section.aspectRatio })}
+                />
+                <SelectField
+                  label="사진 맞춤"
+                  value={section.imageFit ?? "cover"}
+                  options={imageFitOptions}
+                  onChange={(imageFit) => patch({ imageFit: imageFit as typeof section.imageFit })}
+                />
+              </>
             ) : (
               <SelectField
                 label="너비"
@@ -1025,6 +1037,12 @@ function SectionInspector({
               ]}
               onChange={(value) => patch({ imagePosition: value as typeof section.imagePosition })}
             />
+            <SelectField
+              label="사진 맞춤"
+              value={section.imageFit ?? "cover"}
+              options={imageFitOptions}
+              onChange={(imageFit) => patch({ imageFit: imageFit as typeof section.imageFit })}
+            />
           </>
         ) : null}
 
@@ -1066,6 +1084,12 @@ function SectionInspector({
               colorValue={section.titleColor ?? "default"}
               onSizeChange={(titleSize) => patch({ titleSize: titleSize as typeof section.titleSize })}
               onColorChange={(titleColor) => patch({ titleColor: titleColor as typeof section.titleColor })}
+            />
+            <SelectField
+              label="사진 맞춤"
+              value={section.imageFit ?? "cover"}
+              options={imageFitOptions}
+              onChange={(imageFit) => patch({ imageFit: imageFit as typeof section.imageFit })}
             />
             <Field label="이미지 대체 텍스트">
               <div className="grid gap-2">
@@ -1483,7 +1507,8 @@ function createInitialSections(product: Product): SectionDraft[] {
       schemaVersion: productDetailSectionSchemaVersion,
       src: product.heroImagePath,
       alt: `${product.name} 이미지`,
-      aspectRatio: "natural"
+      aspectRatio: "natural",
+      imageFit: "cover"
     });
   }
 
@@ -1540,7 +1565,8 @@ function convertLegacyContentBlocks(product: Product): ProductDetailSectionInput
           schemaVersion: productDetailSectionSchemaVersion,
           src: block.imagePath,
           alt: block.alt || product.name,
-          aspectRatio: "natural"
+          aspectRatio: "natural",
+          imageFit: "cover"
         }
       ];
     }
@@ -1556,7 +1582,8 @@ function convertLegacyContentBlocks(product: Product): ProductDetailSectionInput
           eyebrow: block.eyebrow,
           title: block.title,
           body: block.body,
-          imagePosition: block.imagePosition
+          imagePosition: block.imagePosition,
+          imageFit: "cover"
         }
       ];
     }
@@ -1614,7 +1641,8 @@ function createDraftSection(type: SectionType, product: Product): SectionDraft {
       src: product.heroImagePath,
       alt: `${product.name} 이미지`,
       caption: "",
-      aspectRatio: "natural"
+      aspectRatio: "natural",
+      imageFit: "cover"
     };
   }
 
@@ -1638,7 +1666,8 @@ function createDraftSection(type: SectionType, product: Product): SectionDraft {
       eyebrow: "",
       title: "",
       body: "",
-      imagePosition: "left"
+      imagePosition: "left",
+      imageFit: "cover"
     };
   }
 
@@ -1647,7 +1676,8 @@ function createDraftSection(type: SectionType, product: Product): SectionDraft {
       ...base,
       sectionType: "image_group",
       title: "",
-      images: [{ src: product.heroImagePath, alt: product.name, caption: "" }]
+      images: [{ src: product.heroImagePath, alt: product.name, caption: "" }],
+      imageFit: "cover"
     };
   }
 

@@ -47,6 +47,7 @@ const stickerWidths: Record<StickerSize, number> = {
   medium: 94,
   large: 122,
 };
+const minimumStickerGap = 88;
 
 const stickerSlots: Record<StickerVariant, StickerSlot[]> = {
   home: [
@@ -68,9 +69,9 @@ const stickerSlots: Record<StickerVariant, StickerSlot[]> = {
     { top: 1110, side: "right", size: "medium", rotate: 6 },
   ],
   product: [
-    { top: 38, side: "left", size: "medium", rotate: -8 },
     { top: 154, side: "right", size: "large", rotate: 9 },
-    { top: 680, side: "left", size: "small", rotate: 8 },
+    { top: 540, side: "left", size: "medium", rotate: -8 },
+    { top: 780, side: "left", size: "small", rotate: 8 },
     { top: 1110, side: "right", size: "medium", rotate: -5 },
   ],
   auth: [
@@ -106,20 +107,20 @@ export function FloatingStickerLayer() {
 
     const slots = shuffleList(stickerSlots[variant]);
     const stickers = shuffleList(floatingStickerPool);
-    setPlacements(
-      slots.map((slot, index) => {
-        const sticker = stickers[index % stickers.length];
-        const size = slot.size || sticker.size;
+    const nextPlacements = slots.map((slot, index) => {
+      const sticker = stickers[index % stickers.length];
+      const size = slot.size || sticker.size;
 
-        return {
-          ...slot,
-          src: sticker.src,
-          width: stickerWidths[size],
-          rotateWithJitter: slot.rotate + Math.random() * 6 - 3,
-          topWithJitter: Math.max(0, slot.top + Math.random() * 28 - 14),
-        };
-      }),
-    );
+      return {
+        ...slot,
+        src: sticker.src,
+        width: stickerWidths[size],
+        rotateWithJitter: slot.rotate + Math.random() * 6 - 3,
+        topWithJitter: Math.max(0, slot.top + Math.random() * 28 - 14),
+      };
+    });
+
+    setPlacements(spaceStickerPlacements(nextPlacements));
   }, [variant]);
 
   if (!placements.length) {
@@ -199,4 +200,32 @@ function shuffleList<T>(items: readonly T[]) {
     ];
   }
   return shuffled;
+}
+
+function spaceStickerPlacements(placements: StickerPlacement[]) {
+  const spaced = [...placements];
+
+  (["left", "right"] as const).forEach((side) => {
+    const sidePlacements = spaced
+      .map((placement, index) => ({ placement, index }))
+      .filter(({ placement }) => placement.side === side)
+      .sort((a, b) => a.placement.topWithJitter - b.placement.topWithJitter);
+
+    let previousBottom = -Infinity;
+
+    sidePlacements.forEach(({ placement, index }) => {
+      const topWithSpacing = Math.max(
+        placement.topWithJitter,
+        previousBottom + minimumStickerGap,
+      );
+
+      spaced[index] = {
+        ...placement,
+        topWithJitter: topWithSpacing,
+      };
+      previousBottom = topWithSpacing + placement.width;
+    });
+  });
+
+  return spaced;
 }

@@ -175,6 +175,23 @@ a {
   transform: translate(-2px, -2px);
 }
 
+.shipk-commerce-primary {
+  border: 1px solid #d91b5c;
+  border-radius: 999px;
+  background: var(--shipk-pink);
+  color: white;
+  font-weight: 900;
+}
+
+.shipk-commerce-primary:hover,
+.shipk-commerce-primary:focus-visible {
+  background: #f72d72;
+}
+
+.shipk-floating-buy-bar {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
 .shipk-btn-outline-pop {
   border: 2px solid var(--shipk-black);
   border-radius: 999px;
@@ -495,7 +512,8 @@ a {
 
   .shipk-lift,
   .shipk-btn-pop,
-  .shipk-btn-outline-pop {
+  .shipk-btn-outline-pop,
+  .shipk-floating-buy-bar {
     transition: none;
   }
 }

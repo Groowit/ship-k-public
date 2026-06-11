@@ -157,6 +157,10 @@ const stepsLayoutOptions: Array<[string, string]> = [
   ["timeline", "세로 타임라인"],
   ["simple_list", "간단 목록"]
 ];
+const imageFitOptions: Array<[string, string]> = [
+  ["cover", "프레임 채우기"],
+  ["contain", "전체 맞춤"]
+];
 const textColorOptions = [
   { value: "default", label: "기본", color: "#0a0a0a" },
   { value: "muted", label: "회색", color: "#6b7280" },
@@ -1636,16 +1640,24 @@ function DetailSectionInspector({
               />
             </Field>
             {section.sectionType === "image" ? (
-              <SelectField
-                label="비율"
-                value={section.aspectRatio}
-                options={[
-                  ["natural", "원본"],
-                  ["square", "정사각"],
-                  ["video", "와이드"]
-                ]}
-                onChange={(value) => patch({ aspectRatio: value as typeof section.aspectRatio })}
-              />
+              <>
+                <SelectField
+                  label="비율"
+                  value={section.aspectRatio}
+                  options={[
+                    ["natural", "원본"],
+                    ["square", "정사각"],
+                    ["video", "와이드"]
+                  ]}
+                  onChange={(value) => patch({ aspectRatio: value as typeof section.aspectRatio })}
+                />
+                <SelectField
+                  label="사진 맞춤"
+                  value={section.imageFit ?? "cover"}
+                  options={imageFitOptions}
+                  onChange={(imageFit) => patch({ imageFit: imageFit as typeof section.imageFit })}
+                />
+              </>
             ) : (
               <SelectField
                 label="너비"
@@ -1702,6 +1714,12 @@ function DetailSectionInspector({
               ]}
               onChange={(value) => patch({ imagePosition: value as typeof section.imagePosition })}
             />
+            <SelectField
+              label="사진 맞춤"
+              value={section.imageFit ?? "cover"}
+              options={imageFitOptions}
+              onChange={(imageFit) => patch({ imageFit: imageFit as typeof section.imageFit })}
+            />
           </>
         ) : null}
 
@@ -1743,6 +1761,12 @@ function DetailSectionInspector({
               colorValue={section.titleColor ?? "default"}
               onSizeChange={(titleSize) => patch({ titleSize: titleSize as typeof section.titleSize })}
               onColorChange={(titleColor) => patch({ titleColor: titleColor as typeof section.titleColor })}
+            />
+            <SelectField
+              label="사진 맞춤"
+              value={section.imageFit ?? "cover"}
+              options={imageFitOptions}
+              onChange={(imageFit) => patch({ imageFit: imageFit as typeof section.imageFit })}
             />
             <Field label="이미지 대체 텍스트">
               <div className="grid gap-2">
@@ -2625,7 +2649,8 @@ function createDraftSection(type: SectionType, product: Product): DetailSectionD
       src: product.heroImagePath,
       alt: product.name,
       caption: "",
-      aspectRatio: "natural"
+      aspectRatio: "natural",
+      imageFit: "cover"
     };
   }
 
@@ -2653,7 +2678,8 @@ function createDraftSection(type: SectionType, product: Product): DetailSectionD
       titleSize: "large",
       titleColor: "default",
       bodySize: "base",
-      bodyColor: "muted"
+      bodyColor: "muted",
+      imageFit: "cover"
     };
   }
 
@@ -2664,7 +2690,8 @@ function createDraftSection(type: SectionType, product: Product): DetailSectionD
       title: "이미지 갤러리",
       images: [{ src: product.heroImagePath, alt: product.name, caption: "" }],
       titleSize: "large",
-      titleColor: "default"
+      titleColor: "default",
+      imageFit: "cover"
     };
   }
 

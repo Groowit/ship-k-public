@@ -21,6 +21,7 @@ const alignSchema = z.enum(["left", "center", "right"]).default("left");
 const headingLevelSchema = z.enum(["h2", "h3"]).default("h2");
 const imagePositionSchema = z.enum(["left", "right"]).default("left");
 const imageAspectRatioSchema = z.enum(["natural", "square", "video"]).default("natural");
+const imageFitSchema = z.enum(["cover", "contain"]).default("cover");
 const longImageWidthSchema = z.enum(["default", "wide", "full"]).default("default");
 const noticeToneSchema = z.enum(["info", "tip", "warning"]).default("info");
 const stepsLayoutSchema = z.enum(["split_cards", "full_cards", "timeline", "simple_list"]).default("split_cards");
@@ -102,7 +103,8 @@ const imageSectionSchema = sectionBaseSchema
     src: publicPathOrHttpsUrlSchema,
     alt: safeText(180),
     caption: optionalText(240),
-    aspectRatio: imageAspectRatioSchema
+    aspectRatio: imageAspectRatioSchema,
+    imageFit: imageFitSchema
   })
   .strict();
 
@@ -128,7 +130,8 @@ const imageTextSectionSchema = sectionBaseSchema
     titleSize: headingFontSizeSchema.optional(),
     titleColor: textColorSchema.optional(),
     bodySize: bodyFontSizeSchema.optional(),
-    bodyColor: textColorSchema.optional()
+    bodyColor: textColorSchema.optional(),
+    imageFit: imageFitSchema
   })
   .strict();
 
@@ -138,7 +141,8 @@ const imageGroupSectionSchema = sectionBaseSchema
     title: optionalText(140),
     images: z.array(imageItemSchema).min(1).max(8),
     titleSize: headingFontSizeSchema.optional(),
-    titleColor: textColorSchema.optional()
+    titleColor: textColorSchema.optional(),
+    imageFit: imageFitSchema
   })
   .strict();
 
@@ -313,7 +317,8 @@ export function createDefaultDetailSections({
       schemaVersion: productDetailSectionSchemaVersion,
       src: heroImagePath,
       alt: `${productName} 상세 이미지`,
-      aspectRatio: "natural"
+      aspectRatio: "natural",
+      imageFit: "cover"
     }
   ];
 }

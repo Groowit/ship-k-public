@@ -8,6 +8,15 @@ import type { Product, ProductContentBlock } from "@/lib/products";
 import type { ProductDetailSection } from "@/lib/product-detail-sections";
 import { cn } from "@/lib/utils";
 
+type DetailImageFit = "cover" | "contain";
+
+function getDetailImageFitClass(
+  imageFit: DetailImageFit | undefined,
+  containPaddingClass: string
+) {
+  return imageFit === "contain" ? cn("object-contain", containPaddingClass) : "object-cover";
+}
+
 export function ProductDetailSectionsRenderer({ product }: { product: Product }) {
   return (
     <section className="container grid gap-12 py-12">
@@ -80,7 +89,7 @@ function CanonicalSection({
           height={2600}
           {...getImageOptimizationProps(section.src)}
           sizes="(min-width: 1180px) 1080px, 100vw"
-          className="h-auto w-full rounded-md border-2 border-black bg-white object-contain"
+          className="h-auto w-full rounded-lg bg-white object-contain"
         />
         {section.caption ? (
           <figcaption className="text-center text-sm text-muted-foreground">
@@ -96,7 +105,7 @@ function CanonicalSection({
       <div className="grid items-center gap-6 md:grid-cols-2">
         <div
           className={cn(
-            "relative aspect-square overflow-hidden rounded-md border-2 border-black bg-white",
+            "relative aspect-square overflow-hidden rounded-lg bg-white",
             section.imagePosition === "right" && "md:order-2"
           )}
         >
@@ -105,7 +114,7 @@ function CanonicalSection({
             alt={section.alt}
             fill
             {...getImageOptimizationProps(section.src)}
-            className="object-contain p-6"
+            className={getDetailImageFitClass(section.imageFit, "p-6")}
           />
         </div>
         <div>
@@ -154,13 +163,13 @@ function CanonicalSection({
         <div className="grid gap-4 md:grid-cols-2">
           {section.images.map((image, index) => (
             <figure key={`${image.src}-${index}`} className="grid gap-2">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-md border-2 border-black bg-white">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-white">
                 <Image
                   src={image.src}
                   alt={image.alt}
                   fill
                   {...getImageOptimizationProps(image.src)}
-                  className="object-contain p-4"
+                  className={getDetailImageFitClass(section.imageFit, "p-4")}
                 />
               </div>
               {image.caption ? (
@@ -177,7 +186,7 @@ function CanonicalSection({
     return (
       <div className="grid gap-4">
         {section.title ? <h2 className="shipk-heading text-4xl">{section.title}</h2> : null}
-        <div className="overflow-hidden rounded-md border-2 border-black bg-foreground">
+        <div className="overflow-hidden rounded-lg bg-foreground">
           <div className="aspect-video">
             <iframe
               src={section.url}
@@ -208,7 +217,7 @@ function CanonicalSection({
         </h2>
         <div className="grid gap-3 md:grid-cols-2">
           {section.items.map((item, index) => (
-            <div key={`${item.label}-${index}`} className="rounded-md border-2 border-black bg-white p-4">
+            <div key={`${item.label}-${index}`} className="rounded-lg border border-zinc-200 bg-white p-4">
               <p className="font-black">{item.label}</p>
               <p
                 className={cn(
@@ -231,7 +240,7 @@ function CanonicalSection({
   }
 
   return (
-    <div className={cn("rounded-md border-2 border-black p-5", getNoticeToneClass(section.tone))}>
+    <div className={cn("rounded-lg border border-zinc-200 p-5", getNoticeToneClass(section.tone))}>
       <h2
         className={cn(
           "shipk-heading",
@@ -266,7 +275,7 @@ function ImageSection({
       <figure className="grid gap-3">
         <div
           className={cn(
-            "relative overflow-hidden rounded-md border-2 border-black bg-white",
+            "relative overflow-hidden rounded-lg bg-white",
             section.aspectRatio === "square" ? "aspect-square" : "aspect-video"
           )}
         >
@@ -275,7 +284,7 @@ function ImageSection({
             alt={section.alt}
             fill
             {...getImageOptimizationProps(section.src)}
-            className="object-contain p-6"
+            className={getDetailImageFitClass(section.imageFit, "p-6")}
           />
         </div>
         {section.caption ? (
@@ -294,7 +303,10 @@ function ImageSection({
         height={900}
         {...getImageOptimizationProps(section.src)}
         sizes="(min-width: 1180px) 1080px, 100vw"
-        className="h-auto w-full rounded-md border-2 border-black bg-white object-contain p-4"
+        className={cn(
+          "h-auto w-full rounded-lg bg-white",
+          getDetailImageFitClass(section.imageFit, "p-4")
+        )}
       />
       {section.caption ? (
         <figcaption className="text-sm text-muted-foreground">{section.caption}</figcaption>
@@ -328,7 +340,7 @@ function StepsSection({ section }: { section: Extract<ProductDetailSection, { se
     return (
       <div className="grid gap-5">
         <StepsHeading section={section} />
-        <ol className="divide-y-2 divide-black border-y-2 border-black">
+        <ol className="divide-y divide-zinc-200 border-y border-zinc-200">
           {section.items.map((step, index) => (
             <li key={`${step.title}-${index}`} className="grid gap-3 py-4 sm:grid-cols-[4rem_1fr]">
               <span className="font-brand-round text-3xl leading-none text-[#ff3d7f]">
@@ -396,15 +408,15 @@ function StepTimeline({ section }: { section: Extract<ProductDetailSection, { se
           <div className="relative flex justify-center">
             {index !== lastIndex ? (
               <span
-                className="absolute bottom-0 top-11 w-0.5 rounded-full bg-black"
+                className="absolute bottom-0 top-11 w-px rounded-full bg-zinc-300"
                 aria-hidden="true"
               />
             ) : null}
-            <span className="relative z-10 flex h-11 w-11 items-center justify-center rounded-md border-2 border-black bg-[#ff3d7f] font-brand-round text-2xl leading-none text-white">
+            <span className="relative z-10 flex h-11 w-11 items-center justify-center rounded-lg bg-[#ff3d7f] font-brand-round text-2xl leading-none text-white">
               {String(index + 1).padStart(2, "0")}
             </span>
           </div>
-          <div className="rounded-md border-2 border-black bg-white p-4 sm:p-5">
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 sm:p-5">
             <span className="block text-lg font-black leading-snug">{step.title}</span>
             <span
               className={cn(
@@ -432,7 +444,7 @@ function StepCards({
   return (
     <ol className={cn("grid gap-3", className)}>
       {section.items.map((step, index) => (
-        <li key={`${step.title}-${index}`} className="rounded-md border-2 border-black bg-white p-4">
+        <li key={`${step.title}-${index}`} className="rounded-lg border border-zinc-200 bg-white p-4">
           <span className="font-brand-round text-4xl leading-none text-[#ff3d7f]">
             {String(index + 1).padStart(2, "0")}
           </span>
@@ -514,7 +526,7 @@ function IncludedItemsSection({
           product.includedItems.map((item, index) => (
             <div
               key={item.id}
-              className="grid gap-3 rounded-md border-2 border-black bg-white p-4 sm:grid-cols-[3rem_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-[3rem_1fr_auto]"
             >
               <span className="font-brand-round text-3xl leading-none text-[#ff3d7f]">
                 {String(index + 1).padStart(2, "0")}
@@ -526,13 +538,13 @@ function IncludedItemsSection({
                   {item.description}
                 </span>
               </span>
-              <span className="h-fit rounded-full border-2 border-black bg-[#fff8f0] px-3 py-1 text-xs font-black text-muted-foreground">
+              <span className="h-fit rounded-full border border-zinc-200 bg-[#fff8f0] px-3 py-1 text-xs font-black text-muted-foreground">
                 {product.brandName}
               </span>
             </div>
           ))
         ) : (
-          <p className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
+          <p className="rounded-lg border border-zinc-200 bg-white p-4 text-sm text-muted-foreground">
             Included items will appear here.
           </p>
         )}
@@ -562,7 +574,7 @@ function RoutineStepsSection({
       <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {product.routineSteps.length ? (
           product.routineSteps.map((step, index) => (
-            <li key={step.id} className="rounded-md border-2 border-black bg-white p-4">
+            <li key={step.id} className="rounded-lg border border-zinc-200 bg-white p-4">
               <span className="font-brand-round text-4xl leading-none text-[#ff3d7f]">
                 {String(index + 1).padStart(2, "0")}
               </span>
@@ -571,7 +583,7 @@ function RoutineStepsSection({
             </li>
           ))
         ) : (
-          <li className="rounded-md border-2 border-black bg-white p-4 text-sm text-muted-foreground">
+          <li className="rounded-lg border border-zinc-200 bg-white p-4 text-sm text-muted-foreground">
             Use steps will appear here.
           </li>
         )}
@@ -582,8 +594,8 @@ function RoutineStepsSection({
 
 function TutorialRoutinePanel() {
   return (
-    <div className="grid gap-5 rounded-md border-2 border-black bg-[#c8f26c] p-5 md:grid-cols-[auto_1fr_auto] md:items-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-md border-2 border-black bg-white">
+    <div className="grid gap-5 rounded-lg bg-[#c8f26c] p-5 md:grid-cols-[auto_1fr_auto] md:items-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-zinc-200 bg-white">
         <PlayCircle className="h-8 w-8" aria-hidden="true" />
       </div>
       <div>
@@ -602,13 +614,13 @@ function TutorialRoutinePanel() {
 function LegacyContentBlock({ block }: { block: ProductContentBlock }) {
   if (block.type === "image") {
     return (
-      <div className="relative aspect-[16/9] overflow-hidden rounded-md border-2 border-black bg-white">
+      <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-white">
         <Image
           src={block.imagePath}
           alt={block.alt}
           fill
           {...getImageOptimizationProps(block.imagePath)}
-          className="object-contain p-6"
+          className="object-cover"
         />
       </div>
     );
@@ -630,7 +642,7 @@ function LegacyContentBlock({ block }: { block: ProductContentBlock }) {
     <div className="grid items-center gap-6 md:grid-cols-2">
       <div
         className={cn(
-          "relative aspect-square overflow-hidden rounded-md border-2 border-black bg-white",
+          "relative aspect-square overflow-hidden rounded-lg bg-white",
           block.imagePosition === "right" && "md:order-2"
         )}
       >
@@ -639,7 +651,7 @@ function LegacyContentBlock({ block }: { block: ProductContentBlock }) {
           alt={block.alt}
           fill
           {...getImageOptimizationProps(block.imagePath)}
-          className="object-contain p-6"
+          className="object-cover"
         />
       </div>
       <div>

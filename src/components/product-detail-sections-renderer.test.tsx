@@ -42,6 +42,7 @@ describe("ProductDetailSectionsRenderer", () => {
               src: "https://example.com/detail.png",
               alt: "Remote detail image",
               aspectRatio: "square",
+              imageFit: "cover",
               caption: undefined
             }
           ]
@@ -53,5 +54,74 @@ describe("ProductDetailSectionsRenderer", () => {
       "data-unoptimized",
       "true"
     );
+  });
+
+  it("uses rounded matched frames and cover fit for photo groups", () => {
+    render(
+      <ProductDetailSectionsRenderer
+        product={{
+          ...launchCatalogProducts[0],
+          detailSections: [
+            {
+              id: "gallery-section",
+              sortOrder: 1,
+              sectionType: "image_group",
+              schemaVersion: 1,
+              title: "Gallery",
+              imageFit: "cover",
+              images: [
+                {
+                  src: "/images/products/hydration-skincare-set.png",
+                  alt: "First gallery image",
+                  caption: undefined
+                },
+                {
+                  src: "/images/products/glow-ampoule-kit.png",
+                  alt: "Second gallery image",
+                  caption: undefined
+                }
+              ]
+            }
+          ]
+        }}
+      />
+    );
+
+    const firstImage = screen.getByAltText("First gallery image");
+    const secondImage = screen.getByAltText("Second gallery image");
+
+    expect(firstImage).toHaveClass("object-cover");
+    expect(secondImage).toHaveClass("object-cover");
+    expect(firstImage.parentElement).toHaveClass("aspect-[4/3]", "overflow-hidden", "rounded-lg");
+  });
+
+  it("can preserve the full photo with contain fit inside rounded frames", () => {
+    render(
+      <ProductDetailSectionsRenderer
+        product={{
+          ...launchCatalogProducts[0],
+          detailSections: [
+            {
+              id: "image-text-section",
+              sortOrder: 1,
+              sectionType: "image_text",
+              schemaVersion: 1,
+              src: "/images/products/hydration-skincare-set.png",
+              alt: "Contained product image",
+              eyebrow: undefined,
+              title: "Full image",
+              body: "The image should stay fully visible.",
+              imagePosition: "left",
+              imageFit: "contain"
+            }
+          ]
+        }}
+      />
+    );
+
+    const image = screen.getByAltText("Contained product image");
+
+    expect(image).toHaveClass("object-contain", "p-6");
+    expect(image.parentElement).toHaveClass("aspect-square", "overflow-hidden", "rounded-lg");
   });
 });
