@@ -34,23 +34,34 @@ describe("FloatingStickerLayer", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps product detail left-side stickers separated in the page margin", () => {
+  it("moves the lower product detail sticker to the right page margin", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5);
 
     render(<FloatingStickerLayer />);
 
-    const leftStickerRects = screen
+    const stickerStyles = screen
       .getAllByTestId("floating-sticker")
-      .map((sticker) => sticker.getAttribute("style") ?? "")
+      .map((sticker) => sticker.getAttribute("style") ?? "");
+    const leftStickerRects = stickerStyles
       .filter((style) => style.includes("left: max"))
+      .map((style) => ({
+        top: readPixelStyle(style, "top"),
+        width: readPixelStyle(style, "width")
+      }));
+    const rightStickerRects = stickerStyles
+      .filter((style) => style.includes("right: max"))
       .map((style) => ({
         top: readPixelStyle(style, "top"),
         width: readPixelStyle(style, "width")
       }))
       .sort((a, b) => a.top - b.top);
 
-    expect(leftStickerRects).toHaveLength(2);
-    expect(leftStickerRects[1].top - (leftStickerRects[0].top + leftStickerRects[0].width))
+    expect(leftStickerRects).toHaveLength(1);
+    expect(rightStickerRects).toHaveLength(3);
+    expect(rightStickerRects[1].top).toBe(780);
+    expect(rightStickerRects[1].top - (rightStickerRects[0].top + rightStickerRects[0].width))
+      .toBeGreaterThanOrEqual(88);
+    expect(rightStickerRects[2].top - (rightStickerRects[1].top + rightStickerRects[1].width))
       .toBeGreaterThanOrEqual(88);
   });
 });

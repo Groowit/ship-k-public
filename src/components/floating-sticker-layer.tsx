@@ -71,7 +71,7 @@ const stickerSlots: Record<StickerVariant, StickerSlot[]> = {
   product: [
     { top: 154, side: "right", size: "large", rotate: 9 },
     { top: 540, side: "left", size: "medium", rotate: -8 },
-    { top: 780, side: "left", size: "small", rotate: 8 },
+    { top: 780, side: "right", size: "small", rotate: 8 },
     { top: 1110, side: "right", size: "medium", rotate: -5 },
   ],
   auth: [

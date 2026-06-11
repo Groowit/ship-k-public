@@ -124,4 +124,36 @@ describe("ProductDetailSectionsRenderer", () => {
     expect(image).toHaveClass("object-contain", "p-6");
     expect(image.parentElement).toHaveClass("aspect-square", "overflow-hidden", "rounded-lg");
   });
+
+  it("lets default long detail images span the page with only minimal side margins", () => {
+    render(
+      <ProductDetailSectionsRenderer
+        product={{
+          ...launchCatalogProducts[0],
+          detailSections: [
+            {
+              id: "long-detail-section",
+              sortOrder: 1,
+              sectionType: "long_detail_image",
+              schemaVersion: 1,
+              src: "/catalog-assets/detail/glass-skin-lifestyle.png",
+              alt: "Long detail image",
+              caption: undefined,
+              maxWidth: "default"
+            }
+          ]
+        }}
+      />
+    );
+
+    const image = screen.getByAltText("Long detail image");
+
+    expect(image).toHaveAttribute("sizes", "100vw");
+    expect(image.parentElement).toHaveClass(
+      "left-1/2",
+      "w-[calc(100vw-2rem)]",
+      "max-w-none",
+      "-translate-x-1/2"
+    );
+  });
 });

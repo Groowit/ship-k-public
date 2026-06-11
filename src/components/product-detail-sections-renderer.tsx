@@ -88,7 +88,7 @@ function CanonicalSection({
           width={1200}
           height={2600}
           {...getImageOptimizationProps(section.src)}
-          sizes="(min-width: 1180px) 1080px, 100vw"
+          sizes="100vw"
           className="h-auto w-full rounded-lg bg-white object-contain"
         />
         {section.caption ? (
@@ -784,15 +784,13 @@ function getAlignClass(align: "left" | "center" | "right") {
 }
 
 function getLongImageWidthClass(maxWidth: "default" | "wide" | "full") {
-  if (maxWidth === "full") {
-    return "max-w-none";
-  }
+  const pageWidthClass = "relative left-1/2 w-[calc(100vw-2rem)] max-w-none -translate-x-1/2";
 
-  if (maxWidth === "wide") {
-    return "max-w-6xl";
-  }
-
-  return "max-w-4xl";
+  return {
+    default: pageWidthClass,
+    wide: pageWidthClass,
+    full: pageWidthClass
+  }[maxWidth];
 }
 
 function getNoticeToneClass(tone: "info" | "tip" | "warning") {
