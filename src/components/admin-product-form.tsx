@@ -280,21 +280,25 @@ export function AdminProductEditor({
     }
   }
 
-  async function archiveCurrentProduct() {
+  async function hideCurrentProduct() {
     const productToArchive = currentProduct ?? product;
 
-    if (!productToArchive || !window.confirm("이 상품을 보관 처리할까요? 공개 상품 목록에서는 숨겨집니다.")) {
+    if (!productToArchive || !window.confirm("이 상품을 숨길까요? 공개 상품 목록에서는 숨겨집니다.")) {
       return;
     }
 
     setSaveState("saving");
     setMessage(null);
-    const response = await fetch(`/api/admin/products/${productToArchive.id}`, { method: "DELETE" });
+    const response = await fetch(`/api/admin/products/${productToArchive.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "archive" })
+    });
     const body = await response.json();
 
     if (!response.ok) {
       setSaveState("error");
-      setMessage(body.error ?? "상품을 보관 처리하지 못했습니다.");
+      setMessage(body.error ?? "상품을 숨기지 못했습니다.");
       return;
     }
 
@@ -341,7 +345,7 @@ export function AdminProductEditor({
           onPublish={() => saveProduct("active")}
           onPreview={() => setPreviewTab("preview")}
           onBackToEdit={() => setPreviewTab("edit")}
-          onArchive={archiveCurrentProduct}
+          onArchive={hideCurrentProduct}
           onCancel={() => router.push("/admin/products")}
         />
       </div>
@@ -797,7 +801,7 @@ export function AdminProductEditor({
         onPublish={() => saveProduct("active")}
         onPreview={() => setPreviewTab("preview")}
         onBackToEdit={() => setPreviewTab("edit")}
-        onArchive={archiveCurrentProduct}
+        onArchive={hideCurrentProduct}
         onCancel={() => router.push("/admin/products")}
       />
     </div>
@@ -875,9 +879,9 @@ function AdminProductActionBar({
             {publishLabel}
           </Button>
           {canArchive ? (
-            <Button type="button" variant="destructive" disabled={saveState === "saving"} onClick={onArchive}>
+            <Button type="button" variant="outline" disabled={saveState === "saving"} onClick={onArchive}>
               <Archive className="h-4 w-4" aria-hidden="true" />
-              보관 처리
+              숨기기
             </Button>
           ) : null}
           <Button type="button" variant="outline" onClick={onCancel}>

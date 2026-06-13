@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   bindCheckoutSessionPayment,
   createPaidOrder,
+  deleteProduct,
   createSecureRandomToken,
   findCheckoutSessionForCapture,
   findProductBySlug,
@@ -471,6 +472,50 @@ describe("Supabase product mapping", () => {
 
     expect(() => mapProductRow(row)).not.toThrow();
     expect(mapProductRow(row).heroImagePath).toBe(row.hero_image_path);
+  });
+});
+
+describe("admin product deletion", () => {
+  it("hard deletes a product after detaching order history and checkout sessions", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+
+      if (call.table === "order_items" && call.operation === "update") {
+        return { error: null };
+      }
+
+      if (call.table === "checkout_sessions" && call.operation === "delete") {
+        return { error: null };
+      }
+
+      if (call.table === "products" && call.operation === "delete") {
+        return { error: null };
+      }
+
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await deleteProduct("product_1");
+
+    expect(calls).toEqual([
+      expect.objectContaining({
+        table: "order_items",
+        operation: "update",
+        values: { product_id: null, product_option_id: null },
+        filters: [{ column: "product_id", value: "product_1" }]
+      }),
+      expect.objectContaining({
+        table: "checkout_sessions",
+        operation: "delete",
+        filters: [{ column: "product_id", value: "product_1" }]
+      }),
+      expect.objectContaining({
+        table: "products",
+        operation: "delete",
+        filters: [{ column: "id", value: "product_1" }]
+      })
+    ]);
   });
 });
 

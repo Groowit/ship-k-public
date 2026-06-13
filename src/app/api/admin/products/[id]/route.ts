@@ -3,7 +3,7 @@ import { AdminRequiredError, AuthRequiredError, requireCurrentAdmin } from "@/li
 import { adminProductPayloadSchema } from "@/lib/admin-product-input";
 import { syncProductBrandAssignmentForProduct } from "@/lib/brand-store";
 import { toCents } from "@/lib/commerce";
-import { archiveProduct, updateProduct } from "@/lib/commerce-store";
+import { archiveProduct, deleteProduct, updateProduct } from "@/lib/commerce-store";
 import { assertSameOriginRequest, UnsafeRequestOriginError } from "@/lib/request-guard";
 
 export async function PATCH(
@@ -73,7 +73,7 @@ function hasOwnKey(value: unknown, key: string) {
   return Boolean(value && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key));
 }
 
-export async function DELETE(
+export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -81,6 +81,12 @@ export async function DELETE(
     assertSameOriginRequest(request);
     await requireCurrentAdmin();
     const { id } = await params;
+    const body = await request.json();
+
+    if (!isProductAction(body, "archive")) {
+      return NextResponse.json({ error: "Unsupported product action" }, { status: 400 });
+    }
+
     await archiveProduct(id);
 
     return NextResponse.json({ ok: true });
@@ -93,8 +99,43 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not archive product" },
+      { error: error instanceof Error ? error.message : "Could not update product action" },
       { status: 400 }
     );
   }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    assertSameOriginRequest(request);
+    await requireCurrentAdmin();
+    const { id } = await params;
+    await deleteProduct(id);
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (
+      error instanceof AuthRequiredError ||
+      error instanceof AdminRequiredError ||
+      error instanceof UnsafeRequestOriginError
+    ) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Could not delete product" },
+      { status: 400 }
+    );
+  }
+}
+
+function isProductAction(value: unknown, action: string) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "action" in value &&
+      (value as { action?: unknown }).action === action
+  );
 }

@@ -107,6 +107,10 @@ test("set detail shows media fallback, items, and use steps", async ({ page }) =
   await page.goto("/products/skincare-starter-set");
 
   await expect(page.getByAltText("Skincare Starter Set intro image")).toBeVisible();
+  await page.getByRole("button", { name: "View larger: Main image" }).click();
+  await expect(page.getByRole("dialog", { name: "Main image" })).toBeVisible();
+  await page.getByRole("button", { name: "Close media" }).click();
+  await expect(page.getByRole("dialog", { name: "Main image" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Everything inside the set" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Step-by-step order" })).toBeVisible();
   await expect(page.getByText("Cloud Rice Foam Cleanser")).toBeVisible();

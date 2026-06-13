@@ -883,6 +883,37 @@ export async function archiveProduct(productId: string) {
   }
 }
 
+export async function deleteProduct(productId: string) {
+  const supabase = createSupabasePrivilegedClient();
+
+  const { error: orderItemsError } = await supabase
+    .from("order_items")
+    .update({ product_id: null, product_option_id: null })
+    .eq("product_id", productId);
+
+  if (orderItemsError) {
+    throw new Error(`Could not detach product order history: ${orderItemsError.message}`);
+  }
+
+  const { error: checkoutSessionsError } = await supabase
+    .from("checkout_sessions")
+    .delete()
+    .eq("product_id", productId);
+
+  if (checkoutSessionsError) {
+    throw new Error(`Could not delete product checkout sessions: ${checkoutSessionsError.message}`);
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", productId);
+
+  if (error) {
+    throw new Error(`Could not delete product: ${error.message}`);
+  }
+}
+
 function buildProductMutation(
   input: MutableProductInput,
   categoryId: string,

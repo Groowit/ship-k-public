@@ -3,9 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, Droplets, Palette } from "lucide-react";
 import { HomeFeatureBanner } from "@/components/home-feature-banner";
+import type { HomeBannerSlide } from "@/components/home-feature-banner";
 import { ProductCard } from "@/components/product-card";
 import { getProductVisual } from "@/lib/brand-visuals";
 import { listActiveProducts } from "@/lib/commerce-store";
+import { listHomeBanners } from "@/lib/home-banners";
 import { getHomeMerchandisingProducts } from "@/lib/home-merchandising";
 import { getImageOptimizationProps } from "@/lib/image-path";
 import { getProductPriceLabel, Product } from "@/lib/products";
@@ -13,30 +15,92 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+const marqueeMessages = [
+  "THE GOOD K-BEAUTY EDIT",
+  "PICKS WITH A POINT OF VIEW",
+  "NO OVERTHINKING, JUST GOOD BEAUTY",
+  "KOREAN BRANDS, BETTER CONTEXT",
+  "YOUR NEXT BEAUTY FIND",
+  "CURATED TO FEEL EASY",
+  "LESS GUESSWORK, MORE GLOW",
+  "FROM KOREA, EDITED FOR YOU"
+] as const;
+
 export default async function HomePage() {
-  const products = await listActiveProducts();
+  const [products, homeBanners] = await Promise.all([listActiveProducts(), listHomeBanners()]);
   const featuredProducts = products.slice(0, 6);
   const { trendingProducts, popularProducts } = getHomeMerchandisingProducts(products);
+  const bannerSlides = homeBanners.length
+    ? homeBanners.map((banner): HomeBannerSlide => ({
+        id: banner.id,
+        topic: banner.topic,
+        headline: banner.headline,
+        description: banner.description,
+        backgroundImagePath: banner.backgroundImagePath,
+        sideImagePath: banner.sideImagePath,
+        linkPath: banner.linkPath,
+        fontKey: banner.fontKey,
+        textColor: banner.textColor,
+        topicTextColor: banner.topicTextColor,
+        headlineTextColor: banner.headlineTextColor,
+        descriptionTextColor: banner.descriptionTextColor
+      }))
+    : getProductFallbackBannerSlides(featuredProducts);
 
   return (
     <div className="overflow-hidden">
-      <HomeFeatureBanner products={featuredProducts} />
+      <HomeFeatureBanner banners={bannerSlides} />
       <BestSellerSection products={trendingProducts} />
 
       <div className="shipk-marquee">
         <div className="shipk-marquee-track" aria-hidden="true">
-          <span>★ TRENDING NOW IN SEOUL</span>
-          <span>♥ DIRECT FROM SEOUL</span>
-          <span>♥ BUILD YOUR SET</span>
-          <span>★ TRENDING NOW IN SEOUL</span>
-          <span>♥ DIRECT FROM SEOUL</span>
-          <span>♥ BUILD YOUR SET</span>
+          {Array.from({ length: 2 }).map((_, sequenceIndex) => (
+            <div className="shipk-marquee-sequence" key={`marquee-sequence-${sequenceIndex}`}>
+              {marqueeMessages.map((message) => (
+                <span key={`${sequenceIndex}-${message}`}>{message}</span>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
 
       <PopularProductsSection products={popularProducts} />
     </div>
   );
+}
+
+function getProductFallbackBannerSlides(products: Product[]): HomeBannerSlide[] {
+  const fallbackThemes = [
+    {
+      topic: "TODAY'S FOCUS",
+      headline: "Build a dewy set in one day"
+    },
+    {
+      topic: "SEOUL TREND",
+      headline: "Stage-bright idol makeup points"
+    },
+    {
+      topic: "SKINCARE",
+      headline: "Start skin prep the easy way"
+    }
+  ] as const;
+
+  return products.slice(0, 3).map((product, index) => {
+    const theme = fallbackThemes[index % fallbackThemes.length];
+    return {
+      id: product.id,
+      topic: theme.topic,
+      headline: theme.headline,
+      description: `${product.name} · ${product.shortDescription}`,
+      sideImagePath: product.heroImagePath,
+      linkPath: `/products/${product.slug}`,
+      fontKey: "black-sans",
+      textColor: "black",
+      topicTextColor: "black",
+      headlineTextColor: "black",
+      descriptionTextColor: "black"
+    };
+  });
 }
 
 function BestSellerSection({ products }: { products: Product[] }) {

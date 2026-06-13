@@ -28,6 +28,35 @@ describe("visual effect guardrails", () => {
     expect(layoutSource).toContain('data-scroll-behavior="smooth"');
   });
 
+  it("keeps the homepage marquee as duplicated full-width editorial sequences", () => {
+    const homeSource = readFileSync(join(process.cwd(), "src/app/page.tsx"), "utf8");
+    const globalsSource = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const editorialHooks = [
+      "THE GOOD K-BEAUTY EDIT",
+      "PICKS WITH A POINT OF VIEW",
+      "NO OVERTHINKING, JUST GOOD BEAUTY",
+      "KOREAN BRANDS, BETTER CONTEXT",
+      "YOUR NEXT BEAUTY FIND",
+      "CURATED TO FEEL EASY",
+      "LESS GUESSWORK, MORE GLOW",
+      "FROM KOREA, EDITED FOR YOU"
+    ];
+
+    const missingHooks = editorialHooks.filter((hook) => !homeSource.includes(hook));
+
+    expect(missingHooks).toEqual([]);
+    expect(homeSource).toContain("marqueeMessages");
+    expect(homeSource).toContain("shipk-marquee-sequence");
+    expect(homeSource).toContain("Array.from({ length: 2 })");
+    expect(globalsSource).toContain(".shipk-marquee-sequence");
+    expect(globalsSource).toContain("border-top: 3px solid var(--shipk-black);");
+    expect(globalsSource).toContain("border-bottom: 3px solid var(--shipk-black);");
+    expect(globalsSource).toContain("flex-shrink: 0");
+    expect(globalsSource).toContain("min-width: 100vw");
+    expect(globalsSource).toContain("width: max-content");
+    expect(globalsSource).toContain("animation: shipk-marquee-scroll 38s linear infinite;");
+  });
+
   it("keeps account auth forms free of pop-shadow button styles", () => {
     const authFormSource = readFileSync(
       join(process.cwd(), "src/components/auth-form.tsx"),

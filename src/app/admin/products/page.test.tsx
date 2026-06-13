@@ -1,11 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type React from "react";
 import AdminProductsPage from "./page";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
 import { listProducts } from "@/lib/commerce-store";
 import type { Product } from "@/lib/products";
+
+const refresh = vi.fn();
 
 vi.mock("next/image", () => ({
   default: ({
@@ -30,7 +32,18 @@ vi.mock("@/lib/commerce-store", () => ({
   listProducts: vi.fn()
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh
+  })
+}));
+
 describe("AdminProductsPage", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("does not load products when admin access is denied", async () => {
     vi.mocked(requireAdminPageAccess).mockResolvedValue(false);
 
@@ -55,6 +68,50 @@ describe("AdminProductsPage", () => {
       "href",
       "/admin/products/product_1/preview"
     );
+  });
+
+  it("deletes a product from the list after admin confirmation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.mocked(requireAdminPageAccess).mockResolvedValue(true);
+    vi.mocked(listProducts).mockResolvedValue([productFixture()]);
+
+    render(await AdminProductsPage({ searchParams: Promise.resolve({}) }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Glow Set 삭제" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/admin/products/product_1", { method: "DELETE" })
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides a product from the list without hard deleting it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.mocked(requireAdminPageAccess).mockResolvedValue(true);
+    vi.mocked(listProducts).mockResolvedValue([productFixture()]);
+
+    render(await AdminProductsPage({ searchParams: Promise.resolve({}) }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Glow Set 숨기기" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/admin/products/product_1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "archive" })
+      })
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it("renders remote product thumbnails without the Next.js optimizer", async () => {

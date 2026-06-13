@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthRequiredError, requireCurrentAdmin } from "@/lib/auth";
 import { syncProductBrandAssignmentForProduct } from "@/lib/brand-store";
-import { archiveProduct, createProduct, updateProduct } from "@/lib/commerce-store";
-import { POST } from "./route";
-import { DELETE, PATCH } from "./[id]/route";
+import { archiveProduct, createProduct, deleteProduct, updateProduct } from "@/lib/commerce-store";
+import { POST as CREATE_PRODUCT } from "./route";
+import { DELETE, PATCH, POST as UPDATE_PRODUCT_ACTION } from "./[id]/route";
 
 vi.mock("@/lib/auth", async () => {
   const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
@@ -16,6 +16,7 @@ vi.mock("@/lib/auth", async () => {
 vi.mock("@/lib/commerce-store", () => ({
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
+  deleteProduct: vi.fn(),
   archiveProduct: vi.fn()
 }));
 
@@ -100,6 +101,7 @@ describe("admin product API routes", () => {
     });
     vi.mocked(createProduct).mockResolvedValue(productResponse as never);
     vi.mocked(updateProduct).mockResolvedValue({ ...productResponse, status: "active" } as never);
+    vi.mocked(deleteProduct).mockResolvedValue(undefined);
     vi.mocked(archiveProduct).mockResolvedValue(undefined);
     vi.mocked(syncProductBrandAssignmentForProduct).mockResolvedValue({ id: "assignment_1" } as never);
   });
@@ -107,14 +109,14 @@ describe("admin product API routes", () => {
   it("blocks unauthenticated product creation before touching storage", async () => {
     vi.mocked(requireCurrentAdmin).mockRejectedValue(new AuthRequiredError());
 
-    const response = await POST(jsonRequest(validPayload));
+    const response = await CREATE_PRODUCT(jsonRequest(validPayload));
 
     expect(response.status).toBe(401);
     expect(createProduct).not.toHaveBeenCalled();
   });
 
   it("creates a draft with normalized video, cents, gallery, and structured detail rows", async () => {
-    const response = await POST(jsonRequest(validPayload));
+    const response = await CREATE_PRODUCT(jsonRequest(validPayload));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -137,7 +139,7 @@ describe("admin product API routes", () => {
   });
 
   it("syncs a brand partner assignment only when creation payload includes the relationship field", async () => {
-    const response = await POST(jsonRequest({
+    const response = await CREATE_PRODUCT(jsonRequest({
       ...validPayload,
       brandPartnerId: "brand_1",
       canEditDetails: false
@@ -185,13 +187,24 @@ describe("admin product API routes", () => {
     });
   });
 
-  it("archives products with DELETE instead of hard deleting through the API", async () => {
+  it("hard deletes products with DELETE", async () => {
     const response = await DELETE(new Request("http://test.local/api/admin/products/product_1"), {
       params: Promise.resolve({ id: "product_1" })
     });
 
     expect(response.status).toBe(200);
+    expect(deleteProduct).toHaveBeenCalledWith("product_1");
+    expect(archiveProduct).not.toHaveBeenCalled();
+  });
+
+  it("archives products through an explicit product action", async () => {
+    const response = await UPDATE_PRODUCT_ACTION(jsonRequest({ action: "archive" }), {
+      params: Promise.resolve({ id: "product_1" })
+    });
+
+    expect(response.status).toBe(200);
     expect(archiveProduct).toHaveBeenCalledWith("product_1");
+    expect(deleteProduct).not.toHaveBeenCalled();
   });
 });
 

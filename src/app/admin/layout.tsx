@@ -47,6 +47,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link className="rounded-md border bg-white px-3 py-2" href="/admin/products">
             상품
           </Link>
+          <Link className="rounded-md border bg-white px-3 py-2" href="/admin/banners">
+            배너
+          </Link>
           <Link className="rounded-md border bg-white px-3 py-2" href="/admin/brands">
             브랜드
           </Link>

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type React from "react";
 import { ExternalLink, Eye, PencilLine, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { AdminProductDeleteButton, AdminProductHideButton } from "@/components/admin-product-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireAdminPageAccess } from "@/lib/admin-page-auth";
@@ -45,7 +46,7 @@ export default async function AdminProductsPage({
           products.map((product) => (
             <article
               key={product.id}
-              className="grid min-w-0 gap-4 rounded-md border bg-white p-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_12rem] lg:items-center"
+              className="grid min-w-0 gap-4 rounded-md border bg-white p-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_13rem] lg:items-center"
               role="listitem"
             >
               <div className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-3">
@@ -122,6 +123,18 @@ export default async function AdminProductsPage({
                   <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                   미리보기
                 </Link>
+                {product.status !== "archived" ? (
+                  <AdminProductHideButton
+                    productId={product.id}
+                    productName={product.name}
+                    className="whitespace-nowrap px-2 text-xs font-semibold"
+                  />
+                ) : null}
+                <AdminProductDeleteButton
+                  productId={product.id}
+                  productName={product.name}
+                  className="whitespace-nowrap px-2 text-xs font-semibold"
+                />
                 {product.status === "active" ? (
                   <Link
                     className={cn(

@@ -116,7 +116,7 @@ describe("AdminProductEditor", () => {
     expect(screen.getByText("Glow Set · 공개 접근 가능")).toBeVisible();
     expect(screen.getByLabelText("가격 USD")).toBeVisible();
     expect(screen.getByRole("button", { name: "변경사항 발행" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "보관 처리" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "숨기기" })).toBeVisible();
   });
 
   it("sends explicit brand partner assignment fields from the product editor", async () => {
@@ -227,6 +227,28 @@ describe("AdminProductEditor", () => {
     expect(screen.getByTestId("admin-product-message")).toHaveTextContent(
       "Glow Set Updated 상품을 임시저장했습니다."
     );
+  });
+
+  it("hides loaded edit products without hard deleting them", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("confirm", vi.fn(() => true));
+
+    render(<AdminProductEditor mode="edit" product={productFixture()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "숨기기" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/admin/products/product_1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "archive" })
+      })
+    );
+    expect(push).toHaveBeenCalledWith("/admin/products");
   });
 
   it("keeps long loaded edit detail headings editable without stretching the editor", async () => {
