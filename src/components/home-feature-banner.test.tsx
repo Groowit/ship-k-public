@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type React from "react";
 import { HomeFeatureBanner } from "./home-feature-banner";
@@ -8,7 +8,7 @@ vi.mock("next/image", () => ({
   default: ({
     alt,
     fill: _fill,
-    priority: _priority,
+    priority,
     unoptimized,
     ...props
   }: React.ImgHTMLAttributes<HTMLImageElement> & {
@@ -17,11 +17,11 @@ vi.mock("next/image", () => ({
     unoptimized?: boolean;
   }) => {
     void _fill;
-    void _priority;
 
     return (
       <img
         alt={alt ?? ""}
+        data-priority={priority ? "true" : "false"}
         data-unoptimized={unoptimized ? "true" : "false"}
         {...props}
       />
@@ -30,6 +30,153 @@ vi.mock("next/image", () => ({
 }));
 
 describe("HomeFeatureBanner", () => {
+  it("prioritizes only the first background image when the first banner also has a side image", () => {
+    render(
+      <HomeFeatureBanner
+        banners={[
+          {
+            id: "banner_1",
+            topic: "TODAY",
+            headline: "Skincare Starter Set",
+            description: "A managed banner.",
+            backgroundImagePath: "/background.png",
+            sideImagePath: "/side.png",
+            linkPath: "/shop",
+            fontKey: "brand-display",
+            textColor: "black",
+            topicTextColor: "black",
+            headlineTextColor: "black",
+            descriptionTextColor: "black"
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByAltText("")).toHaveAttribute("data-priority", "true");
+    expect(screen.getByAltText("Skincare Starter Set banner image")).toHaveAttribute(
+      "data-priority",
+      "false"
+    );
+  });
+
+  it("prioritizes the first side image when it is the only first banner image", () => {
+    render(
+      <HomeFeatureBanner
+        banners={[
+          {
+            id: "banner_1",
+            topic: "TODAY",
+            headline: "Side image only",
+            description: "Fallback banners use the side image as the main visual.",
+            sideImagePath: "/side-only.png",
+            linkPath: "/shop",
+            fontKey: "brand-display",
+            textColor: "black",
+            topicTextColor: "black",
+            headlineTextColor: "black",
+            descriptionTextColor: "black"
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByAltText("Side image only banner image")).toHaveAttribute(
+      "data-priority",
+      "true"
+    );
+  });
+
+  it("preloads later banner images after the first render has settled", async () => {
+    const requestedImages: string[] = [];
+    const OriginalImage = window.Image;
+    const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {
+      callback({
+        didTimeout: false,
+        timeRemaining: () => 50
+      });
+      return 1;
+    });
+    const cancelIdleCallback = vi.fn();
+
+    class PreloadImage {
+      complete = false;
+      naturalWidth = 0;
+      naturalHeight = 0;
+      crossOrigin = "";
+
+      addEventListener() {}
+      removeEventListener() {}
+
+      set src(value: string) {
+        requestedImages.push(value);
+      }
+    }
+
+    Object.defineProperty(window, "Image", {
+      configurable: true,
+      value: PreloadImage
+    });
+    Object.defineProperty(window, "requestIdleCallback", {
+      configurable: true,
+      value: requestIdleCallback
+    });
+    Object.defineProperty(window, "cancelIdleCallback", {
+      configurable: true,
+      value: cancelIdleCallback
+    });
+
+    try {
+      render(
+        <HomeFeatureBanner
+          banners={[
+            {
+              id: "banner_1",
+              topic: "ONE",
+              headline: "First banner",
+              description: "First description",
+              backgroundImagePath: "/first-background.png",
+              sideImagePath: "/first-side.png",
+              linkPath: "/shop",
+              fontKey: "brand-display",
+              textColor: "black",
+              topicTextColor: "black",
+              headlineTextColor: "black",
+              descriptionTextColor: "black"
+            },
+            {
+              id: "banner_2",
+              topic: "TWO",
+              headline: "Second banner",
+              description: "Second description",
+              backgroundImagePath: "/second-background.png",
+              sideImagePath: "/second-side.png",
+              linkPath: "/shop",
+              fontKey: "brand-display",
+              textColor: "black",
+              topicTextColor: "black",
+              headlineTextColor: "black",
+              descriptionTextColor: "black"
+            }
+          ]}
+        />
+      );
+
+      await waitFor(() => {
+        expect(requestedImages).toEqual(
+          expect.arrayContaining(["/second-background.png", "/second-side.png"])
+        );
+      });
+      expect(requestedImages).not.toContain("/first-side.png");
+    } finally {
+      Object.defineProperty(window, "Image", {
+        configurable: true,
+        value: OriginalImage
+      });
+      Reflect.deleteProperty(window, "requestIdleCallback");
+      Reflect.deleteProperty(window, "cancelIdleCallback");
+    }
+  });
+
   it("renders remote banner images without the Next.js optimizer", () => {
     render(
       <HomeFeatureBanner

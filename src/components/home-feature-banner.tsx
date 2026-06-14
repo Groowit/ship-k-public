@@ -131,6 +131,8 @@ export function HomeFeatureBanner({ banners }: { banners: HomeBannerSlide[] }) {
   const theme = bannerThemes[activeIndex % bannerThemes.length];
   const { controlTone, controlsRef, sectionRef } = useBannerControlTone(banner, theme.controlTone);
 
+  useIdleBannerImagePreload(slides);
+
   useEffect(() => {
     if (activeIndex >= slides.length) {
       setActiveIndex(0);
@@ -165,6 +167,9 @@ export function HomeFeatureBanner({ banners }: { banners: HomeBannerSlide[] }) {
   const hasDescription = Boolean(banner.description.trim());
   const hasCopy = hasTopic || hasHeadline || hasDescription;
   const bannerLabel = getBannerLinkLabel(banner);
+  const isFirstBanner = activeIndex === 0;
+  const prioritizeBackgroundImage = isFirstBanner && Boolean(banner.backgroundImagePath);
+  const prioritizeSideImage = isFirstBanner && !banner.backgroundImagePath && hasSideImage;
   const copyWidthClass =
     banner.backgroundImagePath
       ? "w-[calc(50vw-2rem)] max-w-[40rem] min-w-0 sm:w-[calc(50vw-3rem)] md:w-[calc(50vw-4rem)] lg:w-[calc(50vw-6rem)]"
@@ -188,7 +193,7 @@ export function HomeFeatureBanner({ banners }: { banners: HomeBannerSlide[] }) {
             src={banner.backgroundImagePath}
             alt=""
             fill
-            priority
+            priority={prioritizeBackgroundImage}
             {...getImageOptimizationProps(banner.backgroundImagePath)}
             sizes="100vw"
             className="object-cover"
@@ -267,7 +272,7 @@ export function HomeFeatureBanner({ banners }: { banners: HomeBannerSlide[] }) {
                 src={sideImagePath}
                 alt={hasHeadline ? `${banner.headline} banner image` : "Banner image"}
                 fill
-                priority
+                priority={prioritizeSideImage}
                 {...getImageOptimizationProps(sideImagePath)}
                 sizes="(min-width: 1024px) 52vw, 100vw"
                 className="object-contain object-top px-4 pb-20 pt-3 md:px-8 md:pb-24 md:pt-5 lg:px-12 lg:pb-28 lg:pt-6"
@@ -445,6 +450,78 @@ function useBannerControlTone(
   }, [banner, fallbackTone]);
 
   return { controlTone, controlsRef, sectionRef };
+}
+
+function useIdleBannerImagePreload(slides: HomeBannerSlide[]) {
+  useEffect(() => {
+    if (typeof window === "undefined" || slides.length <= 1) {
+      return;
+    }
+
+    const imagePaths = getDeferredBannerImagePaths(slides);
+
+    if (!imagePaths.length) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const preloadImages = () => {
+      if (cancelled) {
+        return;
+      }
+
+      for (const imagePath of imagePaths) {
+        const image = new window.Image();
+        image.decoding = "async";
+        image.src = imagePath;
+      }
+    };
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      const requestIdleCallback = idleWindow.requestIdleCallback as (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      const idleHandle = requestIdleCallback(preloadImages, { timeout: 2500 });
+
+      return () => {
+        cancelled = true;
+        idleWindow.cancelIdleCallback?.(idleHandle);
+      };
+    }
+
+    const timeoutHandle = window.setTimeout(preloadImages, 1200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutHandle);
+    };
+  }, [slides]);
+}
+
+function getDeferredBannerImagePaths(slides: HomeBannerSlide[]) {
+  const imagePaths = new Set<string>();
+
+  for (const slide of slides.slice(1)) {
+    if (slide.backgroundImagePath) {
+      imagePaths.add(slide.backgroundImagePath);
+    }
+
+    if (slide.sideImagePath) {
+      imagePaths.add(slide.sideImagePath);
+    }
+  }
+
+  return [...imagePaths];
 }
 
 function getFallbackControlTone(
