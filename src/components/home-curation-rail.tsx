@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef } from "react";
 import type React from "react";
 import { getProductVisual } from "@/lib/brand-visuals";
 import { getImageOptimizationProps } from "@/lib/image-path";
 import { getProductPriceLabel, type Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
+
+const dragActivationDistance = 16;
 
 export function HomeCurationRail({ products }: { products: Product[] }) {
   const railRef = useRef<HTMLDivElement>(null);
@@ -87,7 +88,6 @@ export function HomeCurationRail({ products }: { products: Product[] }) {
     pointerStartXRef.current = event.clientX;
     scrollStartRef.current = rail.scrollLeft;
     dragDistanceRef.current = 0;
-    rail.setPointerCapture(event.pointerId);
   }
 
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
@@ -97,7 +97,19 @@ export function HomeCurationRail({ products }: { products: Product[] }) {
     }
 
     const delta = event.clientX - pointerStartXRef.current;
+    if (!Number.isFinite(delta)) {
+      return;
+    }
+
     dragDistanceRef.current = Math.max(dragDistanceRef.current, Math.abs(delta));
+    if (dragDistanceRef.current <= dragActivationDistance) {
+      return;
+    }
+
+    if (!rail.hasPointerCapture(event.pointerId)) {
+      rail.setPointerCapture(event.pointerId);
+    }
+
     rail.scrollLeft = scrollStartRef.current - delta;
   }
 
@@ -115,7 +127,7 @@ export function HomeCurationRail({ products }: { products: Product[] }) {
   }
 
   function handleClickCapture(event: React.MouseEvent<HTMLDivElement>) {
-    if (dragDistanceRef.current > 6) {
+    if (dragDistanceRef.current > dragActivationDistance) {
       event.preventDefault();
       event.stopPropagation();
       dragDistanceRef.current = 0;
@@ -165,7 +177,7 @@ function CuratedProductCard({
   const itemCountLabel = product.itemCount ? `${product.itemCount} items` : product.category;
 
   return (
-    <Link
+    <a
       href={`/products/${product.slug}`}
       className="group block w-[72vw] max-w-[18rem] shrink-0 snap-start rounded-md focus-ring sm:w-[17rem] lg:w-[18rem]"
       aria-label={`${product.name} ${getProductPriceLabel(product)}`}
@@ -205,6 +217,6 @@ function CuratedProductCard({
           </div>
         </div>
       </article>
-    </Link>
+    </a>
   );
 }
