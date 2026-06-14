@@ -19,6 +19,11 @@ import {
   ProductType
 } from "./products";
 import {
+  normalizeProductDisclosureNotes,
+  normalizeProductDisclosureNotesForStorage,
+  type ProductDisclosureNotes
+} from "./product-disclosure-notes";
+import {
   mapProductDetailSectionRow,
   toProductDetailSectionRpcPayload,
   type ProductDetailSectionInput,
@@ -50,6 +55,7 @@ type MutableProductInput = {
   includedItems: Array<Omit<ProductIncludedItem, "id">>;
   routineSteps: Array<Omit<ProductRoutineStep, "id">>;
   contentBlocks: Array<Omit<Product["contentBlocks"][number], "id">>;
+  disclosureNotes?: ProductDisclosureNotes;
   detailSections: ProductDetailSectionInput[];
   detailActorId?: string;
   status: ProductStatus;
@@ -252,7 +258,7 @@ type ProductOptionRow = {
   stock_quantity: number;
 };
 
-type ProductRow = {
+export type ProductRow = {
   id: string;
   brand_name: string;
   name: string;
@@ -269,6 +275,7 @@ type ProductRow = {
   intro_video_url: string | null;
   best_for: string | null;
   result: string | null;
+  disclosure_notes?: unknown;
   created_at: string;
   updated_at: string;
   categories?: { name: string } | Array<{ name: string }> | null;
@@ -939,7 +946,8 @@ function buildProductMutation(
     item_count: itemCount || null,
     intro_video_url: input.introVideoUrl || null,
     best_for: input.bestFor || null,
-    result: input.result || null
+    result: input.result || null,
+    disclosure_notes: normalizeProductDisclosureNotesForStorage(input.disclosureNotes)
   };
 }
 
@@ -2100,6 +2108,7 @@ export function mapProductRow(row: ProductRow): Product {
     description,
     bestFor: bestFor ?? undefined,
     result: normalizeLaunchSurfaceCopy(row.result) ?? undefined,
+    disclosureNotes: normalizeProductDisclosureNotes(row.disclosure_notes),
     heroImagePath,
     introVideoUrl: row.intro_video_url ?? undefined,
     badges: [],
@@ -2184,7 +2193,7 @@ export async function hydrateProductsWithDetailSections(
 
   if (error) {
     if (isProductDetailSectionsSchemaMissingError(error)) {
-      return products;
+      return hydrateProductsWithDisclosureNotes(supabase, products);
     }
 
     throw new Error(`Could not load product detail sections: ${error.message}`);
@@ -2197,10 +2206,12 @@ export async function hydrateProductsWithDetailSections(
     sectionsByProductId.set(row.product_id, sections);
   }
 
-  return products.map((product) => ({
+  const productsWithDetailSections = products.map((product) => ({
     ...product,
     detailSections: sectionsByProductId.get(product.id) ?? product.detailSections
   }));
+
+  return hydrateProductsWithDisclosureNotes(supabase, productsWithDetailSections);
 }
 
 function isProductDetailSectionsSchemaMissingError(error: { code?: string; message?: string }) {
@@ -2210,6 +2221,51 @@ function isProductDetailSectionsSchemaMissingError(error: { code?: string; messa
     error.code === "PGRST200" ||
     error.code === "PGRST205" ||
     (message.includes("product_detail_sections") &&
+      (message.includes("does not exist") ||
+        message.includes("schema cache") ||
+        message.includes("Could not find")))
+  );
+}
+
+async function hydrateProductsWithDisclosureNotes(
+  supabase: SupabaseClient,
+  products: Product[]
+) {
+  const productIds = products.map((product) => product.id);
+  if (productIds.length === 0) {
+    return products;
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,disclosure_notes")
+    .in("id", productIds);
+
+  if (error) {
+    if (isProductDisclosureNotesSchemaMissingError(error)) {
+      return products;
+    }
+
+    throw new Error(`Could not load product disclosure notes: ${error.message}`);
+  }
+
+  const disclosureNotesByProductId = new Map<string, Product["disclosureNotes"]>();
+  for (const row of (data ?? []) as Array<{ id: string; disclosure_notes?: unknown }>) {
+    disclosureNotesByProductId.set(row.id, normalizeProductDisclosureNotes(row.disclosure_notes));
+  }
+
+  return products.map((product) => ({
+    ...product,
+    disclosureNotes: disclosureNotesByProductId.get(product.id) ?? product.disclosureNotes
+  }));
+}
+
+function isProductDisclosureNotesSchemaMissingError(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes("disclosure_notes") &&
       (message.includes("does not exist") ||
         message.includes("schema cache") ||
         message.includes("Could not find")))

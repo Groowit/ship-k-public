@@ -1,5 +1,9 @@
 import { z } from "zod";
 import {
+  getIncompleteProductDisclosureFields,
+  productDisclosureNotesSchema
+} from "./product-disclosure-notes";
+import {
   isEmbeddableVideoUrl,
   maxProductDetailSections,
   normalizeEmbeddableVideoUrl,
@@ -155,6 +159,7 @@ export const adminProductPayloadSchema = z
     detailSections: z
       .preprocess(parseJsonishArray, z.array(productDetailSectionInputSchema).max(maxProductDetailSections))
       .default([]),
+    disclosureNotes: productDisclosureNotesSchema,
     status: z.enum(["active", "draft", "archived"]).default("draft")
   })
   .superRefine((payload, ctx) => {
@@ -165,6 +170,14 @@ export const adminProductPayloadSchema = z
     requireField(payload.heroImagePath, ["heroImagePath"], "판매중 발행에는 대표 이미지가 필요합니다.", ctx);
     requireField(payload.category, ["category"], "판매중 발행에는 카테고리가 필요합니다.", ctx);
     requireField(payload.difficulty, ["difficulty"], "판매중 발행에는 난이도가 필요합니다.", ctx);
+
+    getIncompleteProductDisclosureFields(payload.disclosureNotes).forEach((field) => {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["disclosureNotes", field.sectionId, field.fieldId],
+        message: `${field.sectionLabel} / ${field.fieldLabel} 항목을 입력해주세요.`
+      });
+    });
 
     if (payload.productType === "set") {
       if (payload.includedItems.length === 0) {

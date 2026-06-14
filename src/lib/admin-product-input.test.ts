@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { adminProductPayloadSchema } from "./admin-product-input";
+import type { ProductDisclosureNotes } from "./product-disclosure-notes";
 
 describe("adminProductPayloadSchema", () => {
   it("parses set metadata, included items, and routine steps", () => {
@@ -27,6 +28,7 @@ describe("adminProductPayloadSchema", () => {
         '[{"type":"text","eyebrow":"Story","title":"Evening ready","body":"A clear routine story."}]',
       detailSections:
         '[{"sectionType":"heading","schemaVersion":1,"text":"Evening story","level":"h2","align":"left"},{"sectionType":"text","schemaVersion":1,"body":"A customer-facing document body.","align":"left"}]',
+      disclosureNotes: completeDisclosureNotes(),
       status: "active"
     });
 
@@ -45,6 +47,7 @@ describe("adminProductPayloadSchema", () => {
     expect(parsed.routineSteps).toHaveLength(1);
     expect(parsed.contentBlocks).toHaveLength(1);
     expect(parsed.detailSections).toHaveLength(2);
+    expect(parsed.disclosureNotes.curatorsNote.selectionReason).toBe("Selected for a refined daily routine.");
   });
 
   it("allows incomplete draft products but blocks incomplete publish attempts", () => {
@@ -62,6 +65,7 @@ describe("adminProductPayloadSchema", () => {
 
     expect(draft.status).toBe("draft");
     expect(draft.includedItems).toEqual([]);
+    expect(draft.disclosureNotes.curatorsNote.selectionReason).toBe("");
 
     expect(() =>
       adminProductPayloadSchema.parse({
@@ -69,6 +73,59 @@ describe("adminProductPayloadSchema", () => {
         status: "active"
       })
     ).toThrow(/대표 이미지/);
+  });
+
+  it("requires every disclosure note field for active products", () => {
+    const activePayload = {
+      productType: "set",
+      brandName: "shipK Curated",
+      name: "Disclosure Set",
+      category: "Skincare",
+      difficulty: "Beginner",
+      shortDescription: "Disclosure",
+      description: "Disclosure description",
+      priceUsd: "39.00",
+      stockQuantity: "1",
+      heroImagePath: "/catalog-assets/admin-product-placeholder.svg",
+      includedItems: [{ name: "Item", category: "Skincare", description: "Usage" }],
+      routineSteps: [{ title: "Step", body: "Do it" }],
+      disclosureNotes: {
+        ...completeDisclosureNotes(),
+        beforeYouBuy: {
+          ...completeDisclosureNotes().beforeYouBuy,
+          customsFees: ""
+        }
+      },
+      status: "active"
+    };
+
+    expect(() => adminProductPayloadSchema.parse(activePayload)).toThrow(/Customs \/ fees/);
+    expect(
+      adminProductPayloadSchema.parse({
+        ...activePayload,
+        disclosureNotes: completeDisclosureNotes()
+      }).disclosureNotes.beforeYouBuy.customsFees
+    ).toBe("Duties and customs fees are shown before checkout when available.");
+  });
+
+  it("keeps disclosure labels fixed outside the payload", () => {
+    expect(() =>
+      adminProductPayloadSchema.parse({
+        productType: "set",
+        brandName: "shipK Curated",
+        name: "Draft Set",
+        category: "Skincare",
+        shortDescription: "Draft",
+        description: "Draft description",
+        priceUsd: "39.00",
+        stockQuantity: "0",
+        disclosureNotes: {
+          ...completeDisclosureNotes(),
+          labels: ["Editable label"]
+        },
+        status: "draft"
+      })
+    ).toThrow(/Unrecognized key/);
   });
 
   it("keeps brand partner assignment input explicit and nullable", () => {
@@ -144,3 +201,28 @@ describe("adminProductPayloadSchema", () => {
     ).toThrow(/YouTube, Vimeo, Cloudflare/);
   });
 });
+
+function completeDisclosureNotes(): ProductDisclosureNotes {
+  return {
+    curatorsNote: {
+      selectionReason: "Selected for a refined daily routine.",
+      bestFor: "Best for customers who want a simple skin-first result.",
+      moodFinish: "Soft, clean, and quietly polished."
+    },
+    formulaBreakdown: {
+      keyIngredients: "Rice extract, glycerin, and panthenol.",
+      ingredientRole: "Hydration support with a comfortable finish.",
+      textureFormulaNote: "Creamy texture that rinses without a tight feeling."
+    },
+    careCautions: {
+      skinUseCautions: "Patch test before first use.",
+      storageNotes: "Store away from direct sunlight.",
+      regulatoryNote: "Review the package label before use."
+    },
+    beforeYouBuy: {
+      shippingNote: "Ships from the United States fulfillment flow.",
+      customsFees: "Duties and customs fees are shown before checkout when available.",
+      returnsNote: "Unopened items follow the store return policy."
+    }
+  };
+}

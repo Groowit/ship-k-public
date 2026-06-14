@@ -34,7 +34,7 @@ describe("FloatingStickerLayer", () => {
     vi.restoreAllMocks();
   });
 
-  it("moves the lower product detail sticker to the right page margin", () => {
+  it("keeps product detail stickers off the media gallery rail", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5);
 
     render(<FloatingStickerLayer />);
@@ -57,8 +57,11 @@ describe("FloatingStickerLayer", () => {
       .sort((a, b) => a.top - b.top);
 
     expect(leftStickerRects).toHaveLength(1);
+    expect(leftStickerRects[0].top).toBeGreaterThanOrEqual(900);
+    expect(stickerStyles.some((style) => style.includes("805px")))
+      .toBe(true);
     expect(rightStickerRects).toHaveLength(3);
-    expect(rightStickerRects[1].top).toBe(780);
+    expect(rightStickerRects.map((rect) => rect.top)).toEqual([154, 780, 1110]);
     expect(rightStickerRects[1].top - (rightStickerRects[0].top + rightStickerRects[0].width))
       .toBeGreaterThanOrEqual(88);
     expect(rightStickerRects[2].top - (rightStickerRects[1].top + rightStickerRects[1].width))

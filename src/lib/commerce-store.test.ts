@@ -16,6 +16,7 @@ import {
   mapProductRow,
   payUnpaidAffiliateCommissions,
   updateCustomerAccount,
+  updateProduct,
   updateCommissionStatus,
   updateAffiliateStatus,
   updateOrderFulfillment,
@@ -200,6 +201,46 @@ describe("Supabase product mapping", () => {
     expect(product?.option.priceCents).toBe(5900);
   });
 
+  it("keeps product loading compatible before disclosure note migrations are applied", async () => {
+    mocks.serverClient = createSupabaseMock((call) => {
+      if (call.table === "products" && call.terminal === "then") {
+        const idFilter = call.filters.find((filter) => filter.column === "id");
+        if (idFilter) {
+          return {
+            data: null,
+            error: {
+              code: "42703",
+              message: "column products.disclosure_notes does not exist"
+            }
+          };
+        }
+
+        return {
+          data: [
+            productRowFixture({
+              id: "product_1",
+              name: "Skincare Starter Set",
+              slug: "skincare-starter-set",
+              priceCents: 4900
+            })
+          ],
+          error: null
+        };
+      }
+
+      if (call.table === "product_detail_sections") {
+        return { data: [], error: null };
+      }
+
+      return { data: [], error: null };
+    });
+
+    const product = await findProductBySlug("skincare-starter-set");
+
+    expect(product?.name).toBe("Skincare Starter Set");
+    expect(product?.disclosureNotes).toBeUndefined();
+  });
+
   it("maps gallery images and structured detail rows in sort order", () => {
     const row = {
       id: "product_1",
@@ -218,6 +259,28 @@ describe("Supabase product mapping", () => {
       intro_video_url: null,
       best_for: "Daily routines",
       result: "Glow",
+      disclosure_notes: {
+        curatorsNote: {
+          selectionReason: "Selected for the routine.",
+          bestFor: "Daily cleansing.",
+          moodFinish: "Fresh finish."
+        },
+        formulaBreakdown: {
+          keyIngredients: "Rice extract.",
+          ingredientRole: "Softens the cleanse.",
+          textureFormulaNote: "Cream-to-foam texture."
+        },
+        careCautions: {
+          skinUseCautions: "Patch test first.",
+          storageNotes: "Store cool.",
+          regulatoryNote: "Read the package label."
+        },
+        beforeYouBuy: {
+          shippingNote: "Ships with tracking.",
+          customsFees: "Customs may apply.",
+          returnsNote: "Unopened returns only."
+        }
+      },
       created_at: "2026-05-18T00:00:00.000Z",
       updated_at: "2026-05-19T00:00:00.000Z",
       categories: { name: "Skincare" },
@@ -286,6 +349,8 @@ describe("Supabase product mapping", () => {
     expect(product.updatedAt).toBe("2026-05-19T00:00:00.000Z");
     expect(product.badges).toEqual([]);
     expect(product.tags).toEqual(["STARTER", "SKINCARE", "5 ITEMS"]);
+    expect(product.disclosureNotes?.curatorsNote.selectionReason).toBe("Selected for the routine.");
+    expect(product.disclosureNotes?.beforeYouBuy.customsFees).toBe("Customs may apply.");
     expect(product.contentBlocks[0]).toMatchObject({
       type: "text",
       title: "Story"
@@ -472,6 +537,100 @@ describe("Supabase product mapping", () => {
 
     expect(() => mapProductRow(row)).not.toThrow();
     expect(mapProductRow(row).heroImagePath).toBe(row.hero_image_path);
+  });
+});
+
+describe("admin product persistence", () => {
+  it("persists disclosure notes in product update mutations", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+
+      if (call.table === "products" && call.terminal === "maybeSingle") {
+        return {
+          data: productRowFixture({
+            id: "product_1",
+            name: "Skincare Starter Set",
+            slug: "skincare-starter-set",
+            priceCents: 4900
+          }),
+          error: null
+        };
+      }
+
+      if (call.table === "categories" && call.terminal === "maybeSingle") {
+        return { data: { id: "category_1" }, error: null };
+      }
+
+      if (call.table === "products" && call.operation === "update") {
+        return { error: null };
+      }
+
+      if (call.table === "product_options" && call.operation === "select") {
+        return { data: [{ id: "option_1" }], error: null };
+      }
+
+      if (call.table === "product_options" && call.operation === "update") {
+        return { error: null };
+      }
+
+      if (
+        ["product_images", "product_included_items", "product_routine_steps", "product_content_blocks"].includes(
+          call.table
+        ) &&
+        call.operation === "delete"
+      ) {
+        return { error: null };
+      }
+
+      if (call.table === "product_content_blocks" && call.operation === "insert") {
+        return { error: null };
+      }
+
+      if (call.table === "product_detail_sections") {
+        return { data: [], error: null };
+      }
+
+      if (call.table === "products" && call.terminal === "then") {
+        return { data: [], error: null };
+      }
+
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await updateProduct("product_1", {
+      productType: "set",
+      brandName: "shipK Curated",
+      name: "Skincare Starter Set",
+      category: "Skincare",
+      tags: ["SKINCARE"],
+      difficulty: "Beginner",
+      itemCount: 1,
+      shortDescription: "Short",
+      description: "Description",
+      priceCents: 4900,
+      stockQuantity: 10,
+      heroImagePath: "/hero.png",
+      galleryImages: [],
+      includedItems: [],
+      routineSteps: [],
+      contentBlocks: [],
+      disclosureNotes: completeDisclosureNotes(),
+      detailSections: [],
+      status: "active"
+    });
+
+    const productUpdate = calls.find((call) => call.table === "products" && call.operation === "update");
+    expect(productUpdate?.values).toMatchObject({
+      disclosure_notes: {
+        curatorsNote: {
+          selectionReason: "Selected for a refined daily routine."
+        },
+        beforeYouBuy: {
+          returnsNote: "Unopened items follow the store return policy."
+        }
+      }
+    });
   });
 });
 
@@ -1917,6 +2076,31 @@ function productFixture(): Product {
     routineSteps: [],
     contentBlocks: [],
     detailSections: []
+  };
+}
+
+function completeDisclosureNotes(): NonNullable<Product["disclosureNotes"]> {
+  return {
+    curatorsNote: {
+      selectionReason: "Selected for a refined daily routine.",
+      bestFor: "Best for customers who want a simple skin-first result.",
+      moodFinish: "Soft, clean, and quietly polished."
+    },
+    formulaBreakdown: {
+      keyIngredients: "Rice extract, glycerin, and panthenol.",
+      ingredientRole: "Hydration support with a comfortable finish.",
+      textureFormulaNote: "Creamy texture that rinses without a tight feeling."
+    },
+    careCautions: {
+      skinUseCautions: "Patch test before first use.",
+      storageNotes: "Store away from direct sunlight.",
+      regulatoryNote: "Review the package label before use."
+    },
+    beforeYouBuy: {
+      shippingNote: "Ships from the United States fulfillment flow.",
+      customsFees: "Duties and customs fees are shown before checkout when available.",
+      returnsNote: "Unopened items follow the store return policy."
+    }
   };
 }
 

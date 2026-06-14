@@ -1,4 +1,5 @@
 import { calculateOrderTotals, formatUsd } from "./commerce";
+import type { ProductDisclosureNotes } from "./product-disclosure-notes";
 import type { ProductDetailSection } from "./product-detail-sections";
 
 export type ProductType = "single" | "set";
@@ -94,6 +95,7 @@ export type Product = {
   includedItems: ProductIncludedItem[];
   routineSteps: ProductRoutineStep[];
   contentBlocks: ProductContentBlock[];
+  disclosureNotes?: ProductDisclosureNotes;
   detailSections: ProductDetailSection[];
 };
 

@@ -311,6 +311,8 @@ export function ProductReviewsSection({
 
   return (
     <>
+      {detailContent}
+
       <section ref={reviewSummaryRef} id="reviews" className="border-t border-zinc-200 bg-white py-12">
         <div className="container grid gap-8">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(20rem,0.42fr)] lg:items-start">
@@ -361,8 +363,6 @@ export function ProductReviewsSection({
           </div>
         </div>
       </section>
-
-      {detailContent}
 
       <section id="review-details" className="border-t border-zinc-200 bg-white py-12">
         <div className="container grid gap-5">
@@ -582,23 +582,17 @@ function ReviewSnapshot({
 }) {
   return (
     <aside className="rounded-md border border-zinc-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase text-muted-foreground">Review snapshot</p>
-          <div className="mt-2 flex items-end gap-2">
-            <span className="text-4xl font-black">{summary.averageRating.toFixed(1)}</span>
-            <RatingStars rating={summary.averageRating} />
-          </div>
-          <p className="mt-1 text-sm font-semibold text-muted-foreground">
-            {summary.count > 0
-              ? `${summary.count} verified buyer review${summary.count === 1 ? "" : "s"}`
-              : `Be the first paid buyer to review ${productName}.`}
-          </p>
+      <div>
+        <p className="text-xs font-black uppercase text-muted-foreground">Review snapshot</p>
+        <div className="mt-2 flex items-end gap-2">
+          <span className="text-4xl font-black">{summary.averageRating.toFixed(1)}</span>
+          <RatingStars rating={summary.averageRating} />
         </div>
-        <Badge className="border border-[#bfe45a] bg-[#f0fad8] text-foreground">
-          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-          Verified only
-        </Badge>
+        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+          {summary.count > 0
+            ? `${summary.count} verified buyer review${summary.count === 1 ? "" : "s"}`
+            : `Be the first paid buyer to review ${productName}.`}
+        </p>
       </div>
 
       <div className="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">

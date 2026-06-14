@@ -97,6 +97,9 @@ describe("brand product store authorization", () => {
       if (call.table === "products" && call.terminal === "maybeSingle") {
         return { data: productRow("product_1"), error: null };
       }
+      if (call.table === "products" && call.terminal === "then") {
+        return { data: [], error: null };
+      }
       if (call.table === "product_detail_sections" && call.terminal === "then") {
         return { data: [], error: null };
       }

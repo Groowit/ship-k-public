@@ -3,7 +3,7 @@ import { getHomeMerchandisingProducts } from "./home-merchandising";
 import { launchCatalogProducts, Product } from "./products";
 
 describe("home merchandising", () => {
-  it("keeps Trending set-only while Popular can include singles and sets", () => {
+  it("keeps Popular picks popularity-ranked across singles and sets", () => {
     const products = [
       productFixture(0, {
         id: "set_low",
@@ -31,13 +31,12 @@ describe("home merchandising", () => {
       })
     ];
 
-    const { trendingProducts, popularProducts } = getHomeMerchandisingProducts(products, {
-      trendingLimit: 2,
+    const merchandising = getHomeMerchandisingProducts(products, {
       popularLimit: 4
     });
+    const { popularProducts } = merchandising;
 
-    expect(trendingProducts.map((product) => product.slug)).toEqual(["set-high", "set-low"]);
-    expect(trendingProducts.every((product) => product.productType === "set")).toBe(true);
+    expect("trendingProducts" in merchandising).toBe(false);
     expect(popularProducts.map((product) => product.slug)).toEqual([
       "single-top",
       "set-high",
@@ -46,7 +45,7 @@ describe("home merchandising", () => {
     ]);
   });
 
-  it("uses four Trending sets and eighteen Popular products by default", () => {
+  it("uses eighteen Popular products by default", () => {
     const products = Array.from({ length: 22 }, (_, index) =>
       productFixture(index % launchCatalogProducts.length, {
         id: `product_${index}`,
@@ -56,14 +55,12 @@ describe("home merchandising", () => {
       })
     );
 
-    const { trendingProducts, popularProducts } = getHomeMerchandisingProducts(products);
+    const { popularProducts } = getHomeMerchandisingProducts(products);
 
-    expect(trendingProducts).toHaveLength(4);
-    expect(trendingProducts.every((product) => product.productType === "set")).toBe(true);
     expect(popularProducts).toHaveLength(18);
   });
 
-  it("clamps negative merchandising limits to empty shelves", () => {
+  it("clamps negative popular limits to an empty Popular shelf", () => {
     const products = Array.from({ length: 4 }, (_, index) =>
       productFixture(index % launchCatalogProducts.length, {
         id: `product_${index}`,
@@ -73,12 +70,10 @@ describe("home merchandising", () => {
       })
     );
 
-    const { trendingProducts, popularProducts } = getHomeMerchandisingProducts(products, {
-      trendingLimit: -1,
+    const { popularProducts } = getHomeMerchandisingProducts(products, {
       popularLimit: -2
     });
 
-    expect(trendingProducts).toEqual([]);
     expect(popularProducts).toEqual([]);
   });
 });

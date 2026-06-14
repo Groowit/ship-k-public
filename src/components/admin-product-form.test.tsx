@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminProductEditor } from "./admin-product-form";
+import { productDisclosureSections } from "@/lib/product-disclosure-notes";
 import type { Product } from "@/lib/products";
 
 const push = vi.fn();
@@ -147,6 +148,46 @@ describe("AdminProductEditor", () => {
     expect(body.brandName).toBe("Catalog Label");
     expect(body.brandPartnerId).toBe("brand_1");
     expect(body.canEditDetails).toBe(false);
+  });
+
+  it("edits fixed admin disclosure notes and sends them in draft payloads", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ product: { id: "draft-1", name: "Draft Product" } })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AdminProductEditor mode="create" />);
+
+    expect(screen.getAllByText("구매 전 공개 정보").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Curator's Note/ })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Formula Breakdown/ })).toHaveAttribute("aria-expanded", "false");
+
+    productDisclosureSections.forEach((section) => {
+      const button = screen.getByRole("button", { name: new RegExp(section.label) });
+      if (button.getAttribute("aria-expanded") === "false") {
+        fireEvent.click(button);
+      }
+
+      section.fields.forEach((field) => {
+        fireEvent.change(screen.getByLabelText(`${section.label} ${field.label}`), {
+          target: { value: `${section.label} / ${field.label} copy` }
+        });
+      });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "임시저장" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, request] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(request.body));
+
+    expect(body.disclosureNotes.curatorsNote.selectionReason).toBe(
+      "Curator's Note / Selection reason copy"
+    );
+    expect(body.disclosureNotes.beforeYouBuy.returnsNote).toBe(
+      "Before You Buy / Returns note copy"
+    );
   });
 
   it("selects and reorders detail sections from blocks beyond the first one", () => {

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import HomePage from "./page";
 import { listActiveProducts } from "@/lib/commerce-store";
 import { listHomeBanners } from "@/lib/home-banners";
+import { listHomeCurationProducts } from "@/lib/home-curation";
 import type { Product } from "@/lib/products";
 
 vi.mock("@/components/home-feature-banner", () => ({
@@ -13,7 +14,21 @@ vi.mock("@/components/home-feature-banner", () => ({
 }));
 
 vi.mock("@/components/product-card", () => ({
-  ProductCard: () => <div data-testid="product-card" />
+  ProductCard: ({ product }: { product: Product }) => (
+    <div data-testid="product-card">{product.name}</div>
+  )
+}));
+
+vi.mock("@/components/home-curation-rail", () => ({
+  HomeCurationRail: ({ products }: { products: Product[] }) => (
+    <div data-testid="home-curation-rail">
+      {products.map((product) => (
+        <a key={product.id} href={`/products/${product.slug}`}>
+          {product.name}
+        </a>
+      ))}
+    </div>
+  )
 }));
 
 vi.mock("@/lib/commerce-store", () => ({
@@ -24,16 +39,20 @@ vi.mock("@/lib/home-banners", () => ({
   listHomeBanners: vi.fn()
 }));
 
+vi.mock("@/lib/home-curation", () => ({
+  listHomeCurationProducts: vi.fn()
+}));
+
 vi.mock("@/lib/home-merchandising", () => ({
-  getHomeMerchandisingProducts: () => ({
-    trendingProducts: [],
-    popularProducts: []
+  getHomeMerchandisingProducts: (products: Product[]) => ({
+    popularProducts: products.slice(0, 2)
   })
 }));
 
-describe("HomePage banners", () => {
+describe("HomePage", () => {
   it("renders managed home banners before product fallback banners", async () => {
     vi.mocked(listActiveProducts).mockResolvedValue([productFixture()] as never);
+    vi.mocked(listHomeCurationProducts).mockResolvedValue([] as never);
     vi.mocked(listHomeBanners).mockResolvedValue([
       {
         id: "banner_1",
@@ -63,6 +82,7 @@ describe("HomePage banners", () => {
 
   it("falls back to products when no managed banners exist", async () => {
     vi.mocked(listActiveProducts).mockResolvedValue([productFixture()] as never);
+    vi.mocked(listHomeCurationProducts).mockResolvedValue([] as never);
     vi.mocked(listHomeBanners).mockResolvedValue([] as never);
 
     render(await HomePage());
@@ -70,6 +90,41 @@ describe("HomePage banners", () => {
     const payload = screen.getByTestId("home-feature-banner").textContent ?? "";
     expect(payload).toContain("Build a dewy set in one day");
     expect(payload).toContain("/products/glow-set");
+  });
+
+  it("renders curated products in admin order without the old Trending heading", async () => {
+    vi.mocked(listActiveProducts).mockResolvedValue([
+      productFixture({ id: "popular_1", name: "Popular One", slug: "popular-one" }),
+      productFixture({ id: "popular_2", name: "Popular Two", slug: "popular-two" })
+    ] as never);
+    vi.mocked(listHomeCurationProducts).mockResolvedValue([
+      productFixture({ id: "curated_2", name: "Second Curated", slug: "second-curated" }),
+      productFixture({ id: "curated_1", name: "First Curated", slug: "first-curated" })
+    ] as never);
+    vi.mocked(listHomeBanners).mockResolvedValue([] as never);
+
+    render(await HomePage());
+
+    expect(screen.getByText("Curated picks")).toBeVisible();
+    expect(screen.getByText("Curated for you")).toBeVisible();
+    expect(screen.getByText("Fresh picks from the shipK edit.")).toBeVisible();
+    expect(screen.getByTestId("home-curation-rail")).toHaveTextContent("Second Curated");
+    expect(screen.getByTestId("home-curation-rail")).toHaveTextContent("First Curated");
+    expect(screen.queryByText("Trending now")).not.toBeInTheDocument();
+    expect(screen.getByText("Popular picks")).toBeVisible();
+    expect(screen.getByText("Popular One")).toBeVisible();
+  });
+
+  it("hides the curation shelf when no curated products are eligible", async () => {
+    vi.mocked(listActiveProducts).mockResolvedValue([productFixture()] as never);
+    vi.mocked(listHomeCurationProducts).mockResolvedValue([] as never);
+    vi.mocked(listHomeBanners).mockResolvedValue([] as never);
+
+    render(await HomePage());
+
+    expect(screen.queryByText("Curated for you")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("home-curation-rail")).not.toBeInTheDocument();
+    expect(screen.queryByText("Trending now")).not.toBeInTheDocument();
   });
 });
 

@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   BadgeCheck,
+  ChevronDown,
   Columns2,
   DollarSign,
   Eye,
@@ -39,6 +40,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  createEmptyProductDisclosureNotes,
+  getIncompleteProductDisclosureFields,
+  hasCompleteProductDisclosureNotes,
+  normalizeProductDisclosureNotes,
+  productDisclosureSections,
+  type ProductDisclosureNotes,
+  type ProductDisclosureSectionId
+} from "@/lib/product-disclosure-notes";
 import {
   createDefaultDetailSections,
   productDetailSectionSchemaVersion,
@@ -101,6 +111,7 @@ type EditorState = {
   routineSteps: RoutineStepDraft[];
   detailImages: DetailImageDraft[];
   contentBlocks: ContentBlockDraft[];
+  disclosureNotes: ProductDisclosureNotes;
   detailSections: DetailSectionDraft[];
 };
 
@@ -778,6 +789,10 @@ export function AdminProductEditor({
               />
             </CardContent>
           </Card>
+          <AdminDisclosureNotesEditor
+            notes={state.disclosureNotes}
+            onChange={(disclosureNotes) => updateField(setState, "disclosureNotes", disclosureNotes)}
+          />
         <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <PublishReadinessCard checks={readinessChecks} />
           <AdminProductSummaryCard product={previewProduct} />
@@ -938,6 +953,119 @@ function SummaryRow({
         <span className="mt-0.5 block font-semibold">{value}</span>
       </span>
     </div>
+  );
+}
+
+function AdminDisclosureNotesEditor({
+  notes,
+  onChange
+}: {
+  notes: ProductDisclosureNotes;
+  onChange: (notes: ProductDisclosureNotes) => void;
+}) {
+  const [openSectionIds, setOpenSectionIds] = useState<Set<ProductDisclosureSectionId>>(
+    () => new Set(["curatorsNote"])
+  );
+  const incompleteFields = getIncompleteProductDisclosureFields(notes);
+  const totalFields = productDisclosureSections.reduce((sum, section) => sum + section.fields.length, 0);
+  const completeCount = totalFields - incompleteFields.length;
+
+  function toggleSection(sectionId: ProductDisclosureSectionId) {
+    setOpenSectionIds((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  }
+
+  function updateNote(
+    sectionId: ProductDisclosureSectionId,
+    fieldId: string,
+    value: string
+  ) {
+    onChange({
+      ...notes,
+      [sectionId]: {
+        ...notes[sectionId],
+        [fieldId]: value
+      }
+    } as ProductDisclosureNotes);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>구매 전 공개 정보</CardTitle>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              상품 상세 구매 영역에 표시되는 관리자 전용 안내입니다.
+            </p>
+          </div>
+          <span
+            className={cn(
+              "rounded-md border px-3 py-2 text-sm font-semibold",
+              incompleteFields.length === 0 ? "bg-[#d8f8e7] text-[#14532d]" : "bg-muted text-muted-foreground"
+            )}
+          >
+            {completeCount}/{totalFields} 완료
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {productDisclosureSections.map((section) => {
+          const isOpen = openSectionIds.has(section.id);
+          const sectionMissingCount = incompleteFields.filter((field) => field.sectionId === section.id).length;
+          const panelId = `admin-disclosure-${section.id}`;
+
+          return (
+            <section key={section.id} className="rounded-md border bg-white">
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+                onClick={() => toggleSection(section.id)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+              >
+                <span>
+                  <span className="block text-base font-bold">{section.label}</span>
+                  <span className="mt-1 block text-xs font-semibold text-muted-foreground">
+                    {sectionMissingCount === 0 ? "완료" : `${sectionMissingCount}개 미입력`}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
+                  aria-hidden="true"
+                />
+              </button>
+              {isOpen ? (
+                <div id={panelId} className="grid gap-4 border-t p-4">
+                  {section.fields.map((field) => {
+                    const value = (notes[section.id] as Record<string, string>)[field.id] ?? "";
+
+                    return (
+                      <Field key={field.id} label={field.label}>
+                        <Textarea
+                          aria-label={`${section.label} ${field.label}`}
+                          value={value}
+                          onChange={(event) => updateNote(section.id, field.id, event.target.value)}
+                          rows={4}
+                          className="min-h-28 resize-y"
+                        />
+                      </Field>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -2278,6 +2406,7 @@ function createInitialState(product?: Product, currentBrandAssignment?: ProductB
     routineSteps: product?.routineSteps.map(({ title, body }) => ({ title, body })) ?? [],
     detailImages: product?.contentBlocks.filter((block) => block.type === "image").map(stripDetailImageId) ?? [],
     contentBlocks: product?.contentBlocks.filter((block) => block.type !== "image").map(stripContentBlockId) ?? [],
+    disclosureNotes: normalizeProductDisclosureNotes(product?.disclosureNotes) ?? createEmptyProductDisclosureNotes(),
     detailSections: createInitialDetailSections(product)
   };
 }
@@ -2373,6 +2502,7 @@ function toPayload(state: EditorState, status: ProductStatus) {
     includedItems: state.includedItems.filter(hasIncludedItemInput),
     routineSteps: state.routineSteps.filter(hasRoutineStepInput),
     contentBlocks: buildPayloadContentBlocks(state),
+    disclosureNotes: state.disclosureNotes,
     detailSections: toDetailSectionsPayload(state.detailSections)
   };
 }
@@ -2445,6 +2575,7 @@ function toPreviewProduct(state: EditorState, product?: Product): Product {
       body: step.body || "수행 방법 미입력"
     })),
     contentBlocks: buildPreviewContentBlocks(state, heroImagePath),
+    disclosureNotes: state.disclosureNotes,
     detailSections: toPreviewDetailSections(state.detailSections)
   };
 }
@@ -2800,6 +2931,10 @@ function getPublishReadinessChecks(state: EditorState) {
     {
       label: "상세 문서 섹션",
       ready: state.detailSections.length > 0
+    },
+    {
+      label: "구매 전 공개 정보",
+      ready: hasCompleteProductDisclosureNotes(state.disclosureNotes)
     }
   ];
 

@@ -497,6 +497,26 @@ describe("ProductReviewsSection", () => {
     expect(screen.queryByRole("button", { name: "Show fewer reviews" })).not.toBeInTheDocument();
   });
 
+  it("places the detail content before reviews and omits the verified-only badge", () => {
+    render(
+      <ProductReviewsSection
+        productId="product_1"
+        productName="Glow Set"
+        initialPayload={emptyPayload()}
+        isAuthenticated={false}
+        detailContent={<section data-testid="detail-content">Product detail content</section>}
+      />
+    );
+
+    const detailContent = screen.getByTestId("detail-content");
+    const reviewSummary = screen.getByRole("heading", { name: "Customer reviews" });
+
+    expect(
+      detailContent.compareDocumentPosition(reviewSummary) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.queryByText("Verified only")).not.toBeInTheDocument();
+  });
+
   it("treats unreadable review text as a rating-only review in the public UI", () => {
     render(
       <ProductReviewsSection

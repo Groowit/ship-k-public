@@ -4,6 +4,7 @@ import { syncProductBrandAssignmentForProduct } from "@/lib/brand-store";
 import { archiveProduct, createProduct, deleteProduct, updateProduct } from "@/lib/commerce-store";
 import { POST as CREATE_PRODUCT } from "./route";
 import { DELETE, PATCH, POST as UPDATE_PRODUCT_ACTION } from "./[id]/route";
+import type { ProductDisclosureNotes } from "@/lib/product-disclosure-notes";
 
 vi.mock("@/lib/auth", async () => {
   const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
@@ -89,6 +90,7 @@ const validPayload = {
       align: "left"
     }
   ],
+  disclosureNotes: completeDisclosureNotes(),
   status: "draft"
 };
 
@@ -130,12 +132,48 @@ describe("admin product API routes", () => {
         galleryImages: validPayload.galleryImages,
         includedItems: validPayload.includedItems,
         routineSteps: validPayload.routineSteps,
+        disclosureNotes: validPayload.disclosureNotes,
         detailSections: validPayload.detailSections,
         detailActorId: "admin_1",
         status: "draft"
       })
     );
     expect(syncProductBrandAssignmentForProduct).not.toHaveBeenCalled();
+  });
+
+  it("creates a draft when disclosure notes are omitted", async () => {
+    const draftPayload = withoutDisclosureNotes(validPayload);
+
+    const response = await CREATE_PRODUCT(jsonRequest(draftPayload));
+
+    expect(response.status).toBe(200);
+    expect(createProduct).toHaveBeenCalledWith(
+      expect.objectContaining({
+        disclosureNotes: expect.objectContaining({
+          curatorsNote: expect.objectContaining({ selectionReason: "" })
+        }),
+        status: "draft"
+      })
+    );
+  });
+
+  it("rejects active creation when disclosure notes are incomplete", async () => {
+    const response = await CREATE_PRODUCT(jsonRequest({
+      ...validPayload,
+      disclosureNotes: {
+        ...completeDisclosureNotes(),
+        beforeYouBuy: {
+          ...completeDisclosureNotes().beforeYouBuy,
+          returnsNote: ""
+        }
+      },
+      status: "active"
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/Returns note/);
+    expect(createProduct).not.toHaveBeenCalled();
   });
 
   it("syncs a brand partner assignment only when creation payload includes the relationship field", async () => {
@@ -165,11 +203,25 @@ describe("admin product API routes", () => {
       "product_1",
       expect.objectContaining({
         priceCents: 4900,
+        disclosureNotes: validPayload.disclosureNotes,
         detailActorId: "admin_1",
         status: "active"
       })
     );
     expect(syncProductBrandAssignmentForProduct).not.toHaveBeenCalled();
+  });
+
+  it("rejects active product updates without complete disclosure notes", async () => {
+    const payloadWithoutDisclosure = withoutDisclosureNotes(validPayload);
+    const response = await PATCH(
+      jsonRequest({ ...payloadWithoutDisclosure, status: "active" }),
+      { params: Promise.resolve({ id: "product_1" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/Curator's Note/);
+    expect(updateProduct).not.toHaveBeenCalled();
   });
 
   it("treats explicit null brandPartnerId as an unlink request on PATCH", async () => {
@@ -214,4 +266,35 @@ function jsonRequest(body: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
+}
+
+function withoutDisclosureNotes<T extends { disclosureNotes?: unknown }>(value: T) {
+  const copy: Partial<T> = { ...value };
+  delete copy.disclosureNotes;
+  return copy;
+}
+
+function completeDisclosureNotes(): ProductDisclosureNotes {
+  return {
+    curatorsNote: {
+      selectionReason: "Selected for a refined daily routine.",
+      bestFor: "Best for customers who want a simple skin-first result.",
+      moodFinish: "Soft, clean, and quietly polished."
+    },
+    formulaBreakdown: {
+      keyIngredients: "Rice extract, glycerin, and panthenol.",
+      ingredientRole: "Hydration support with a comfortable finish.",
+      textureFormulaNote: "Creamy texture that rinses without a tight feeling."
+    },
+    careCautions: {
+      skinUseCautions: "Patch test before first use.",
+      storageNotes: "Store away from direct sunlight.",
+      regulatoryNote: "Review the package label before use."
+    },
+    beforeYouBuy: {
+      shippingNote: "Ships from the United States fulfillment flow.",
+      customsFees: "Duties and customs fees are shown before checkout when available.",
+      returnsNote: "Unopened items follow the store return policy."
+    }
+  };
 }

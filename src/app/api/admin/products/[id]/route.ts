@@ -39,6 +39,7 @@ export async function PATCH(
       includedItems: body.includedItems,
       routineSteps: body.routineSteps,
       contentBlocks: body.contentBlocks,
+      disclosureNotes: body.disclosureNotes,
       detailSections: body.detailSections,
       detailActorId: admin.user.id,
       status: body.status

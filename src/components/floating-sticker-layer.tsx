@@ -70,8 +70,8 @@ const stickerSlots: Record<StickerVariant, StickerSlot[]> = {
   ],
   product: [
     { top: 154, side: "right", size: "large", rotate: 9 },
-    { top: 540, side: "left", size: "medium", rotate: -8 },
     { top: 780, side: "right", size: "small", rotate: 8 },
+    { top: 910, side: "left", size: "medium", rotate: -8 },
     { top: 1110, side: "right", size: "medium", rotate: -5 },
   ],
   auth: [
@@ -150,7 +150,7 @@ export function FloatingStickerLayer() {
             width: sticker.width,
             transform: `rotate(${sticker.rotateWithJitter}deg)`,
             ...(sticker.side === "left"
-              ? { left: "max(12px, calc(50% - 710px))" }
+              ? { left: variant === "product" ? "max(12px, calc(50% - 805px))" : "max(12px, calc(50% - 710px))" }
               : { right: "max(12px, calc(50% - 710px))" }),
           }}
         />

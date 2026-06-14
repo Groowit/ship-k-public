@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { Maximize2, PlayCircle, X } from "lucide-react";
+import { ChevronDown, Maximize2, PlayCircle, X } from "lucide-react";
 import { BuyBox } from "@/components/buy-box";
 import { ProductDetailSectionsRenderer } from "@/components/product-detail-sections-renderer";
 import { ProductReviewsSection } from "@/components/product-reviews-section";
@@ -13,6 +13,12 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { buildAuthRedirectPath } from "@/lib/authz";
 import { formatUsd } from "@/lib/commerce";
 import { getImageOptimizationProps } from "@/lib/image-path";
+import {
+  hasCompleteProductDisclosureNotes,
+  productDisclosureSections,
+  type ProductDisclosureNotes,
+  type ProductDisclosureSectionId
+} from "@/lib/product-disclosure-notes";
 import { getProductImageFrameAspectClass } from "@/lib/product-image-frame";
 import { Product, isProductPurchasable } from "@/lib/products";
 import type { ProductReviewEligibility, ProductReviewsPayload } from "@/lib/reviews-store";
@@ -82,8 +88,8 @@ export function ProductDetailView({
   }, [previewMode]);
 
   return (
-    <article className={cn("overflow-hidden", !previewMode && "pb-24 sm:pb-28")}>
-      <section className="container grid gap-9 py-10 lg:grid-cols-[1.15fr_0.85fr]">
+    <article className={cn("overflow-x-clip", !previewMode && "pb-24 sm:pb-28")}>
+      <section className="container grid items-start gap-9 py-10 lg:grid-cols-[1.15fr_0.85fr]">
         <ProductMediaViewer product={product} />
         <div className="grid content-start gap-6">
           <div>
@@ -130,6 +136,7 @@ export function ProductDetailView({
               />
             )}
           </div>
+          <ProductDisclosureNotesAccordion notes={product.disclosureNotes} />
         </div>
       </section>
 
@@ -154,6 +161,72 @@ export function ProductDetailView({
   );
 }
 
+function ProductDisclosureNotesAccordion({ notes }: { notes?: ProductDisclosureNotes }) {
+  const [openSectionIds, setOpenSectionIds] = useState<Set<ProductDisclosureSectionId>>(
+    () => new Set(["curatorsNote"])
+  );
+
+  if (!hasCompleteProductDisclosureNotes(notes)) {
+    return null;
+  }
+
+  function toggleSection(sectionId: ProductDisclosureSectionId) {
+    setOpenSectionIds((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  }
+
+  return (
+    <section
+      aria-label="Product disclosure notes"
+      className="overflow-hidden rounded-md border border-zinc-200 bg-white"
+    >
+      {productDisclosureSections.map((section, index) => {
+        const isOpen = openSectionIds.has(section.id);
+        const panelId = `product-disclosure-${section.id}`;
+
+        return (
+          <div key={section.id} className={cn(index > 0 && "border-t border-zinc-200")}>
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              aria-controls={panelId}
+              onClick={() => toggleSection(section.id)}
+              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+            >
+              <span className="text-lg font-black text-foreground">{section.label}</span>
+              <ChevronDown
+                className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
+                aria-hidden="true"
+              />
+            </button>
+            {isOpen ? (
+              <div id={panelId} className="grid gap-4 px-5 pb-5">
+                {section.fields.map((field) => (
+                  <div key={field.id} className="grid gap-1">
+                    <h3 className="text-xs font-black uppercase tracking-normal text-[#ff3d7f]">
+                      {field.label}
+                    </h3>
+                    <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">
+                      {(notes[section.id] as Record<string, string>)[field.id]}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 type ProductMediaItem =
   | {
       id: string;
@@ -174,12 +247,33 @@ function ProductMediaViewer({ product }: { product: Product }) {
   const mediaItems = useMemo(() => buildProductMediaItems(product), [product]);
   const [selectedId, setSelectedId] = useState(mediaItems[0]?.id ?? "");
   const [expandedMedia, setExpandedMedia] = useState<ProductMediaItem | null>(null);
+  const thumbnailRailRef = useRef<HTMLDivElement>(null);
+  const selectedThumbnailRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!mediaItems.some((item) => item.id === selectedId)) {
       setSelectedId(mediaItems[0]?.id ?? "");
     }
   }, [mediaItems, selectedId]);
+
+  useEffect(() => {
+    const rail = thumbnailRailRef.current;
+    const selectedThumbnail = selectedThumbnailRef.current;
+
+    if (!rail || !selectedThumbnail || rail.scrollHeight <= rail.clientHeight) {
+      return;
+    }
+
+    const railRect = rail.getBoundingClientRect();
+    const thumbnailRect = selectedThumbnail.getBoundingClientRect();
+    const isClipped =
+      thumbnailRect.top < railRect.top ||
+      thumbnailRect.bottom > railRect.bottom;
+
+    if (isClipped) {
+      selectedThumbnail.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [selectedId]);
 
   const selectedMedia = mediaItems.find((item) => item.id === selectedId) ?? mediaItems[0];
 
@@ -190,7 +284,7 @@ function ProductMediaViewer({ product }: { product: Product }) {
   const hasMultipleMedia = mediaItems.length > 1;
 
   return (
-    <div className="relative z-10 grid content-start gap-4">
+    <div className="relative z-10 grid content-start gap-4 lg:sticky lg:top-24 lg:self-start">
       <div className="overflow-hidden rounded-lg bg-white">
         <div className="relative">
           <MediaFrame item={selectedMedia} productName={product.name} />
@@ -208,13 +302,18 @@ function ProductMediaViewer({ product }: { product: Product }) {
         </div>
       </div>
       {hasMultipleMedia ? (
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 lg:absolute lg:right-full lg:top-0 lg:mr-4 lg:max-h-[36rem] lg:w-24 lg:grid-cols-1 lg:overflow-y-auto lg:p-1">
+        <div
+          ref={thumbnailRailRef}
+          data-testid="product-media-thumbnails"
+          className="grid grid-cols-4 gap-3 sm:grid-cols-5 lg:absolute lg:right-full lg:top-0 lg:mr-4 lg:max-h-[calc(100vh-8rem)] lg:w-24 lg:grid-cols-1 lg:overflow-y-auto lg:py-2 lg:pl-2 lg:pr-3"
+        >
           {mediaItems.map((item) => {
             const isSelected = item.id === selectedMedia.id;
 
             return (
               <button
                 key={item.id}
+                ref={isSelected ? selectedThumbnailRef : undefined}
                 type="button"
                 aria-label={`View media: ${item.label}`}
                 aria-pressed={isSelected}
