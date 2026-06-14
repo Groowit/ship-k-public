@@ -19,7 +19,6 @@ type StickerPlacement = StickerSlot & {
 };
 type StickerVariant =
   | "home"
-  | "makeup"
   | "shop"
   | "product"
   | "auth"
@@ -55,12 +54,6 @@ const stickerSlots: Record<StickerVariant, StickerSlot[]> = {
     { top: 148, side: "right", size: "large", rotate: 9 },
     { top: 560, side: "left", size: "medium", rotate: 7 },
     { top: 940, side: "right", size: "small", rotate: -6 },
-  ],
-  makeup: [
-    { top: 34, side: "left", size: "medium", rotate: -8 },
-    { top: 294, side: "right", size: "small", rotate: 7 },
-    { top: 710, side: "left", size: "medium", rotate: -6 },
-    { top: 1080, side: "right", size: "medium", rotate: 6 },
   ],
   shop: [
     { top: 22, side: "left", size: "small", rotate: -9 },
@@ -162,9 +155,6 @@ export function FloatingStickerLayer() {
 function getStickerVariant(pathname: string): StickerVariant | null {
   if (pathname === "/") {
     return "home";
-  }
-  if (pathname.startsWith("/makeup")) {
-    return "makeup";
   }
   if (pathname.startsWith("/shop")) {
     return "shop";

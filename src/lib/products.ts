@@ -88,6 +88,7 @@ export type Product = {
   createdAt?: string;
   updatedAt?: string;
   lastOrderedAt?: string;
+  recentSalesCount?: number;
   salesCount?: number;
   popularityRank?: number;
   option: ProductOption;

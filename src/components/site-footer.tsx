@@ -24,9 +24,6 @@ export function SiteFooter() {
           <Link href="/shop" className="hover:text-white">
             Skincare
           </Link>
-          <Link href="/makeup" className="hover:text-white">
-            Makeup
-          </Link>
         </nav>
         <nav className="grid gap-2 text-white/70">
           <p className="font-brand-heavy text-xs uppercase text-white">Help</p>

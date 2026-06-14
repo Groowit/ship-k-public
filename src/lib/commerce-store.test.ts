@@ -7,6 +7,7 @@ import {
   findCheckoutSessionForCapture,
   findProductBySlug,
   getOrderByUser,
+  listActiveProducts,
   listAdminCommissionSettlements,
   getCommissionStatusActions,
   getCommissionStatusUpdateValues,
@@ -239,6 +240,99 @@ describe("Supabase product mapping", () => {
 
     expect(product?.name).toBe("Skincare Starter Set");
     expect(product?.disclosureNotes).toBeUndefined();
+  });
+
+  it("decorates active products with positive 7-day sales metrics", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-14T12:00:00.000Z"));
+
+    mocks.serverClient = createSupabaseMock((call) => {
+      if (call.table === "products" && call.terminal === "then") {
+        return {
+          data: [
+            productRowFixture({
+              id: "product_recent",
+              name: "Recent Winner",
+              slug: "recent-winner",
+              priceCents: 4900
+            }),
+            productRowFixture({
+              id: "product_cumulative",
+              name: "Cumulative Winner",
+              slug: "cumulative-winner",
+              priceCents: 5900
+            })
+          ],
+          error: null
+        };
+      }
+
+      if (call.table === "product_detail_sections") {
+        return { data: [], error: null };
+      }
+
+      return { data: [], error: null };
+    });
+
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      if (call.table === "products") {
+        return {
+          data: [
+            { id: "product_recent", created_at: "2026-05-18T00:00:00.000Z" },
+            { id: "product_cumulative", created_at: "2026-05-19T00:00:00.000Z" }
+          ],
+          error: null
+        };
+      }
+
+      if (call.table === "order_items") {
+        return {
+          data: [
+            {
+              product_id: "product_recent",
+              quantity: 2,
+              orders: { status: "delivered", created_at: "2026-06-13T00:00:00.000Z" }
+            },
+            {
+              product_id: "product_recent",
+              quantity: 3,
+              orders: { status: "paid", created_at: "2026-06-08T12:00:00.000Z" }
+            },
+            {
+              product_id: "product_recent",
+              quantity: 11,
+              orders: { status: "paid", created_at: "2026-06-01T00:00:00.000Z" }
+            },
+            {
+              product_id: "product_recent",
+              quantity: 7,
+              orders: { status: "cancelled", created_at: "2026-06-14T00:00:00.000Z" }
+            },
+            {
+              product_id: "product_cumulative",
+              quantity: 8,
+              orders: { status: "shipped", created_at: "2026-05-20T00:00:00.000Z" }
+            }
+          ],
+          error: null
+        };
+      }
+
+      return { data: [], error: null };
+    });
+
+    try {
+      const products = await listActiveProducts();
+      const recentWinner = products.find((product) => product.id === "product_recent");
+      const cumulativeWinner = products.find((product) => product.id === "product_cumulative");
+
+      expect(recentWinner?.salesCount).toBe(16);
+      expect(recentWinner?.recentSalesCount).toBe(5);
+      expect(cumulativeWinner?.salesCount).toBe(8);
+      expect(cumulativeWinner?.recentSalesCount).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("maps gallery images and structured detail rows in sort order", () => {

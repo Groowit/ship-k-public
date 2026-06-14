@@ -3,31 +3,43 @@ import { getHomeMerchandisingProducts } from "./home-merchandising";
 import { launchCatalogProducts, Product } from "./products";
 
 describe("home merchandising", () => {
-  it("keeps Popular picks popularity-ranked across singles and sets", () => {
+  it("keeps Popular picks ranked by recent sales, cumulative sales, then newest skincare products", () => {
     const products = [
       productFixture(0, {
-        id: "set_low",
-        slug: "set-low",
+        id: "older_cumulative",
+        slug: "older-cumulative",
         productType: "set",
-        salesCount: 4
+        category: "Skincare",
+        recentSalesCount: 0,
+        salesCount: 40,
+        createdAt: "2026-05-01T00:00:00.000Z"
       }),
       productFixture(1, {
-        id: "single_top",
-        slug: "single-top",
+        id: "makeup_recent",
+        slug: "makeup-recent",
         productType: "single",
-        salesCount: 12
+        category: "Makeup",
+        recentSalesCount: 99,
+        salesCount: 99,
+        createdAt: "2026-06-13T00:00:00.000Z"
       }),
       productFixture(2, {
-        id: "set_high",
-        slug: "set-high",
+        id: "weekly_top",
+        slug: "weekly-top",
         productType: "set",
-        salesCount: 10
+        category: "Skincare",
+        recentSalesCount: 7,
+        salesCount: 12,
+        createdAt: "2026-05-03T00:00:00.000Z"
       }),
       productFixture(3, {
-        id: "single_middle",
-        slug: "single-middle",
+        id: "newest_fallback",
+        slug: "newest-fallback",
         productType: "single",
-        salesCount: 8
+        category: "Skincare",
+        recentSalesCount: 0,
+        salesCount: 0,
+        createdAt: "2026-06-12T00:00:00.000Z"
       })
     ];
 
@@ -38,18 +50,18 @@ describe("home merchandising", () => {
 
     expect("trendingProducts" in merchandising).toBe(false);
     expect(popularProducts.map((product) => product.slug)).toEqual([
-      "single-top",
-      "set-high",
-      "single-middle",
-      "set-low"
+      "weekly-top",
+      "older-cumulative",
+      "newest-fallback"
     ]);
   });
 
-  it("uses eighteen Popular products by default", () => {
+  it("uses twelve Popular products by default", () => {
     const products = Array.from({ length: 22 }, (_, index) =>
       productFixture(index % launchCatalogProducts.length, {
         id: `product_${index}`,
         slug: `product-${index}`,
+        category: "Skincare",
         productType: index % 3 === 0 ? "set" : "single",
         salesCount: 100 - index
       })
@@ -57,7 +69,7 @@ describe("home merchandising", () => {
 
     const { popularProducts } = getHomeMerchandisingProducts(products);
 
-    expect(popularProducts).toHaveLength(18);
+    expect(popularProducts).toHaveLength(12);
   });
 
   it("clamps negative popular limits to an empty Popular shelf", () => {

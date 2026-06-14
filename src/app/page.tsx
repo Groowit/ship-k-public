@@ -1,16 +1,14 @@
-import type React from "react";
 import Link from "next/link";
-import { ArrowRight, Droplets, Palette } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { HomeFeatureBanner } from "@/components/home-feature-banner";
 import type { HomeBannerSlide } from "@/components/home-feature-banner";
 import { HomeCurationRail } from "@/components/home-curation-rail";
-import { ProductCard } from "@/components/product-card";
+import { HomePopularProductCard } from "@/components/home-popular-product-card";
 import { listActiveProducts } from "@/lib/commerce-store";
 import { listHomeBanners } from "@/lib/home-banners";
 import { listHomeCurationProducts } from "@/lib/home-curation";
 import { getHomeMerchandisingProducts } from "@/lib/home-merchandising";
-import { Product } from "@/lib/products";
-import { cn } from "@/lib/utils";
+import type { Product } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +29,9 @@ export default async function HomePage() {
     listHomeBanners(),
     listHomeCurationProducts()
   ]);
-  const featuredProducts = products.slice(0, 6);
-  const { popularProducts } = getHomeMerchandisingProducts(products);
+  const skincareProducts = products.filter(isSkincareProduct);
+  const featuredProducts = skincareProducts.slice(0, 6);
+  const { popularProducts } = getHomeMerchandisingProducts(skincareProducts);
   const bannerSlides = homeBanners.length
     ? homeBanners.map((banner): HomeBannerSlide => ({
         id: banner.id,
@@ -41,7 +40,7 @@ export default async function HomePage() {
         description: banner.description,
         backgroundImagePath: banner.backgroundImagePath,
         sideImagePath: banner.sideImagePath,
-        linkPath: banner.linkPath,
+        linkPath: getPublicHomeBannerLinkPath(banner.linkPath),
         fontKey: banner.fontKey,
         textColor: banner.textColor,
         topicTextColor: banner.topicTextColor,
@@ -79,8 +78,8 @@ function getProductFallbackBannerSlides(products: Product[]): HomeBannerSlide[] 
       headline: "Build a dewy set in one day"
     },
     {
-      topic: "SEOUL TREND",
-      headline: "Stage-bright idol makeup points"
+      topic: "SEOUL ROUTINE",
+      headline: "Keep skin prep simple"
     },
     {
       topic: "SKINCARE",
@@ -104,6 +103,22 @@ function getProductFallbackBannerSlides(products: Product[]): HomeBannerSlide[] 
       descriptionTextColor: "black"
     };
   });
+}
+
+function getPublicHomeBannerLinkPath(linkPath: string) {
+  return isMakeupPath(linkPath) ? "/shop" : linkPath;
+}
+
+function isMakeupPath(linkPath: string) {
+  return (
+    linkPath === "/makeup" ||
+    linkPath.startsWith("/makeup/") ||
+    linkPath.startsWith("/makeup?")
+  );
+}
+
+function isSkincareProduct(product: Product) {
+  return product.category === "Skincare";
 }
 
 function HomeCurationSection({ products }: { products: Product[] }) {
@@ -158,86 +173,36 @@ function PopularProductsSection({ products }: { products: Product[] }) {
             Loved across shipK
           </h2>
           <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
-            Sets and single products ranked together, so shoppers can scan what is moving now.
+            Weekly best sellers first, then proven favorites and new skincare finds.
           </p>
         </div>
         <p className="text-sm font-black uppercase text-muted-foreground">
-          Showing up to 18
+          Up to 12 picks
         </p>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product, index) => (
-          <ProductCard key={product.id} product={product} rank={index} />
+      <div
+        data-testid="home-popular-grid"
+        className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:gap-4"
+      >
+        {products.map((product) => (
+          <HomePopularProductCard key={product.id} product={product} />
         ))}
       </div>
-      <ExploreMoreLinks />
+      <PopularMoreLink />
     </section>
   );
 }
 
-function ExploreMoreLinks() {
+function PopularMoreLink() {
   return (
-    <div className="mt-10 grid gap-4 md:grid-cols-2">
-      <ExploreMoreLink
+    <div className="mt-9 flex justify-center">
+      <Link
         href="/shop"
-        eyebrow="Skincare"
-        title="Explore skincare sets"
-        body="Hydration, skin prep, and routine-first picks."
-        className="bg-[#dcfff4]"
-        icon={<Droplets className="h-5 w-5" aria-hidden="true" />}
-      />
-      <ExploreMoreLink
-        href="/makeup"
-        eyebrow="Makeup"
-        title="Explore makeup sets"
-        body="Glossy, warm, and defined looks in one place."
-        className="bg-[#fff8f0]"
-        icon={<Palette className="h-5 w-5" aria-hidden="true" />}
-      />
+        className="group inline-flex items-center gap-2 rounded-md border border-foreground bg-foreground px-5 py-3 text-sm font-black text-background transition hover:border-[#ff3d7f] hover:bg-[#ff3d7f] focus-ring"
+      >
+        Shop skincare
+        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
+      </Link>
     </div>
-  );
-}
-
-function ExploreMoreLink({
-  href,
-  eyebrow,
-  title,
-  body,
-  className,
-  icon
-}: {
-  href: string;
-  eyebrow: string;
-  title: string;
-  body: string;
-  className: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group grid min-h-40 gap-4 rounded-lg border border-zinc-200 p-5 transition hover:-translate-y-0.5 focus-ring",
-        className
-      )}
-    >
-      <span className="flex items-center justify-between gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 bg-white">
-          {icon}
-        </span>
-        <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" aria-hidden="true" />
-      </span>
-      <span>
-        <span className="font-brand-heavy text-xs uppercase text-[#ff3d7f]">
-          {eyebrow}
-        </span>
-        <span className="mt-1 block text-2xl font-black leading-tight text-foreground">
-          {title}
-        </span>
-        <span className="mt-2 block text-sm font-semibold leading-6 text-muted-foreground">
-          {body}
-        </span>
-      </span>
-    </Link>
   );
 }

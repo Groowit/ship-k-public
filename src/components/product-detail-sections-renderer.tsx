@@ -88,7 +88,7 @@ function CanonicalSection({
           width={1200}
           height={2600}
           {...getImageOptimizationProps(section.src)}
-          sizes="(min-width: 1180px) 1148px, calc(100vw - 2rem)"
+          sizes={getLongImageSizes(section.maxWidth)}
           className="h-auto w-full rounded-lg bg-white object-contain"
         />
         {section.caption ? (
@@ -483,7 +483,7 @@ function SupplementalProductSections({ product }: { product: Product }) {
   const showRoutineSteps =
     product.routineSteps.length > 0 && !hasRoutineStepsCoverage(product);
   const uncoveredContentBlocks = product.contentBlocks.filter(
-    (block) => !hasContentBlockCoverage(product, block)
+    (block) => !isDuplicateHeroImageBlock(product, block) && !hasContentBlockCoverage(product, block)
   );
 
   if (!showIncludedItems && !showRoutineSteps && uncoveredContentBlocks.length === 0) {
@@ -730,6 +730,14 @@ function hasContentBlockCoverage(product: Product, block: ProductContentBlock) {
   });
 }
 
+function isDuplicateHeroImageBlock(product: Product, block: ProductContentBlock) {
+  return block.type === "image" && sameMediaSource(block.imagePath, product.heroImagePath);
+}
+
+function sameMediaSource(first: string, second: string) {
+  return first.trim() === second.trim();
+}
+
 function sectionHasImageSource(section: ProductDetailSection, src: string) {
   if (section.sectionType === "image" || section.sectionType === "long_detail_image" || section.sectionType === "image_text") {
     return section.src === src;
@@ -785,12 +793,19 @@ function getAlignClass(align: "left" | "center" | "right") {
 
 function getLongImageWidthClass(maxWidth: "default" | "wide" | "full") {
   const contentWidthClass = "w-full max-w-none";
+  const slightlyNarrowerContentWidthClass = "w-full max-w-[65rem]";
 
   return {
-    default: contentWidthClass,
-    wide: contentWidthClass,
+    default: slightlyNarrowerContentWidthClass,
+    wide: slightlyNarrowerContentWidthClass,
     full: contentWidthClass
   }[maxWidth];
+}
+
+function getLongImageSizes(maxWidth: "default" | "wide" | "full") {
+  return maxWidth === "full"
+    ? "(min-width: 1180px) 1148px, calc(100vw - 2rem)"
+    : "(min-width: 1180px) 1040px, calc(100vw - 2rem)";
 }
 
 function getNoticeToneClass(tone: "info" | "tip" | "warning") {

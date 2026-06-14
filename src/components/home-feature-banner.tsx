@@ -18,8 +18,8 @@ const bannerThemes = [
     controlTone: "dark"
   },
   {
-    eyebrow: "SEOUL TREND",
-    headline: "Stage-bright idol makeup points",
+    eyebrow: "SEOUL ROUTINE",
+    headline: "Keep skin prep simple",
     background: "from-[#ffe25a] via-[#ffd6e3] to-[#bde0fe]",
     glow: "bg-[#ff3d7f]",
     controlTone: "dark"

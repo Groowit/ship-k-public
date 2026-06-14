@@ -125,7 +125,7 @@ describe("ProductDetailSectionsRenderer", () => {
     expect(image.parentElement).toHaveClass("aspect-square", "overflow-hidden", "rounded-lg");
   });
 
-  it("matches default long detail images to the product detail content width", () => {
+  it("keeps default long detail images slightly narrower than the product detail content width", () => {
     render(
       <ProductDetailSectionsRenderer
         product={{
@@ -148,13 +148,54 @@ describe("ProductDetailSectionsRenderer", () => {
 
     const image = screen.getByAltText("Long detail image");
 
-    expect(image).toHaveAttribute("sizes", "(min-width: 1180px) 1148px, calc(100vw - 2rem)");
+    expect(image).toHaveAttribute("sizes", "(min-width: 1180px) 1040px, calc(100vw - 2rem)");
     expect(image.parentElement).toHaveClass(
       "mx-auto",
       "w-full",
-      "max-w-none"
+      "max-w-[65rem]"
     );
     expect(image.parentElement).not.toHaveAttribute("style");
     expect(image.parentElement).not.toHaveClass("relative", "left-1/2", "-translate-x-1/2", "w-[calc(100vw-2rem)]");
+  });
+
+  it("omits supplemental legacy image blocks when they duplicate the hero media", () => {
+    render(
+      <ProductDetailSectionsRenderer
+        product={{
+          ...launchCatalogProducts[0],
+          heroImagePath: "/catalog-assets/products/haedal-hero.png",
+          contentBlocks: [
+            {
+              id: "legacy-hero-image",
+              type: "image",
+              imagePath: "/catalog-assets/products/haedal-hero.png",
+              alt: "Repeated hero media"
+            }
+          ],
+          detailSections: [
+            {
+              id: "story-heading",
+              sortOrder: 1,
+              sectionType: "heading",
+              schemaVersion: 1,
+              text: "Product story",
+              level: "h2",
+              align: "left"
+            },
+            {
+              id: "story-copy",
+              sortOrder: 2,
+              sectionType: "text",
+              schemaVersion: 1,
+              body: "A story section should start without a repeated hero image.",
+              align: "left"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.queryByAltText("Repeated hero media")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Product story" })).toBeVisible();
   });
 });

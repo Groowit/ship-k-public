@@ -82,25 +82,20 @@ test("shop shows skincare filters and filters by included item category", async 
   await expect(page.getByRole("link", { name: /Hydration Skincare Set/i })).toHaveCount(0);
 });
 
-test("makeup catalog shows the random sticker layer", async ({ page }) => {
+test("makeup route is no longer publicly enterable", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/makeup");
 
-  await expect(page.getByRole("heading", { name: /Makeup Sets/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: "All ★" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Lips" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Eyes" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Face" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Cheeks" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Makeup set", exact: true })).toBeVisible();
-  await expect(page.getByTestId("floating-sticker-layer")).toBeVisible();
-  await expect(page.getByTestId("floating-sticker")).toHaveCount(4);
-
-  await page.getByRole("link", { name: "Lips" }).click();
-
-  await expect(page).toHaveURL(/filter=lips/);
-  await expect(page.getByRole("link", { name: /Makeup Starter Set/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Skincare Starter Set/i })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "This page could not be found." })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Skincare" })
+  ).toHaveAttribute("href", "/shop");
+  await expect(page.locator('a[href="/makeup"]')).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Makeup Sets/i })).toHaveCount(0);
+  await expect(page.getByTestId("floating-sticker-layer")).toHaveCount(0);
 });
 
 test("set detail shows media fallback, items, and use steps", async ({ page }) => {

@@ -36,6 +36,7 @@ describe("SiteHeader", () => {
 
     expect(homeLink).toHaveAttribute("href", "/");
     expect(homeLink).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("link", { name: "Make up" })).not.toBeInTheDocument();
   });
 
   it("keeps the public affiliate entry point in the primary navigation", async () => {

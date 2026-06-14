@@ -13,12 +13,6 @@ vi.mock("@/components/home-feature-banner", () => ({
   )
 }));
 
-vi.mock("@/components/product-card", () => ({
-  ProductCard: ({ product }: { product: Product }) => (
-    <div data-testid="product-card">{product.name}</div>
-  )
-}));
-
 vi.mock("@/components/home-curation-rail", () => ({
   HomeCurationRail: ({ products }: { products: Product[] }) => (
     <div data-testid="home-curation-rail">
@@ -80,6 +74,33 @@ describe("HomePage", () => {
     expect(payload).not.toContain("Build a dewy set in one day");
   });
 
+  it("does not expose stale managed Makeup banner links on the public home page", async () => {
+    vi.mocked(listActiveProducts).mockResolvedValue([productFixture()] as never);
+    vi.mocked(listHomeCurationProducts).mockResolvedValue([] as never);
+    vi.mocked(listHomeBanners).mockResolvedValue([
+      {
+        id: "banner_1",
+        topic: "ADMIN",
+        headline: "Managed makeup banner",
+        description: "Stale managed link",
+        backgroundImagePath: "/managed-bg.png",
+        linkPath: "/makeup?filter=lips",
+        fontKey: "brand-display",
+        textColor: "black",
+        topicTextColor: "shipk-pink",
+        headlineTextColor: "white",
+        descriptionTextColor: "teal",
+        sortOrder: 1
+      }
+    ] as never);
+
+    render(await HomePage());
+
+    const payload = screen.getByTestId("home-feature-banner").textContent ?? "";
+    expect(payload).not.toContain("/makeup");
+    expect(payload).toContain("\"linkPath\":\"/shop\"");
+  });
+
   it("falls back to products when no managed banners exist", async () => {
     vi.mocked(listActiveProducts).mockResolvedValue([productFixture()] as never);
     vi.mocked(listHomeCurationProducts).mockResolvedValue([] as never);
@@ -113,6 +134,50 @@ describe("HomePage", () => {
     expect(screen.queryByText("Trending now")).not.toBeInTheDocument();
     expect(screen.getByText("Popular picks")).toBeVisible();
     expect(screen.getByText("Popular One")).toBeVisible();
+  });
+
+  it("renders Popular picks as compact skincare cards with one shop CTA", async () => {
+    vi.mocked(listActiveProducts).mockResolvedValue([
+      productFixture({
+        id: "popular_1",
+        name: "Weekly Dew Cream",
+        slug: "weekly-dew-cream",
+        brandName: "Dew Lab",
+        shortDescription: "요즘 가장 많이 담긴 보습 크림",
+        category: "Skincare",
+        option: {
+          id: "option_weekly",
+          name: "Default option",
+          sku: "WEEKLY-DEW",
+          priceCents: 3200,
+          stockQuantity: 10
+        }
+      }),
+      productFixture({
+        id: "popular_2",
+        name: "Makeup Recent",
+        slug: "makeup-recent",
+        category: "Makeup"
+      })
+    ] as never);
+    vi.mocked(listHomeCurationProducts).mockResolvedValue([] as never);
+    vi.mocked(listHomeBanners).mockResolvedValue([] as never);
+
+    render(await HomePage());
+
+    expect(screen.getByTestId("home-popular-grid")).toHaveClass("grid-cols-3");
+    expect(screen.getByTestId("home-popular-grid")).toHaveClass("md:grid-cols-4");
+    expect(screen.getByText("Dew Lab")).toBeVisible();
+    expect(screen.getByText("Weekly Dew Cream")).toBeVisible();
+    expect(screen.getByText("요즘 가장 많이 담긴 보습 크림")).toBeVisible();
+    expect(screen.getByText("$32.00")).toBeVisible();
+    expect(screen.queryByText("Makeup Recent")).not.toBeInTheDocument();
+    expect(screen.queryByText("Showing up to 18")).not.toBeInTheDocument();
+
+    const shopLinks = screen.getAllByRole("link", { name: /shop skincare/i });
+    expect(shopLinks).toHaveLength(1);
+    expect(shopLinks[0]).toHaveAttribute("href", "/shop");
+    expect(screen.queryByRole("link", { name: /makeup/i })).not.toBeInTheDocument();
   });
 
   it("hides the curation shelf when no curated products are eligible", async () => {

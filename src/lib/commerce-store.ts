@@ -608,10 +608,12 @@ type ProductMerchandisingMetric = {
   id: string;
   createdAt?: string;
   lastOrderedAt?: string;
+  recentSalesCount: number;
   salesCount: number;
 };
 
 const positiveOrderStatuses = new Set<OrderStatus>(["paid", "preparing", "shipped", "delivered"]);
+const recentSalesWindowMs = 7 * 24 * 60 * 60 * 1000;
 const newArrivalWindowMs = 30 * 24 * 60 * 60 * 1000;
 
 async function decorateProductsWithAutomaticMerchandising(products: Product[]) {
@@ -649,6 +651,7 @@ async function loadProductMerchandisingMetrics() {
     metrics.set(row.id, {
       id: row.id,
       createdAt: row.created_at ?? undefined,
+      recentSalesCount: 0,
       salesCount: 0
     });
   });
@@ -685,7 +688,11 @@ async function loadProductMerchandisingMetrics() {
       return;
     }
 
-    metric.salesCount += row.quantity ?? 0;
+    const quantity = row.quantity ?? 0;
+    metric.salesCount += quantity;
+    if (isRecent(order.created_at ?? undefined, recentSalesWindowMs)) {
+      metric.recentSalesCount += quantity;
+    }
     if (isAfter(order.created_at, metric.lastOrderedAt)) {
       metric.lastOrderedAt = order.created_at ?? undefined;
     }
@@ -722,6 +729,7 @@ function applyAutomaticMarketingBadges(
       badges: product.status === "active" ? badges : [],
       createdAt: metric?.createdAt ?? product.createdAt,
       lastOrderedAt: metric?.lastOrderedAt ?? product.lastOrderedAt,
+      recentSalesCount: metric?.recentSalesCount ?? product.recentSalesCount ?? 0,
       salesCount: metric?.salesCount ?? product.salesCount ?? 0,
       popularityRank: rankById.get(product.id) ?? product.popularityRank
     };
