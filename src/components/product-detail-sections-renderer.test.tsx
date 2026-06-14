@@ -198,4 +198,54 @@ describe("ProductDetailSectionsRenderer", () => {
     expect(screen.queryByAltText("Repeated hero media")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Product story" })).toBeVisible();
   });
+
+  it("omits supplemental legacy story text when canonical detail sections exist", () => {
+    render(
+      <ProductDetailSectionsRenderer
+        product={{
+          ...launchCatalogProducts[0],
+          productType: "single",
+          shortDescription: "Short surface copy",
+          description: "Main surface copy",
+          result: "Current product result",
+          bestFor: "Current product audience",
+          includedItems: [],
+          routineSteps: [],
+          contentBlocks: [
+            {
+              id: "legacy-default-story",
+              type: "text",
+              eyebrow: "Product story",
+              title: "뇽뇽ㅇ",
+              body: "냥"
+            },
+            {
+              id: "legacy-drifted-story",
+              type: "text",
+              eyebrow: "Product story",
+              title: "뇨뇨잉",
+              body: "Drifted story copy"
+            }
+          ],
+          detailSections: [
+            {
+              id: "canonical-heading",
+              sortOrder: 1,
+              sectionType: "heading",
+              schemaVersion: 1,
+              text: "제품 상세 스토리",
+              level: "h2",
+              align: "left"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.queryByText("Product story")).not.toBeInTheDocument();
+    expect(screen.queryByText("뇽뇽ㅇ")).not.toBeInTheDocument();
+    expect(screen.queryByText("뇨뇨잉")).not.toBeInTheDocument();
+    expect(screen.queryByText("냥")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "제품 상세 스토리" })).toBeVisible();
+  });
 });

@@ -726,6 +726,102 @@ describe("admin product persistence", () => {
       }
     });
   });
+
+  it("does not create fallback legacy story blocks when canonical detail sections exist", async () => {
+    const calls: QueryCall[] = [];
+    mocks.privilegedClient = createSupabaseMock((call) => {
+      calls.push(call);
+
+      if (call.table === "products" && call.terminal === "maybeSingle") {
+        return {
+          data: productRowFixture({
+            id: "product_1",
+            name: "Haedal Recovery Cream",
+            slug: "haedal-recovery-cream",
+            priceCents: 2400
+          }),
+          error: null
+        };
+      }
+
+      if (call.table === "categories" && call.terminal === "maybeSingle") {
+        return { data: { id: "category_1" }, error: null };
+      }
+
+      if (call.table === "products" && call.operation === "update") {
+        return { error: null };
+      }
+
+      if (call.table === "product_options" && call.operation === "select") {
+        return { data: [{ id: "option_1" }], error: null };
+      }
+
+      if (call.table === "product_options" && call.operation === "update") {
+        return { error: null };
+      }
+
+      if (
+        ["product_images", "product_included_items", "product_routine_steps", "product_content_blocks"].includes(
+          call.table
+        ) &&
+        call.operation === "delete"
+      ) {
+        return { error: null };
+      }
+
+      if (call.table === "replace_product_detail_sections" && call.operation === "rpc") {
+        return { error: null };
+      }
+
+      if (call.table === "product_detail_sections") {
+        return { data: [], error: null };
+      }
+
+      if (call.table === "products" && call.terminal === "then") {
+        return { data: [], error: null };
+      }
+
+      throw new Error(`Unexpected query: ${call.table}.${call.operation}.${call.terminal}`);
+    });
+
+    await updateProduct("product_1", {
+      productType: "single",
+      brandName: "HAEDAL'S",
+      name: "Haedal Recovery Cream",
+      category: "Skincare",
+      tags: ["SKINCARE"],
+      shortDescription: "냥",
+      description: "냐냥ㅇ",
+      bestFor: "냐냥이",
+      result: "뇽뇽ㅇ",
+      priceCents: 2400,
+      stockQuantity: 10,
+      heroImagePath: "/hero.png",
+      galleryImages: [],
+      includedItems: [],
+      routineSteps: [],
+      contentBlocks: [],
+      disclosureNotes: completeDisclosureNotes(),
+      detailSections: [
+        {
+          sectionType: "heading",
+          schemaVersion: 1,
+          text: "제품 상세 스토리",
+          level: "h2",
+          align: "left"
+        }
+      ],
+      detailActorId: "admin_1",
+      status: "active"
+    });
+
+    expect(
+      calls.some((call) => call.table === "product_content_blocks" && call.operation === "insert")
+    ).toBe(false);
+    expect(calls.some((call) => call.table === "replace_product_detail_sections" && call.operation === "rpc")).toBe(
+      true
+    );
+  });
 });
 
 describe("admin product deletion", () => {
@@ -2029,6 +2125,9 @@ type QueryCall = {
 
 function createSupabaseMock(handler: (call: QueryCall) => unknown) {
   return {
+    rpc(table: string, values?: unknown) {
+      return Promise.resolve(handler({ table, operation: "rpc", terminal: "then", values, filters: [] }));
+    },
     from(table: string) {
       return createQueryBuilder(table, handler);
     }

@@ -2787,19 +2787,21 @@ async function replaceProductChildren(
 
   const blocks = input.contentBlocks.length
     ? input.contentBlocks
-    : [
-        {
-          type: "image" as const,
-          imagePath: heroImagePath,
-          alt: `${input.name} product image`
-        },
-        {
-          type: "text" as const,
-          eyebrow: input.productType === "set" ? "Set story" : "Product story",
-          title: input.result || input.shortDescription,
-          body: input.bestFor || input.description
-        }
-      ];
+    : input.detailSections.length > 0
+      ? []
+      : [
+          {
+            type: "image" as const,
+            imagePath: heroImagePath,
+            alt: `${input.name} product image`
+          },
+          {
+            type: "text" as const,
+            eyebrow: input.productType === "set" ? "Set story" : "Product story",
+            title: input.result || input.shortDescription,
+            body: input.bestFor || input.description
+          }
+        ];
 
   if (blocks.length > 0) {
     await insertRequired(

@@ -483,7 +483,10 @@ function SupplementalProductSections({ product }: { product: Product }) {
   const showRoutineSteps =
     product.routineSteps.length > 0 && !hasRoutineStepsCoverage(product);
   const uncoveredContentBlocks = product.contentBlocks.filter(
-    (block) => !isDuplicateHeroImageBlock(product, block) && !hasContentBlockCoverage(product, block)
+    (block) =>
+      !isDuplicateHeroImageBlock(product, block) &&
+      !isLegacyStoryBlock(product, block) &&
+      !hasContentBlockCoverage(product, block)
   );
 
   if (!showIncludedItems && !showRoutineSteps && uncoveredContentBlocks.length === 0) {
@@ -736,6 +739,34 @@ function isDuplicateHeroImageBlock(product: Product, block: ProductContentBlock)
 
 function sameMediaSource(first: string, second: string) {
   return first.trim() === second.trim();
+}
+
+function isLegacyStoryBlock(product: Product, block: ProductContentBlock) {
+  if (block.type === "image") {
+    return false;
+  }
+
+  const legacyStoryEyebrow = ["product story", "set story"].includes(normalizeSearchText(block.eyebrow));
+  return legacyStoryEyebrow || isDefaultLegacyStoryBlock(product, block);
+}
+
+function isDefaultLegacyStoryBlock(
+  product: Product,
+  block: Extract<ProductContentBlock, { type: "text" | "image_text" }>
+) {
+  const defaultEyebrow = product.productType === "set" ? "Set story" : "Product story";
+  const defaultTitle = product.result || product.shortDescription;
+  const defaultBody = product.bestFor || product.description;
+
+  return (
+    sameText(block.eyebrow, defaultEyebrow) &&
+    sameText(block.title, defaultTitle) &&
+    sameText(block.body, defaultBody)
+  );
+}
+
+function sameText(first: string | undefined, second: string | undefined) {
+  return normalizeSearchText(first) === normalizeSearchText(second);
 }
 
 function sectionHasImageSource(section: ProductDetailSection, src: string) {
