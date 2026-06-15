@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRight, ChevronDown, LogOut, Search, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, ChevronDown, LogOut, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -39,15 +39,7 @@ export function SiteHeaderNav({
   return (
     <>
       <div className="grid min-h-[7.125rem] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3">
-        <div className="flex items-center gap-2 sm:gap-6">
-          <Link
-            href="/shop"
-            className="focus-ring hidden h-11 w-11 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground sm:grid"
-            aria-label="Search products"
-          >
-            <Search className="h-6 w-6" aria-hidden="true" />
-          </Link>
-        </div>
+        <div className="flex items-center gap-2 sm:gap-6" />
         <Link
           href="/"
           className="shipk-logo justify-self-center text-[2.15rem] leading-none text-foreground sm:text-[3.25rem]"
