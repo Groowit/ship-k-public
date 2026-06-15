@@ -2381,6 +2381,8 @@ async function uploadProductImage(file: File) {
 }
 
 function createInitialState(product?: Product, currentBrandAssignment?: ProductBrandAssignment | null): EditorState {
+  const shouldUseLegacyContentBlocks = !product?.detailSections.length;
+
   return {
     productType: product?.productType ?? "set",
     brandName: product?.brandName ?? "shipK Curated",
@@ -2404,8 +2406,12 @@ function createInitialState(product?: Product, currentBrandAssignment?: ProductB
     galleryImages: product?.galleryImages.map(({ imagePath, altText }) => ({ imagePath, altText })) ?? [],
     includedItems: product?.includedItems.map(({ name, category, description }) => ({ name, category, description })) ?? [],
     routineSteps: product?.routineSteps.map(({ title, body }) => ({ title, body })) ?? [],
-    detailImages: product?.contentBlocks.filter((block) => block.type === "image").map(stripDetailImageId) ?? [],
-    contentBlocks: product?.contentBlocks.filter((block) => block.type !== "image").map(stripContentBlockId) ?? [],
+    detailImages: shouldUseLegacyContentBlocks
+      ? product?.contentBlocks.filter((block) => block.type === "image").map(stripDetailImageId) ?? []
+      : [],
+    contentBlocks: shouldUseLegacyContentBlocks
+      ? product?.contentBlocks.filter((block) => block.type !== "image").map(stripContentBlockId) ?? []
+      : [],
     disclosureNotes: normalizeProductDisclosureNotes(product?.disclosureNotes) ?? createEmptyProductDisclosureNotes(),
     detailSections: createInitialDetailSections(product)
   };
@@ -2696,22 +2702,34 @@ function toDetailSectionDraft(
 }
 
 function toDetailSectionsPayload(sections: DetailSectionDraft[]): ProductDetailSectionInput[] {
-  return normalizeDetailSectionOrders(sections).map((section, index) => ({
-    ...section,
-    sortOrder: index + 1
-  }));
+  return normalizeDetailSectionOrders(sections)
+    .filter(isPersistableDetailSection)
+    .map((section, index) => ({
+      ...section,
+      sortOrder: index + 1
+    }));
 }
 
 function toPreviewDetailSections(sections: DetailSectionDraft[]): ProductDetailSection[] {
-  return normalizeDetailSectionOrders(sections).map((section, index) => ({
-    ...section,
-    id: section.id,
-    sortOrder: index + 1
-  }));
+  return normalizeDetailSectionOrders(sections)
+    .filter(isPersistableDetailSection)
+    .map((section, index) => ({
+      ...section,
+      id: section.id,
+      sortOrder: index + 1
+    }));
 }
 
 function normalizeDetailSectionOrders(sections: DetailSectionDraft[]) {
   return sections.map((section, index) => ({ ...section, sortOrder: index + 1 }));
+}
+
+function isPersistableDetailSection(section: DetailSectionDraft) {
+  if (section.sectionType === "video") {
+    return Boolean(section.url.trim());
+  }
+
+  return true;
 }
 
 function normalizeEmbeddableVideoUrl(value: string) {
@@ -2831,11 +2849,13 @@ function createDraftSection(type: SectionType, product: Product): DetailSectionD
   }
 
   if (type === "video") {
+    const introVideoUrl = product.introVideoUrl ?? "";
+
     return {
       ...base,
       sectionType: "video",
-      title: "제품 영상",
-      url: product.introVideoUrl ?? "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      title: introVideoUrl ? "제품 영상" : "",
+      url: introVideoUrl
     };
   }
 

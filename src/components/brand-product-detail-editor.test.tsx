@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BrandProductDetailEditor } from "./brand-product-detail-editor";
 import type { Product } from "@/lib/products";
 
+const productDetailViewMock = vi.hoisted(() => vi.fn());
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     refresh: vi.fn(),
@@ -11,12 +13,16 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/product-detail-view", () => ({
-  ProductDetailView: () => <div data-testid="product-preview" />
+  ProductDetailView: (props: unknown) => {
+    productDetailViewMock(props);
+    return <div data-testid="product-preview" />;
+  }
 }));
 
 describe("BrandProductDetailEditor", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    productDetailViewMock.mockClear();
   });
 
   it("renders a Korean content-only editor without commerce controls", () => {
@@ -169,6 +175,32 @@ describe("BrandProductDetailEditor", () => {
         })
       ])
     );
+  });
+
+  it("does not inject a sample video URL into blank preview sections", () => {
+    render(
+      <BrandProductDetailEditor
+        product={{
+          ...productFixture(),
+          detailSections: [
+            {
+              id: "blank-video",
+              sortOrder: 1,
+              sectionType: "video",
+              schemaVersion: 1,
+              title: "",
+              url: ""
+            }
+          ]
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "미리보기" }));
+
+    const previewProps = productDetailViewMock.mock.calls.at(-1)?.[0] as { product: Product } | undefined;
+    expect(JSON.stringify(previewProps?.product.detailSections ?? [])).not.toContain("dQw4w9WgXcQ");
+    expect(previewProps?.product.detailSections).toEqual([]);
   });
 });
 

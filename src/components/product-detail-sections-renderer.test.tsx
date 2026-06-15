@@ -199,6 +199,47 @@ describe("ProductDetailSectionsRenderer", () => {
     expect(screen.getByRole("heading", { name: "Product story" })).toBeVisible();
   });
 
+  it("omits all supplemental legacy content blocks when canonical detail sections exist", () => {
+    render(
+      <ProductDetailSectionsRenderer
+        product={{
+          ...launchCatalogProducts[0],
+          heroImagePath: "/catalog-assets/products/current-hero.png",
+          contentBlocks: [
+            {
+              id: "legacy-different-image",
+              type: "image",
+              imagePath: "/catalog-assets/products/old-detail-image.png",
+              alt: "Old detail image"
+            },
+            {
+              id: "legacy-copy",
+              type: "text",
+              eyebrow: "Product story",
+              title: "Old story",
+              body: "Old story copy"
+            }
+          ],
+          detailSections: [
+            {
+              id: "canonical-heading",
+              sortOrder: 1,
+              sectionType: "heading",
+              schemaVersion: 1,
+              text: "Current detail story",
+              level: "h2",
+              align: "left"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.queryByAltText("Old detail image")).not.toBeInTheDocument();
+    expect(screen.queryByText("Old story")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Current detail story" })).toBeVisible();
+  });
+
   it("omits supplemental legacy story text when canonical detail sections exist", () => {
     render(
       <ProductDetailSectionsRenderer

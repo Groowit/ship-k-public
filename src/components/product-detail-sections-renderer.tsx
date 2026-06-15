@@ -482,14 +482,8 @@ function SupplementalProductSections({ product }: { product: Product }) {
     product.includedItems.length > 0 && !hasIncludedItemsCoverage(product);
   const showRoutineSteps =
     product.routineSteps.length > 0 && !hasRoutineStepsCoverage(product);
-  const uncoveredContentBlocks = product.contentBlocks.filter(
-    (block) =>
-      !isDuplicateHeroImageBlock(product, block) &&
-      !isLegacyStoryBlock(product, block) &&
-      !hasContentBlockCoverage(product, block)
-  );
 
-  if (!showIncludedItems && !showRoutineSteps && uncoveredContentBlocks.length === 0) {
+  if (!showIncludedItems && !showRoutineSteps) {
     return null;
   }
 
@@ -497,9 +491,6 @@ function SupplementalProductSections({ product }: { product: Product }) {
     <>
       {showIncludedItems ? <IncludedItemsSection product={product} /> : null}
       {showRoutineSteps ? <RoutineStepsSection product={product} /> : null}
-      {uncoveredContentBlocks.map((block) => (
-        <LegacyContentBlock key={block.id} block={block} />
-      ))}
     </>
   );
 }
@@ -709,101 +700,6 @@ function hasRoutineStepsCoverage(product: Product) {
       })
     );
   });
-}
-
-function hasContentBlockCoverage(product: Product, block: ProductContentBlock) {
-  return product.detailSections.some((section) => {
-    if (block.type === "image") {
-      return sectionHasImageSource(section, block.imagePath);
-    }
-
-    if (block.type === "image_text") {
-      return (
-        section.sectionType === "image_text" &&
-        (section.src === block.imagePath || normalizeSearchText(section.title).includes(normalizeSearchText(block.title)))
-      );
-    }
-
-    if (block.type === "text") {
-      const title = normalizeSearchText(block.title);
-      return sectionHasText(section, title);
-    }
-
-    return false;
-  });
-}
-
-function isDuplicateHeroImageBlock(product: Product, block: ProductContentBlock) {
-  return block.type === "image" && sameMediaSource(block.imagePath, product.heroImagePath);
-}
-
-function sameMediaSource(first: string, second: string) {
-  return first.trim() === second.trim();
-}
-
-function isLegacyStoryBlock(product: Product, block: ProductContentBlock) {
-  if (block.type === "image") {
-    return false;
-  }
-
-  const legacyStoryEyebrow = ["product story", "set story"].includes(normalizeSearchText(block.eyebrow));
-  return legacyStoryEyebrow || isDefaultLegacyStoryBlock(product, block);
-}
-
-function isDefaultLegacyStoryBlock(
-  product: Product,
-  block: Extract<ProductContentBlock, { type: "text" | "image_text" }>
-) {
-  const defaultEyebrow = product.productType === "set" ? "Set story" : "Product story";
-  const defaultTitle = product.result || product.shortDescription;
-  const defaultBody = product.bestFor || product.description;
-
-  return (
-    sameText(block.eyebrow, defaultEyebrow) &&
-    sameText(block.title, defaultTitle) &&
-    sameText(block.body, defaultBody)
-  );
-}
-
-function sameText(first: string | undefined, second: string | undefined) {
-  return normalizeSearchText(first) === normalizeSearchText(second);
-}
-
-function sectionHasImageSource(section: ProductDetailSection, src: string) {
-  if (section.sectionType === "image" || section.sectionType === "long_detail_image" || section.sectionType === "image_text") {
-    return section.src === src;
-  }
-
-  if (section.sectionType === "image_group") {
-    return section.images.some((image) => image.src === src);
-  }
-
-  return false;
-}
-
-function sectionHasText(section: ProductDetailSection, text: string) {
-  if (!text) {
-    return false;
-  }
-
-  if (section.sectionType === "heading") {
-    return normalizeSearchText(section.text).includes(text);
-  }
-
-  if (section.sectionType === "text") {
-    return normalizeSearchText(section.body).includes(text);
-  }
-
-  if (
-    section.sectionType === "image_text" ||
-    section.sectionType === "comparison" ||
-    section.sectionType === "steps" ||
-    section.sectionType === "notice"
-  ) {
-    return normalizeSearchText(JSON.stringify(section)).includes(text);
-  }
-
-  return false;
 }
 
 function normalizeSearchText(value: string | undefined) {

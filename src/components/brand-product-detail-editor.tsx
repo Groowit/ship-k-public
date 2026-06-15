@@ -1765,7 +1765,7 @@ function hasMeaningfulContent(section: SectionDraft) {
   }
 
   if (section.sectionType === "video") {
-    return Boolean(section.url.trim() || section.title?.trim());
+    return Boolean(section.url.trim());
   }
 
   if (section.sectionType === "comparison") {
@@ -1782,7 +1782,9 @@ function hasMeaningfulContent(section: SectionDraft) {
 function toPreviewProduct(product: Product, sections: SectionDraft[]): Product {
   return {
     ...product,
-    detailSections: normalizeSortOrders(sections).map((section) => toPreviewSection(section, product))
+    detailSections: normalizeSortOrders(sections)
+      .filter(hasMeaningfulContent)
+      .map((section) => toPreviewSection(section, product))
   };
 }
 
@@ -1855,7 +1857,7 @@ function toPreviewSection(section: SectionDraft, product: Product): ProductDetai
       ...section,
       id: section.id || createDraftId(),
       sortOrder: section.sortOrder,
-      url: fallbackText(section.url, "https://www.youtube.com/embed/dQw4w9WgXcQ")
+      url: section.url.trim()
     };
   }
 

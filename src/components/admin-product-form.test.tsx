@@ -270,6 +270,43 @@ describe("AdminProductEditor", () => {
     );
   });
 
+  it("does not resave legacy content blocks when canonical detail sections already exist", async () => {
+    const product = {
+      ...productWithLongDetailSections(),
+      contentBlocks: [
+        {
+          id: "legacy-image",
+          type: "image",
+          imagePath: "/old-detail-image.png",
+          alt: "Old detail image"
+        },
+        {
+          id: "legacy-story",
+          type: "text",
+          eyebrow: "Product story",
+          title: "Old story",
+          body: "Old story copy"
+        }
+      ]
+    } satisfies Product;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ product })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AdminProductEditor mode="edit" product={product} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "임시저장" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, request] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(request.body));
+
+    expect(body.contentBlocks).toEqual([]);
+    expect(body.detailSections.length).toBeGreaterThan(0);
+  });
+
   it("hides loaded edit products without hard deleting them", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -354,6 +391,28 @@ describe("AdminProductEditor", () => {
     expect(screen.getByTitle("Video Serum intro video")).toHaveAttribute(
       "src",
       "https://www.youtube.com/embed/dQw4w9WgXcQ"
+    );
+  });
+
+  it("does not inject a sample video URL when adding a blank detail video section", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ product: { id: "draft-1", name: "Draft Product" } })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AdminProductEditor mode="create" />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "영상 추가" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "임시저장" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, request] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(request.body));
+
+    expect(JSON.stringify(body.detailSections)).not.toContain("dQw4w9WgXcQ");
+    expect(body.detailSections.some((section: { sectionType: string }) => section.sectionType === "video")).toBe(
+      false
     );
   });
 });
