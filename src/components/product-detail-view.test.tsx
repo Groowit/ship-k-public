@@ -33,6 +33,7 @@ vi.mock("next/image", () => ({
 
 describe("ProductDetailView", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -85,6 +86,88 @@ describe("ProductDetailView", () => {
 
     const galleryThumbnail = screen.getByRole("button", { name: /View media: Skincare Starter Set set/i });
     expect(galleryThumbnail).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("automatically advances image media in order while the gallery is idle", () => {
+    vi.useFakeTimers();
+
+    render(<ProductDetailView product={launchCatalogProducts[0]} isAuthenticated />);
+
+    const mainThumbnail = screen.getByRole("button", { name: "View media: Main image" });
+    const galleryThumbnail = screen.getByRole("button", { name: /View media: Skincare Starter Set set/i });
+
+    expect(mainThumbnail).toHaveAttribute("aria-pressed", "true");
+    expect(galleryThumbnail).toHaveAttribute("aria-pressed", "false");
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(mainThumbnail).toHaveAttribute("aria-pressed", "false");
+    expect(galleryThumbnail).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("pauses automatic media rotation while the gallery is hovered", () => {
+    vi.useFakeTimers();
+
+    render(<ProductDetailView product={launchCatalogProducts[0]} isAuthenticated />);
+
+    const viewer = screen.getByTestId("product-media-viewer");
+    const mainThumbnail = screen.getByRole("button", { name: "View media: Main image" });
+    const galleryThumbnail = screen.getByRole("button", { name: /View media: Skincare Starter Set set/i });
+
+    fireEvent.pointerEnter(viewer);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(mainThumbnail).toHaveAttribute("aria-pressed", "true");
+    expect(galleryThumbnail).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.pointerLeave(viewer);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(mainThumbnail).toHaveAttribute("aria-pressed", "false");
+    expect(galleryThumbnail).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps the current large image visible until a clicked thumbnail image is ready", () => {
+    vi.useFakeTimers();
+    const product = {
+      ...launchCatalogProducts[0],
+      heroImagePath: "/manual-click-hero.png",
+      galleryImages: [
+        {
+          id: "manual-click-gallery",
+          imagePath: "/manual-click-gallery.png",
+          altText: "Manual click gallery"
+        }
+      ]
+    };
+
+    render(<ProductDetailView product={product} isAuthenticated />);
+
+    const viewer = screen.getByTestId("product-media-viewer");
+    const galleryThumbnail = screen.getByRole("button", { name: "View media: Manual click gallery" });
+
+    fireEvent.click(galleryThumbnail);
+
+    const heroImage = within(viewer).getByAltText("Skincare Starter Set intro image");
+    expect(heroImage.closest("[aria-hidden='true']")).toBeNull();
+
+    const galleryImage = within(viewer).getByAltText("Manual click gallery");
+    fireEvent.load(galleryImage);
+
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+
+    expect(within(viewer).queryByAltText("Skincare Starter Set intro image")).not.toBeInTheDocument();
+    expect(within(viewer).getByAltText("Manual click gallery").closest("[aria-hidden='true']")).toBeNull();
   });
 
   it("keeps the functional lightbox overlay without restoring media fill colors", () => {

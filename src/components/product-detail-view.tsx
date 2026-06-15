@@ -243,18 +243,58 @@ type ProductMediaItem =
       label: string;
     };
 
+const PRODUCT_MEDIA_AUTO_ROTATE_MS = 3000;
+const PRODUCT_MEDIA_TRANSITION_MS = 700;
+
 function ProductMediaViewer({ product }: { product: Product }) {
   const mediaItems = useMemo(() => buildProductMediaItems(product), [product]);
+  const imageMediaItems = useMemo(() => mediaItems.filter((item) => item.type === "image"), [mediaItems]);
   const [selectedId, setSelectedId] = useState(mediaItems[0]?.id ?? "");
   const [expandedMedia, setExpandedMedia] = useState<ProductMediaItem | null>(null);
+  const [isAutoRotationPaused, setIsAutoRotationPaused] = useState(false);
   const thumbnailRailRef = useRef<HTMLDivElement>(null);
   const selectedThumbnailRef = useRef<HTMLButtonElement | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const selectedMedia = mediaItems.find((item) => item.id === selectedId) ?? mediaItems[0];
 
   useEffect(() => {
     if (!mediaItems.some((item) => item.id === selectedId)) {
       setSelectedId(mediaItems[0]?.id ?? "");
     }
   }, [mediaItems, selectedId]);
+
+  useEffect(() => {
+    if (
+      !selectedMedia ||
+      selectedMedia.type !== "image" ||
+      imageMediaItems.length < 2 ||
+      expandedMedia ||
+      isAutoRotationPaused ||
+      prefersReducedMotion ||
+      (typeof document !== "undefined" && document.hidden)
+    ) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSelectedId((currentId) => {
+        const currentIndex = imageMediaItems.findIndex((item) => item.id === currentId);
+        const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % imageMediaItems.length;
+
+        return imageMediaItems[nextIndex]?.id ?? currentId;
+      });
+    }, PRODUCT_MEDIA_AUTO_ROTATE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    expandedMedia,
+    imageMediaItems,
+    isAutoRotationPaused,
+    prefersReducedMotion,
+    selectedMedia
+  ]);
 
   useEffect(() => {
     const rail = thumbnailRailRef.current;
@@ -275,8 +315,6 @@ function ProductMediaViewer({ product }: { product: Product }) {
     }
   }, [selectedId]);
 
-  const selectedMedia = mediaItems.find((item) => item.id === selectedId) ?? mediaItems[0];
-
   if (!selectedMedia) {
     return null;
   }
@@ -284,10 +322,23 @@ function ProductMediaViewer({ product }: { product: Product }) {
   const hasMultipleMedia = mediaItems.length > 1;
 
   return (
-    <div className="relative z-10 grid content-start gap-4 lg:sticky lg:top-24 lg:self-start">
+    <div
+      data-testid="product-media-viewer"
+      className="relative z-10 grid content-start gap-4 lg:sticky lg:top-24 lg:self-start"
+      onPointerEnter={() => setIsAutoRotationPaused(true)}
+      onPointerLeave={() => setIsAutoRotationPaused(false)}
+      onFocusCapture={() => setIsAutoRotationPaused(true)}
+      onBlurCapture={(event) => {
+        const nextTarget = event.relatedTarget;
+
+        if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+          setIsAutoRotationPaused(false);
+        }
+      }}
+    >
       <div className="overflow-hidden rounded-lg bg-white">
         <div className="relative">
-          <MediaFrame item={selectedMedia} productName={product.name} />
+          <MediaStage item={selectedMedia} productName={product.name} />
           <button
             type="button"
             aria-label={`View larger: ${selectedMedia.label}`}
@@ -340,6 +391,28 @@ function ProductMediaViewer({ product }: { product: Product }) {
   );
 }
 
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    updatePreference();
+    mediaQuery.addEventListener("change", updatePreference);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updatePreference);
+    };
+  }, []);
+
+  return prefersReducedMotion;
+}
+
 function buildProductMediaItems(product: Product): ProductMediaItem[] {
   const items: ProductMediaItem[] = [];
 
@@ -377,11 +450,13 @@ function buildProductMediaItems(product: Product): ProductMediaItem[] {
 function MediaFrame({
   item,
   productName,
-  modal = false
+  modal = false,
+  onImageLoad
 }: {
   item: ProductMediaItem;
   productName: string;
   modal?: boolean;
+  onImageLoad?: () => void;
 }) {
   if (item.type === "video") {
     return (
@@ -413,10 +488,77 @@ function MediaFrame({
         alt={item.alt}
         fill
         priority={item.priority && !modal}
+        onLoad={onImageLoad}
         {...getImageOptimizationProps(item.src)}
         sizes={modal ? "90vw" : "(min-width: 1024px) 50vw, 100vw"}
         className={modal ? "object-contain" : "object-cover"}
       />
+    </div>
+  );
+}
+
+function MediaStage({ item, productName }: { item: ProductMediaItem; productName: string }) {
+  const [visibleItem, setVisibleItem] = useState(item);
+  const [incomingItem, setIncomingItem] = useState<ProductMediaItem | null>(null);
+  const [isIncomingReady, setIsIncomingReady] = useState(false);
+
+  useEffect(() => {
+    if (visibleItem.id === item.id) {
+      setIncomingItem(null);
+      setIsIncomingReady(false);
+      return;
+    }
+
+    if (visibleItem.type !== "image" || item.type !== "image") {
+      setVisibleItem(item);
+      setIncomingItem(null);
+      setIsIncomingReady(false);
+      return;
+    }
+
+    setIncomingItem(item);
+    setIsIncomingReady(false);
+  }, [item, visibleItem]);
+
+  useEffect(() => {
+    if (!incomingItem || !isIncomingReady) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setVisibleItem(incomingItem);
+      setIncomingItem(null);
+      setIsIncomingReady(false);
+    }, PRODUCT_MEDIA_TRANSITION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [incomingItem, isIncomingReady]);
+
+  return (
+    <div className="relative overflow-hidden bg-white">
+      <div
+        key={`visible-${visibleItem.id}`}
+        className={cn("relative z-[1]", incomingItem && isIncomingReady && "shipk-product-media-exit")}
+      >
+        <MediaFrame item={visibleItem} productName={productName} />
+      </div>
+      {incomingItem ? (
+        <div
+          key={`incoming-${incomingItem.id}`}
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[2]",
+            isIncomingReady ? "shipk-product-media-enter" : "opacity-0"
+          )}
+        >
+          <MediaFrame
+            item={incomingItem}
+            productName={productName}
+            onImageLoad={() => setIsIncomingReady(true)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
