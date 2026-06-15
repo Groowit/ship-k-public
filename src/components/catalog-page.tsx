@@ -1,26 +1,14 @@
 import Link from "next/link";
-import { SlidersHorizontal } from "lucide-react";
-import { ProductCard } from "@/components/product-card";
-import {
-  filterProductsByCategory,
-  getActiveCategories,
-  Product
-} from "@/lib/products";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { HomePopularProductCard } from "@/components/home-popular-product-card";
+import { Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
-
-export type CatalogFilter = {
-  slug: string;
-  label: string;
-  matches: (product: Product) => boolean;
-};
 
 export function CatalogPage({
   activeProducts,
   basePath,
-  selectedFilterSlug,
-  filters,
-  filterQueryParam = "filter",
-  allFilterLabel = "All kits",
+  currentPage = 1,
+  pageSize = 24,
   eyebrow,
   title = "Get the K-Look",
   highlightedTitleText = "K-Look",
@@ -28,33 +16,21 @@ export function CatalogPage({
 }: {
   activeProducts: Product[];
   basePath: string;
-  selectedFilterSlug: string;
-  filters?: CatalogFilter[];
-  filterQueryParam?: string;
-  allFilterLabel?: string;
+  currentPage?: number;
+  pageSize?: number;
   eyebrow?: string;
   title?: string;
   highlightedTitleText?: string;
   description?: string;
 }) {
-  const categories = getActiveCategories(activeProducts);
-  const filterItems =
-    filters ??
-    categories.map((category) => ({
-      slug: category.toLowerCase(),
-      label: category,
-      matches: (product: Product) => product.category === category
-    }));
-  const selectedFilter = filterItems.find((filter) => filter.slug === selectedFilterSlug);
-  const products = filters
-    ? selectedFilterSlug === "all" || !selectedFilter
-      ? activeProducts
-      : activeProducts.filter(selectedFilter.matches)
-    : filterProductsByCategory(activeProducts, selectedFilter?.label ?? selectedFilterSlug);
+  const safePageSize = Math.max(1, pageSize);
+  const totalPages = Math.max(1, Math.ceil(activeProducts.length / safePageSize));
+  const page = clamp(currentPage, 1, totalPages);
+  const products = activeProducts.slice((page - 1) * safePageSize, page * safePageSize);
 
   return (
     <section className="container py-10">
-      <div className="mb-9 grid gap-6">
+      <div className="mb-9">
         <div>
           {eyebrow ? (
             <p className="font-brand-heavy text-sm uppercase text-[#ff3d7f]">
@@ -68,41 +44,118 @@ export function CatalogPage({
             <p className="mt-3 max-w-2xl text-muted-foreground">{description}</p>
           ) : null}
         </div>
-        <nav className="flex gap-3 overflow-x-auto pb-1" aria-label="Product filters">
-          <FilterLink href={basePath} active={selectedFilterSlug === "all"}>
-            {allFilterLabel}
-          </FilterLink>
-          {filterItems.map((filter) => (
-            <FilterLink
-              key={filter.slug}
-              href={`${basePath}?${filterQueryParam}=${filter.slug}`}
-              active={selectedFilterSlug === filter.slug}
-            >
-              {filter.label}
-            </FilterLink>
-          ))}
-        </nav>
       </div>
-      <div className="mb-7 grid gap-4 md:grid-cols-[auto_1fr_auto] md:items-center">
-        <div className="inline-flex h-12 w-fit items-center gap-3 rounded-md border border-[#d8d8d8] bg-white px-4 text-sm font-black text-muted-foreground">
-          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-          Product filter
-        </div>
-        <p className="text-sm font-semibold text-muted-foreground md:text-center">
-          {products.length} products ready to ship
-        </p>
-        <div className="inline-flex w-fit overflow-hidden rounded-md border border-[#d8d8d8] bg-white text-sm font-black text-muted-foreground">
-          <span className="px-4 py-3">1</span>
-          <span className="border-l border-[#e4e4e4] px-4 py-3">of 1</span>
-        </div>
-      </div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product, index) => (
-          <ProductCard key={product.id} product={product} rank={index} />
+      <div
+        data-testid="catalog-product-grid"
+        className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:gap-4"
+      >
+        {products.map((product) => (
+          <HomePopularProductCard key={product.id} product={product} />
         ))}
       </div>
+      <CatalogPagination basePath={basePath} page={page} totalPages={totalPages} />
     </section>
   );
+}
+
+function CatalogPagination({
+  basePath,
+  page,
+  totalPages
+}: {
+  basePath: string;
+  page: number;
+  totalPages: number;
+}) {
+  return (
+    <nav
+      className="mt-10 flex items-center justify-center gap-2"
+      aria-label="Product pages"
+    >
+      <PaginationLink
+        href={getPageHref(basePath, page - 1)}
+        disabled={page === 1}
+        ariaLabel="Previous product page"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        <span className="sr-only">Previous</span>
+      </PaginationLink>
+      {Array.from({ length: totalPages }).map((_, index) => {
+        const pageNumber = index + 1;
+        const active = pageNumber === page;
+
+        return (
+          <Link
+            key={pageNumber}
+            href={getPageHref(basePath, pageNumber)}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "grid h-10 min-w-10 place-items-center rounded-md border px-3 text-sm font-black transition focus-ring",
+              active
+                ? "border-foreground bg-foreground text-background"
+                : "border-zinc-300 bg-white text-foreground hover:border-[#ff3d7f] hover:text-[#ff3d7f]"
+            )}
+          >
+            {pageNumber}
+          </Link>
+        );
+      })}
+      <PaginationLink
+        href={getPageHref(basePath, page + 1)}
+        disabled={page === totalPages}
+        ariaLabel="Next product page"
+      >
+        <span className="sr-only">Next</span>
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </PaginationLink>
+    </nav>
+  );
+}
+
+function PaginationLink({
+  href,
+  disabled,
+  ariaLabel,
+  children
+}: {
+  href: string;
+  disabled: boolean;
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  if (disabled) {
+    return (
+      <span
+        aria-disabled="true"
+        aria-label={ariaLabel}
+        className="grid h-10 min-w-10 place-items-center rounded-md border border-zinc-200 bg-white px-3 text-zinc-300"
+      >
+        {children}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      className="grid h-10 min-w-10 place-items-center rounded-md border border-zinc-300 bg-white px-3 text-foreground transition hover:border-[#ff3d7f] hover:text-[#ff3d7f] focus-ring"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function getPageHref(basePath: string, page: number) {
+  return page <= 1 ? basePath : `${basePath}?page=${page}`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function HighlightedTitle({
@@ -124,27 +177,5 @@ function HighlightedTitle({
       <span className="text-[#ff3d7f]">{highlight}</span>
       {after}
     </>
-  );
-}
-
-function FilterLink({
-  href,
-  active,
-  children
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "shipk-chip shrink-0 transition",
-        active ? "shipk-chip-active" : "hover:bg-[#ffd6e3]"
-      )}
-    >
-      {children}
-    </Link>
   );
 }
