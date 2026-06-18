@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type React from "react";
 import { HomeCurationRail } from "./home-curation-rail";
 import type { Product } from "@/lib/products";
@@ -28,6 +28,10 @@ describe("HomeCurationRail", () => {
     vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("renders product links in order inside a horizontal snap rail without arrow controls", () => {
     render(
       <HomeCurationRail
@@ -47,6 +51,39 @@ describe("HomeCurationRail", () => {
     expect(links[1]).toHaveTextContent("Second Pick");
     expect(links[0]).toHaveAttribute("href", "/products/first-pick");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("keeps frame-driven auto-scroll off native smooth scrolling", () => {
+    render(<HomeCurationRail products={[productFixture({ id: "first" })]} />);
+
+    expect(screen.getByTestId("home-curation-rail").className).not.toContain("scroll-smooth");
+  });
+
+  it("stops automatic scrolling at the end instead of jumping back to the first product", () => {
+    let animationCallback: FrameRequestCallback | undefined;
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((callback: FrameRequestCallback) => {
+        animationCallback = callback;
+        return 1;
+      })
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+
+    render(<HomeCurationRail products={[productFixture({ id: "first" })]} />);
+
+    const rail = screen.getByTestId("home-curation-rail");
+    Object.defineProperties(rail, {
+      clientWidth: { configurable: true, value: 500 },
+      scrollLeft: { configurable: true, value: 499, writable: true },
+      scrollWidth: { configurable: true, value: 1000 }
+    });
+
+    expect(animationCallback).toBeDefined();
+    animationCallback?.(performance.now() + 1000);
+
+    expect(rail.scrollLeft).toBe(500);
   });
 
   it("leaves a tapped product link uncaptured so it can navigate", () => {

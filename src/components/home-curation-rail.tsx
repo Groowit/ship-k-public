@@ -41,7 +41,12 @@ export function HomeCurationRail({ products }: { products: Product[] }) {
 
       if (!isPausedRef.current && maxScrollLeft > 1) {
         const nextLeft = currentRail.scrollLeft + delta * speed;
-        currentRail.scrollLeft = nextLeft >= maxScrollLeft ? 0 : nextLeft;
+        if (nextLeft >= maxScrollLeft) {
+          currentRail.scrollLeft = maxScrollLeft;
+          isPausedRef.current = true;
+        } else {
+          currentRail.scrollLeft = nextLeft;
+        }
       }
 
       frame = requestAnimationFrame(tick);
@@ -142,7 +147,7 @@ export function HomeCurationRail({ products }: { products: Product[] }) {
     <div
       ref={railRef}
       data-testid="home-curation-rail"
-      className="flex cursor-grab touch-pan-x snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-4 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex cursor-grab touch-pan-x snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-auto pb-4 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endPointerInteraction}
